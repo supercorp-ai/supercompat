@@ -8,8 +8,31 @@ Supercompat allows you to use any AI provider like Groq or Mistral with OpenAI-c
 npm i supercompat
 ```
 
-## Setup
+## Usage
 
+```
+import {
+  supercompat,
+  prismaStorageAdapter,
+  completionsRunAdapter,
+} from 'supercompat'
+import Groq from 'groq-sdk'
+
+const client = supercompat({
+  client: new Groq(),
+  storage: prismaStorageAdapter({
+    prisma,
+  }),
+  run: completionsRunAdapter(),
+})
+
+const message = await client.beta.threads.messages.create(thread.id, {
+  role: 'user',
+  content: 'Who won the world series in 2020?'
+})
+```
+
+## Setup
 
 ```
 // prisma.schema
@@ -138,28 +161,4 @@ model RunStep {
   @@index([threadId, runId, type, status])
   @@index([createdAt(sort: Asc)])
 }
-```
-
-## Usage
-
-```
-import {
-  supercompat,
-  prismaStorageAdapter,
-  completionsRunAdapter,
-} from 'supercompat'
-import Groq from 'groq-sdk'
-
-const client = supercompat({
-  client: new Groq(),
-  storage: prismaStorageAdapter({
-    prisma,
-  }),
-  run: completionsRunAdapter(),
-})
-
-const message = await client.beta.threads.messages.create(thread.id, {
-  role: 'user',
-  content: 'Who won the world series in 2020?'
-})
 ```
