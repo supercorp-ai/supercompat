@@ -28,7 +28,7 @@ export const create = ({
       },
       messages: {
         create: messages.map((message: OpenAI.Beta.ThreadCreateParams.Message, index: number) => ({
-          role: message.role,
+          role: message.role === 'user' ? 'USER' : 'ASSISTANT',
           content: [{
               type: 'text',
               text: {
