@@ -81,6 +81,8 @@ export const submitToolOutputsStream = ({
         })
       })
 
+      // partobs client from above
+      // @ts-ignore-next-line
       await runAdapter({
         run: serializeRun({ run }),
         onEvent: onEvent({ controller, prisma }),

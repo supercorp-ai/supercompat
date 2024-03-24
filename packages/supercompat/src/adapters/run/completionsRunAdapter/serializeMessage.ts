@@ -41,10 +41,6 @@ export const serializeMessage = ({
 }: {
   message: MessageWithRun
 }) => {
-  console.log('serializing msg')
-  console.dir({
-    message,
-  }, { depth: null })
   const result = [serializeMessageWithContent({ message })]
 
   if (!message.run) return result

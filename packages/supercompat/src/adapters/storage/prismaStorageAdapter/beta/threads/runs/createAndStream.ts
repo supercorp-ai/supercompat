@@ -76,8 +76,7 @@ export const createAndStream = ({
         data,
       })
 
-      console.log('createAndStream', { getMessages })
-      // client is partob filled before
+      // partobs client from above
       // @ts-ignore-next-line
       await runAdapter({
         run: data,
