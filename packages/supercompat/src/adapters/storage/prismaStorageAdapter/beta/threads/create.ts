@@ -20,8 +20,12 @@ export const create = ({
 
   const thread = await prisma.thread.create({
     data: {
-      assistantId: metadata.superinterfaceAssistantId,
       metadata,
+      assistant: {
+        connect: {
+          id: metadata.superinterfaceAssistantId,
+        },
+      },
       messages: {
         create: messages.map((message: OpenAI.Beta.ThreadCreateParams.Message, index: number) => ({
           role: message.role,

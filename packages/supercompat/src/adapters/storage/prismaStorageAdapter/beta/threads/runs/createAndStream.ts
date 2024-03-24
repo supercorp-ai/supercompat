@@ -77,6 +77,8 @@ export const createAndStream = ({
       })
 
       console.log('createAndStream', { getMessages })
+      // client is partob filled before
+      // @ts-ignore-next-line
       await runAdapter({
         run: data,
         onEvent: onEvent({ controller, prisma }),

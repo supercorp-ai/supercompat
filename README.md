@@ -38,7 +38,6 @@ const message = await client.beta.threads.messages.create(thread.id, {
 // prisma.schema
 model Thread {
   id  String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  openaiThreadId String?
   assistantId String @db.Uuid
   assistant Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
   metadata Json?
