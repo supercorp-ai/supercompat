@@ -23,7 +23,9 @@ const client = supercompat({
   storage: prismaStorageAdapter({
     prisma,
   }),
-  runAdapter: completionsRunAdapter(),
+  runAdapter: completionsRunAdapter({
+    messagesHistoryLength: 10,
+  }),
 })
 
 const message = await client.beta.threads.messages.create(thread.id, {
