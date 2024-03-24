@@ -15,7 +15,7 @@ export type RunAdapter = ({
   client: OpenAI
   run: OpenAI.Beta.Threads.Run
   onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
-  getMessages: () => Promise<MessageWithRun>
+  getMessages: () => Promise<MessageWithRun[]>
 }) => Promise<void>
 
 export type StorageAdapterArgs = {
