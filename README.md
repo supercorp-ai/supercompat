@@ -10,7 +10,7 @@ npm i supercompat
 
 ## Usage
 
-```
+```ts
 import {
   supercompat,
   prismaStorageAdapter,
@@ -34,7 +34,7 @@ const message = await client.beta.threads.messages.create(thread.id, {
 
 ## Setup
 
-```
+```prisma
 // prisma.schema
 model Thread {
   id  String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -160,5 +160,15 @@ model RunStep {
 
   @@index([threadId, runId, type, status])
   @@index([createdAt(sort: Asc)])
+}
+
+model Assistant {
+  id  String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  threads Thread[]
+  runs Run[]
+  runSteps RunStep[]
+  messages Message[]
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
 }
 ```
