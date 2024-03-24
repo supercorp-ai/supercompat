@@ -52,7 +52,11 @@ const toolCallsData = ({
   return newToolCalls
 }
 
-export const completionsRunAdapter = async ({
+export const completionsRunAdapter = ({
+  messagesHistoryLength = 10,
+}: {
+  messagesHistoryLength?: number
+}) => async ({
   client,
   run,
   onEvent,
@@ -77,6 +81,7 @@ export const completionsRunAdapter = async ({
     messages: await messages({
       run,
       getMessages,
+      messagesHistoryLength,
     }),
     model: run.model,
     stream: true,

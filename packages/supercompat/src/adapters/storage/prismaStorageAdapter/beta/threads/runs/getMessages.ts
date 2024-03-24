@@ -10,7 +10,11 @@ export const getMessages = ({
 }: {
   prisma: PrismaClient
   run: Run
-}) => async () => {
+}) => async ({
+  messagesHistoryLength,
+}: {
+  messagesHistoryLength: number
+}) => {
   const messages = await prisma.message.findMany({
     where: {
       threadId: run.threadId,
@@ -22,7 +26,7 @@ export const getMessages = ({
         },
       },
     },
-    take: -10,
+    take: -messagesHistoryLength,
     orderBy: {
       createdAt: 'asc',
     },
