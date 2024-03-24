@@ -1,23 +1,16 @@
 import type OpenAI from 'openai'
-import { isEmpty } from 'radash'
 import { MessageWithRun } from '@/types'
 
-const serializeToolCalls = ({
-  runStep,
+const serializeToolCall = ({
+  toolCall,
 }: {
-  runStep: OpenAI.Beta.Threads.Runs.RunStep
-}) => {
-  if (runStep.step_details.type !== 'tool_calls') return []
-
-  const functionToolCalls = runStep.step_details.tool_calls.filter(tc => tc.type === 'function') as OpenAI.Beta.Threads.Runs.Steps.FunctionToolCall[]
-
-  return functionToolCalls.map((toolCall) => ({
-    tool_call_id: toolCall.id,
-    role: 'tool' as 'tool',
-    name: toolCall.function.name,
-    content: toolCall.function.output,
-  }))
-}
+  toolCall: OpenAI.Beta.Threads.Runs.Steps.FunctionToolCall
+}) => ({
+  tool_call_id: toolCall.id,
+  role: 'tool' as 'tool',
+  name: toolCall.function.name,
+  content: toolCall.function.output,
+})
 
 const serializeMessageWithContent = ({
   message,
@@ -44,16 +37,33 @@ export const serializeMessage = ({
 }) => {
   const result = [serializeMessageWithContent({ message })]
 
-  if (!message.run) return result
-  if (isEmpty(message.metadata?.toolCalls)) return result
+  const run = message.run
 
-  const toolCallsRunSteps = message.run.runSteps.filter((runStep) => runStep.type === 'tool_calls')
+  if (!run) return result
 
-  toolCallsRunSteps.forEach((runStep) => {
-    result.push(...serializeToolCalls({ runStep }))
+  const messageToolCalls = message.metadata?.toolCalls || []
+
+  messageToolCalls.forEach((tc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
+    const runStep = run.runSteps.find((rs) => {
+      if (rs.type !== 'tool_calls') return false
+
+      return rs.step_details.tool_calls.some((rsTc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
+        if (rsTc.type !== 'function') return false
+
+        return rsTc.id === tc.id
+      })
+    })
+
+    if (!runStep) return
+
+    const toolCall = runStep.step_details.tool_calls.find((rsTc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
+      if (rsTc.type !== 'function') return false
+
+      return rsTc.id === tc.id
+    })
+
+    result.push(serializeToolCall({ toolCall }))
   })
-
-  console.dir({ result }, { depth: null })
 
   return result
 }

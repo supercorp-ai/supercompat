@@ -21,5 +21,5 @@ export const serializeMessage = ({
   run_id: message.runId,
   file_ids: message.fileIds,
   status: message.status.toLowerCase() as OpenAI.Beta.Threads.Messages.Message['status'],
-  metadata: assign(message.metadata as Record<any, any> ?? {}, { toolCalls: message.toolCalls }),
+  metadata: assign(message.metadata as Record<any, any> ?? {}, message.toolCalls ? { toolCalls: message.toolCalls } : {}),
 })
