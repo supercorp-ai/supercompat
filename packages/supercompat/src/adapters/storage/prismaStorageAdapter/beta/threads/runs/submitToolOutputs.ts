@@ -18,7 +18,7 @@ export const submitToolOutputs = ({
     tool_outputs,
   } = body
 
-  const run = await prisma.$transaction(async (prisma) => {
+  const run = await prisma.$transaction(async (prisma: PrismaClient) => {
     const runSteps = await prisma.runStep.findMany({
       where: {
         threadId,

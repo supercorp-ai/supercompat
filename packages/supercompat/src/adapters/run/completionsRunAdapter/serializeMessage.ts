@@ -1,4 +1,5 @@
 import type OpenAI from 'openai'
+import { isEmpty } from 'radash'
 import { MessageWithRun } from '@/types'
 
 const serializeToolCalls = ({
@@ -44,7 +45,7 @@ export const serializeMessage = ({
   const result = [serializeMessageWithContent({ message })]
 
   if (!message.run) return result
-  // if (isEmpty(message.toolCalls)) return result
+  if (isEmpty(message.metadata?.toolCalls)) return result
 
   const toolCallsRunSteps = message.run.runSteps.filter((runStep) => runStep.type === 'tool_calls')
 
