@@ -1,5 +1,6 @@
 import type OpenAI from 'openai'
-import type { PrismaClient, RunStatus } from '@prisma/client'
+import type { PrismaClient } from '@prisma/client'
+import { RunStatus } from '@/types/prisma'
 
 export const threadRunRequiresAction = ({
   prisma,
