@@ -2,8 +2,11 @@ import _ from 'lodash'
 import { uid, omit, isEmpty } from 'radash'
 import dayjs from 'dayjs'
 import type OpenAI from 'openai'
+import type Anthropic from '@anthropic-ai/sdk'
 import { MessageWithRun } from '@/types'
 import { messages } from './messages'
+import { serializeTools } from './serializeTools'
+import { serializeContent } from './serializeContent'
 
 const updatedToolCall = ({
   toolCall,
@@ -52,9 +55,9 @@ const toolCallsData = ({
   return newToolCalls
 }
 
-export const completionsRunAdapter = ({
+export const anthropicRunAdapter = ({
   messagesHistoryLength = 10,
-  maxTokens = undefined,
+  maxTokens = 4096,
 }: {
   messagesHistoryLength?: number
   maxTokens?: number
@@ -79,22 +82,25 @@ export const completionsRunAdapter = ({
     },
   })
 
+  const isStream = isEmpty(run.tools)
+
   const opts = {
     messages: await messages({
       run,
       getMessages,
       messagesHistoryLength,
     }),
+    stream: isStream,
     model: run.model,
-    stream: true,
-    ...(maxTokens ? { max_tokens: maxTokens } : {}),
-    ...(isEmpty(run.tools) ? {} : { tools: run.tools }),
-  } as OpenAI.ChatCompletionCreateParamsStreaming
+    max_tokens: maxTokens,
+    ...(isEmpty(run.tools) ? {} : { tools: serializeTools({ run }) }),
+  }
 
   console.dir({ opts }, { depth: null })
   let providerResponse
 
   try {
+    // @ts-ignore-next-line
     providerResponse = await client.chat.completions.create(opts)
   } catch(e) {
     console.error(e)
@@ -161,81 +167,131 @@ export const completionsRunAdapter = ({
   let currentToolCalls
 
   console.dir({ providerResponse }, { depth: null })
-  for await (const chunk of providerResponse) {
-    const delta = chunk.choices[0].delta
 
-    if (delta.content) {
-      currentContent = `${currentContent}${delta.content ?? ''}`
-    }
+  if (isStream) {
+    // @ts-ignore-next-line
+    for await (const chunk of providerResponse) {
+      const delta = chunk.choices[0].delta
 
-    if (delta.tool_calls) {
-      if (!toolCallsRunStep) {
-        toolCallsRunStep = await onEvent({
-          event: 'thread.run.step.created',
-          data: {
-            id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
-            object: 'thread.run.step',
-            run_id: run.id,
-            assistant_id: run.assistant_id,
-            thread_id: run.thread_id,
-            type: 'tool_calls',
-            status: 'in_progress',
-            completed_at: null,
-            created_at: dayjs().unix(),
-            expired_at: null,
-            last_error: null,
-            metadata: {},
-            failed_at: null,
-            cancelled_at: null,
-            usage: null,
-            step_details: {
-              type: 'tool_calls',
-              tool_calls: [],
-            },
-          },
-        })
+      if (delta.content) {
+        currentContent = `${currentContent}${delta.content ?? ''}`
       }
 
-      onEvent({
-        event: 'thread.run.step.delta',
-        data: {
-          object: 'thread.run.step.delta',
-          run_id: run.id,
-          id: toolCallsRunStep.id,
-          delta: {
-            step_details: {
+      if (delta.tool_calls) {
+        if (!toolCallsRunStep) {
+          toolCallsRunStep = await onEvent({
+            event: 'thread.run.step.created',
+            data: {
+              id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
+              object: 'thread.run.step',
+              run_id: run.id,
+              assistant_id: run.assistant_id,
+              thread_id: run.thread_id,
               type: 'tool_calls',
-              tool_calls: delta.tool_calls.map((tc: any) => ({
-                id: uid(24),
-                type: 'function',
-                ...tc,
-              })),
+              status: 'in_progress',
+              completed_at: null,
+              created_at: dayjs().unix(),
+              expired_at: null,
+              last_error: null,
+              metadata: {},
+              failed_at: null,
+              cancelled_at: null,
+              usage: null,
+              step_details: {
+                type: 'tool_calls',
+                tool_calls: [],
+              },
+            },
+          })
+        }
+
+        onEvent({
+          event: 'thread.run.step.delta',
+          data: {
+            object: 'thread.run.step.delta',
+            run_id: run.id,
+            id: toolCallsRunStep.id,
+            delta: {
+              step_details: {
+                type: 'tool_calls',
+                tool_calls: delta.tool_calls.map((tc: any) => ({
+                  id: uid(24),
+                  type: 'function',
+                  ...tc,
+                })),
+              },
             },
           },
-        },
-      } as OpenAI.Beta.AssistantStreamEvent.ThreadRunStepDelta)
+        } as OpenAI.Beta.AssistantStreamEvent.ThreadRunStepDelta)
 
-      currentToolCalls = toolCallsData({ prevToolCalls: currentToolCalls, delta })
+        currentToolCalls = toolCallsData({ prevToolCalls: currentToolCalls, delta })
+      }
+
+      if (delta.content) {
+        onEvent({
+          event: 'thread.message.delta',
+          data: {
+            id: message.id,
+            delta: {
+              content: [
+                {
+                  type: 'text',
+                  index: 0,
+                  text: {
+                    value: delta.content,
+                  },
+                },
+              ],
+            },
+          },
+        } as OpenAI.Beta.AssistantStreamEvent.ThreadMessageDelta)
+      }
+    }
+  } else {
+    // @ts-ignore-next-line
+    const textContentBlock = providerResponse.content.filter((c: any) => c.type === 'text')[0]
+
+    if (textContentBlock) {
+      currentContent = textContentBlock.text
     }
 
-    if (delta.content) {
-      onEvent({
-        event: 'thread.message.delta',
+    // @ts-ignore-next-line
+    const toolUseBlocks = providerResponse.content.filter((c: any) => c.type === 'tool_use')
+
+    if (!isEmpty(toolUseBlocks)) {
+      currentToolCalls = toolUseBlocks.map((tc: any) => ({
+        id: tc.id,
+        type: 'function',
+        function: {
+          name: tc.name,
+          arguments: JSON.stringify(tc.input),
+        },
+      }))
+
+      toolCallsRunStep = await onEvent({
+        event: 'thread.run.step.created',
         data: {
-          id: message.id,
-          delta: {
-            content: [
-              {
-                type: 'text',
-                index: 0,
-                text: {
-                  value: delta.content,
-                },
-              },
-            ],
+          id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
+          object: 'thread.run.step',
+          run_id: run.id,
+          assistant_id: run.assistant_id,
+          thread_id: run.thread_id,
+          type: 'tool_calls',
+          status: 'in_progress',
+          completed_at: null,
+          created_at: dayjs().unix(),
+          expired_at: null,
+          last_error: null,
+          metadata: {},
+          failed_at: null,
+          cancelled_at: null,
+          usage: null,
+          step_details: {
+            type: 'tool_calls',
+            tool_calls: currentToolCalls,
           },
         },
-      } as OpenAI.Beta.AssistantStreamEvent.ThreadMessageDelta)
+      })
     }
   }
 
