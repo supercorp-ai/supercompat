@@ -169,65 +169,12 @@ export const anthropicRunAdapter = ({
   console.dir({ providerResponse }, { depth: null })
 
   if (isStream) {
-    // @ts-ignore-next-line
-    for await (const chunk of providerResponse) {
-      const delta = chunk.choices[0].delta
+    for await (const messageStreamEvent of providerResponse) {
+      // @ts-ignore-next-line
+      if (messageStreamEvent.type === 'content_block_delta') {
+        // @ts-ignore-next-line
+        currentContent = `${currentContent}${messageStreamEvent.delta.text ?? ''}`
 
-      if (delta.content) {
-        currentContent = `${currentContent}${delta.content ?? ''}`
-      }
-
-      if (delta.tool_calls) {
-        if (!toolCallsRunStep) {
-          toolCallsRunStep = await onEvent({
-            event: 'thread.run.step.created',
-            data: {
-              id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
-              object: 'thread.run.step',
-              run_id: run.id,
-              assistant_id: run.assistant_id,
-              thread_id: run.thread_id,
-              type: 'tool_calls',
-              status: 'in_progress',
-              completed_at: null,
-              created_at: dayjs().unix(),
-              expired_at: null,
-              last_error: null,
-              metadata: {},
-              failed_at: null,
-              cancelled_at: null,
-              usage: null,
-              step_details: {
-                type: 'tool_calls',
-                tool_calls: [],
-              },
-            },
-          })
-        }
-
-        onEvent({
-          event: 'thread.run.step.delta',
-          data: {
-            object: 'thread.run.step.delta',
-            run_id: run.id,
-            id: toolCallsRunStep.id,
-            delta: {
-              step_details: {
-                type: 'tool_calls',
-                tool_calls: delta.tool_calls.map((tc: any) => ({
-                  id: uid(24),
-                  type: 'function',
-                  ...tc,
-                })),
-              },
-            },
-          },
-        } as OpenAI.Beta.AssistantStreamEvent.ThreadRunStepDelta)
-
-        currentToolCalls = toolCallsData({ prevToolCalls: currentToolCalls, delta })
-      }
-
-      if (delta.content) {
         onEvent({
           event: 'thread.message.delta',
           data: {
@@ -238,7 +185,8 @@ export const anthropicRunAdapter = ({
                   type: 'text',
                   index: 0,
                   text: {
-                    value: delta.content,
+                    // @ts-ignore-next-line
+                    value: messageStreamEvent.delta.text,
                   },
                 },
               ],
