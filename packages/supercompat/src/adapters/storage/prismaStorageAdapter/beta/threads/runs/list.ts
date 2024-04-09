@@ -15,6 +15,8 @@ export const list = ({
     limit,
     // @ts-ignore-next-line
     order,
+    // @ts-ignore-next-line
+    after,
   } = assign({
     // @ts-ignore-next-line
     limit: 20,
@@ -29,12 +31,18 @@ export const list = ({
     orderBy: {
       createdAt: order,
     },
+    ...(after ? {
+      skip: 1,
+      cursor: {
+        id: after,
+      },
+    }: {}),
   })
 
   // @ts-ignore-next-line
   return {
     data: runs.map((run) => serializeRun({ run })),
-    hasNextPage: () => false,
+    hasNextPage: () => runs.length === limit,
     body: {
       last_id: last(runs)?.id ?? null,
     },

@@ -16,10 +16,13 @@ export const list = ({
     limit,
     // @ts-ignore-next-line
     order,
+    // @ts-ignore-next-line
+    after,
   } = assign({
     // @ts-ignore-next-line
     limit: 20,
     order: 'desc',
+    after: null,
   }, args[2] ?? {})
 
   const runSteps = await prisma.runStep.findMany({
@@ -31,12 +34,18 @@ export const list = ({
     orderBy: {
       createdAt: order,
     },
+    ...(after ? {
+      skip: 1,
+      cursor: {
+        id: after,
+      },
+    }: {}),
   })
 
   // @ts-ignore-next-line
   return {
     data: runSteps.map((runStep) => serializeRunStep({ runStep })),
-    hasNextPage: () => false,
+    hasNextPage: () => runSteps.length === limit,
     body: {
       last_id: last(runSteps)?.id ?? null,
     },

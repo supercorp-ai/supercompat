@@ -14,10 +14,13 @@ export const list = ({
     limit,
     // @ts-ignore-next-line
     order,
+    // @ts-ignore-next-line
+    after,
   } = assign({
     // @ts-ignore-next-line
     limit: 20,
     order: 'desc',
+    after: null,
   }, args[1] ?? {})
 
   const messages = await prisma.message.findMany({
@@ -28,6 +31,12 @@ export const list = ({
     orderBy: {
       createdAt: order,
     },
+    ...(after ? {
+      skip: 1,
+      cursor: {
+        id: after,
+      },
+    }: {}),
   })
 
   // @ts-ignore-next-line
@@ -35,7 +44,7 @@ export const list = ({
     data: messages.map((message) => (
       serializeMessage({ message })
     )),
-    hasNextPage: () => false,
+    hasNextPage: () => messages.length === limit,
     body: {
       last_id: last(messages)?.id ?? null,
     },
