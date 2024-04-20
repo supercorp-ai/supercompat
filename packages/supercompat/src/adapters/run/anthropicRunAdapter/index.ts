@@ -127,7 +127,7 @@ export const anthropicRunAdapter = ({
       incomplete_at: null,
       incomplete_details: null,
       metadata: {},
-      file_ids: [],
+      attachments: [],
       thread_id: run.thread_id,
       content: [{ text: { value: '', annotations: [] }, type: 'text' }],
       role: 'assistant',

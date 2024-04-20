@@ -6,7 +6,7 @@ export const serializeRun = ({
   run,
 }: {
   run: Run
-}) => ({
+}): OpenAI.Beta.Threads.Run => ({
   id: run.id,
   object: 'thread.run' as 'thread.run',
   created_at: dayjs(run.createdAt).unix(),
@@ -22,9 +22,17 @@ export const serializeRun = ({
   completed_at: run.completedAt ? dayjs(run.completedAt).unix() : null,
   model: run.model,
   instructions: run.instructions,
-  // @ts-ignore-next-line
   tools: run.tools as OpenAI.Beta.Threads.Run['tools'],
-  file_ids: run.fileIds,
   metadata: run.metadata,
   usage: run.usage as OpenAI.Beta.Threads.Run['usage'],
+  // TODO
+  incomplete_details: null,
+  max_completion_tokens: null,
+  max_prompt_tokens: null,
+  response_format: 'auto',
+  tool_choice: 'auto',
+  truncation_strategy: {
+    type: 'auto',
+    last_messages: null,
+  },
 })

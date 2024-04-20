@@ -37,7 +37,7 @@ export const create = ({
               },
             },
           ],
-          fileIds: message.file_ids,
+          attachments: message.attachments,
           metadata: message.metadata,
           createdAt: dayjs(initialCreatedAt).add(index, 'seconds').toDate(),
         })),

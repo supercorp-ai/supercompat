@@ -10,4 +10,6 @@ export const serializeThread = ({
   object: 'thread' as 'thread',
   created_at: dayjs(thread.createdAt).unix(),
   metadata: thread.metadata,
+  // TODO
+  tool_resources: null,
 })
