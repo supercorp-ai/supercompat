@@ -8,7 +8,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
-    "@swc/core": "^1.4.2",
+    "@swc/core": "^1.4.16",
     "prettier": "^3.2.5",
     "turbo": "^1.13.2"
   },
