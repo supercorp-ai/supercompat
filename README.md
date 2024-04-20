@@ -78,7 +78,7 @@ model Message {
   completedAt DateTime? @db.Timestamptz(6)
   incompleteAt DateTime? @db.Timestamptz(6)
   incompleteDetails Json?
-  fileIds String[]
+  attachments Json[] @default([])
   metadata Json?
   toolCalls Json?
   createdAt DateTime @default(now()) @db.Timestamptz(6)
@@ -116,7 +116,6 @@ model Run {
   model String
   instructions String
   tools Json[] @default([])
-  fileIds String[]
   metadata Json?
   usage Json?
   runSteps RunStep[]
