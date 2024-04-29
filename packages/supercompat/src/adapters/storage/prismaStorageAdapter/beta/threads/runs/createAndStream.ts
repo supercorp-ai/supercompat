@@ -35,6 +35,7 @@ export const createAndStream = ({
         // additional_instructions,
         tools,
         metadata,
+        response_format,
         // @ts-ignore-next-line
       } = assign({
         model: assistant.modelSlug,
@@ -82,6 +83,7 @@ export const createAndStream = ({
         run: data,
         onEvent: onEvent({ controller, prisma }),
         getMessages: getMessages({ prisma, run }),
+        responseFormat: response_format,
       })
 
       console.log('Stream ended inside cloud storage')
