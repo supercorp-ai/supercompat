@@ -1,0 +1,149 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Thread {
+  id  String @id @default(dbgenerated("gen_random_uuid()"))
+  assistantId String
+  assistant Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  metadata Json?
+  messages Message[]
+  runs Run[]
+  runSteps RunStep[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([assistantId])
+  @@index([createdAt(sort: Desc)])
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
+enum MessageStatus {
+  IN_PROGRESS
+  INCOMPLETE
+  COMPLETED
+}
+
+model Message {
+  id  String @id @default(dbgenerated("gen_random_uuid()"))
+  threadId String
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  role MessageRole
+  content Json
+  status MessageStatus @default(COMPLETED)
+  assistantId String?
+  assistant Assistant? @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  runId String?
+  run Run? @relation(fields: [runId], references: [id], onDelete: Cascade)
+  completedAt DateTime?
+  incompleteAt DateTime?
+  incompleteDetails Json?
+  attachments Json[] @default([])
+  metadata Json?
+  toolCalls Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([threadId])
+  @@index([createdAt(sort: Desc)])
+}
+
+enum RunStatus {
+  QUEUED
+  IN_PROGRESS
+  REQUIRES_ACTION
+  CANCELLING
+  CANCELLED
+  FAILED
+  COMPLETED
+  EXPIRED
+}
+
+model Run {
+  id  String @id @default(dbgenerated("gen_random_uuid()"))
+  threadId String
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  assistantId String
+  assistant Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  status RunStatus
+  requiredAction Json?
+  lastError Json?
+  expiresAt Int
+  startedAt Int?
+  cancelledAt Int?
+  failedAt Int?
+  completedAt Int?
+  model String
+  instructions String
+  tools Json[] @default([])
+  metadata Json?
+  usage Json?
+  runSteps RunStep[]
+  messages Message[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum RunStepType {
+  MESSAGE_CREATION
+  TOOL_CALLS
+}
+
+enum RunStepStatus {
+  IN_PROGRESS
+  CANCELLED
+  FAILED
+  COMPLETED
+  EXPIRED
+}
+
+model RunStep {
+  id  String @id @default(dbgenerated("gen_random_uuid()"))
+  threadId String
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  assistantId String
+  assistant Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  runId String
+  run Run @relation(fields: [runId], references: [id], onDelete: Cascade)
+  type RunStepType
+  status RunStepStatus
+  stepDetails Json
+  lastError Json?
+  expiredAt Int?
+  cancelledAt Int?
+  failedAt Int?
+  completedAt Int?
+  metadata Json?
+  usage Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([threadId, runId, type, status])
+  @@index([createdAt(sort: Asc)])
+}
+
+model Assistant {
+  id  String @id @default(dbgenerated("gen_random_uuid()"))
+  threads Thread[]
+  runs Run[]
+  runSteps RunStep[]
+  messages Message[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

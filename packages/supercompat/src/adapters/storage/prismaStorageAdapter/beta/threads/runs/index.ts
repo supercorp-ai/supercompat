@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client'
 import { RunAdapter } from '@/types'
 import { list } from './list'
+import { retrieve } from './retrieve'
 import { create } from './create'
 import { createAndStream } from './createAndStream'
 import { submitToolOutputs } from './submitToolOutputs'
@@ -15,6 +16,7 @@ export const runs = ({
   runAdapter: RunAdapter
 }) => ({
   list: list({ prisma }),
+  retrieve: retrieve({ prisma }),
   create: create({ prisma }),
   createAndStream: createAndStream({ prisma, runAdapter }),
   submitToolOutputs: submitToolOutputs({ prisma, runAdapter }),

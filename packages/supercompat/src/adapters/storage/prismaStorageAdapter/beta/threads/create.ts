@@ -8,24 +8,23 @@ export const create = ({
 }: {
   prisma: PrismaClient
 }) => async (...args: Parameters<OpenAI.Beta.Threads['create']>): Promise<ReturnType<OpenAI.Beta.Threads['create']>> => {
-  const {
-    // @ts-ignore-next-line
-    body: {
-      messages,
-      metadata,
-    },
-  } = args[0]
+  // @ts-ignore-next-line
+  const messages = args[0]?.messages || []
+  // @ts-ignore-next-line
+  const metadata = args[0]?.metadata || {}
 
   const initialCreatedAt = dayjs().subtract(messages.length, 'seconds').format()
 
   const thread = await prisma.thread.create({
     data: {
       metadata,
-      assistant: {
-        connect: {
-          id: metadata.superinterfaceAssistantId,
+      ...(metadata.assistantId ? ({
+        assistant: {
+          connect: {
+            id: metadata.assistantId,
+          },
         },
-      },
+      }) : {}),
       messages: {
         create: messages.map((message: OpenAI.Beta.ThreadCreateParams.Message, index: number) => ({
           role: message.role === 'user' ? 'USER' : 'ASSISTANT',
