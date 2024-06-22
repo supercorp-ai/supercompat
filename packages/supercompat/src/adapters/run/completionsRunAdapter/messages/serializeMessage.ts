@@ -9,7 +9,7 @@ const serializeToolCall = ({
   tool_call_id: toolCall.id,
   role: 'tool' as 'tool',
   name: toolCall.function.name,
-  content: toolCall.function.output,
+  content: toolCall.function.output ?? '',
 })
 
 const serializeMessageWithContent = ({

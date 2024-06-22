@@ -11,7 +11,7 @@ const serializeToolCall = ({
     {
       type: 'tool_result',
       tool_use_id: toolCall.id,
-      content: toolCall.function.output,
+      content: toolCall.function.output ?? '',
     },
   ],
 })
