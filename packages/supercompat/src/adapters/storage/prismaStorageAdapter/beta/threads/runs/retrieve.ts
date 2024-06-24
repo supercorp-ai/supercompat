@@ -18,7 +18,18 @@ export const retrieve = ({
       },
     })
 
-    return serializeRun({ run })
+    return {
+      data: serializeRun({ run }),
+      response: {
+        headers: {
+          get: (name: string) => {
+            if (name === 'openai-poll-after-ms') {
+              return '5000'
+            }
+          }
+        },
+      },
+    }
   }
 
   result.withResponse = () => result()

@@ -3,11 +3,16 @@ import type { PrismaClient } from '@prisma/client'
 import dayjs from 'dayjs'
 import { assign } from 'radash'
 import { serializeRun } from './serializeRun'
+import { RunAdapter } from '@/types'
+import { onEvent } from './onEvent'
+import { getMessages } from './getMessages'
 
 export const create = ({
   prisma,
+  runAdapter,
 }: {
   prisma: PrismaClient
+  runAdapter: RunAdapter
 }) => async (...args: Parameters<OpenAI.Beta.Threads.Runs['create']>): Promise<ReturnType<OpenAI.Beta.Threads.Runs['create']>> => {
   const threadId = args[0]
   const { assistant_id } = args[1]
@@ -28,6 +33,7 @@ export const create = ({
     // additional_instructions,
     tools,
     metadata,
+    response_format,
     // @ts-ignore-next-line
   } = assign({
     model: assistant.modelSlug,
@@ -62,5 +68,18 @@ export const create = ({
     },
   })
 
-  return serializeRun({ run })
+  const data = serializeRun({ run })
+
+  new ReadableStream({
+    async start(controller) {
+      runAdapter({
+        run: data,
+        onEvent: onEvent({ controller, prisma }),
+        getMessages: getMessages({ prisma, run }),
+        responseFormat: response_format,
+      })
+    }
+  })
+
+  return data
 }
