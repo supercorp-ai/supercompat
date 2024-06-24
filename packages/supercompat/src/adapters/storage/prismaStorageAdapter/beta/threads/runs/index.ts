@@ -17,7 +17,7 @@ export const runs = ({
 }) => ({
   list: list({ prisma }),
   retrieve: retrieve({ prisma }),
-  create: create({ prisma }),
+  create: create({ prisma, runAdapter }),
   createAndStream: createAndStream({ prisma, runAdapter }),
   submitToolOutputs: submitToolOutputs({ prisma, runAdapter }),
   submitToolOutputsStream: submitToolOutputsStream({ prisma, runAdapter }),

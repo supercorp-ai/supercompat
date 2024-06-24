@@ -1,6 +1,8 @@
+import OpenAI from 'openai'
 import { NextResponse } from 'next/server'
 import {
   supercompat,
+  groqClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
 } from 'supercompat'
@@ -10,62 +12,73 @@ import { prisma } from '@/lib/prisma'
 export const GET = async () => {
   // console.log("start")
 
-  const client = supercompat({
-    client: new Groq(),
-    storage: prismaStorageAdapter({
-      prisma,
+  const client = new OpenAI({
+    apiKey: 'SUPERCOMPAT_PLACEHOLDER_OPENAI_KEY',
+    fetch: supercompat({
+      client: groqClientAdapter({
+        groq: new Groq(),
+      }),
+      storage: prismaStorageAdapter({
+        prisma,
+      }),
+      runAdapter: completionsRunAdapter({
+        messagesHistoryLength: 10,
+      }),
     }),
-    runAdapter: completionsRunAdapter({
-      messagesHistoryLength: 10,
-    }),
   })
 
-  console.log({
-    createAndPoll: client.beta.threads.runs.createAndPoll,
+  const chatCompletion = await client.chat.completions.create({
+    messages: [{ role: 'user', content: 'Say this is a test' }],
+    // model: 'gpt-3.5-turbo',
+    model: 'llama3-8b-8192',
   })
 
-  // console.log({
-  //   runs: client.beta.threads.runs,
-  // })
-
-  // console.log("client")
-  const assistantId = 'b7fd7a65-3504-4ad3-95a0-b83a8eaff0f3'
-
-  const thread = await client.beta.threads.create({
-    messages: [],
-    metadata: {
-      assistantId,
-    },
-  })
-
-
-  // console.log("thread")
-
-  await client.beta.threads.messages.create(thread.id, {
-    role: 'user',
-    content: 'Who won the world series in 2020?'
-  })
-
-  // console.log("a")
-  //
-  // console.log({
-  //   runs: client.beta.threads.runs,
-  // })
-  // console.dir({ client }, { depth: null })
-  const r = await client.beta.threads.runs.createAndPoll(
-    thread.id,
-    {
-      assistant_id: assistantId,
-      instructions: 'Just reply',
-      model: 'llama3-8b-8192',
-    },
-  )
-
-  // console.dir({ r }, { depth: null })
-
-  const threadMessages = await client.beta.threads.messages.list(thread.id)
-
+  console.dir({ chatCompletion }, { depth: null })
   return NextResponse.json({
-    threadMessages,
+    success: true,
   })
+    // (...args) => {
+    //   console.dir({ args }, { depth: null })
+    //   return fetch(...args)
+    // },
+
+  // const client = supercompat({
+  //   client: new Groq(),
+  //   storage: prismaStorageAdapter({
+  //     prisma,
+  //   }),
+  //   runAdapter: completionsRunAdapter({
+  //     messagesHistoryLength: 10,
+  //   }),
+  // })
+
+  // const assistantId = 'b7fd7a65-3504-4ad3-95a0-b83a8eaff0f3'
+  //
+  // const thread = await client.beta.threads.create({
+  //   messages: [],
+  //   metadata: {
+  //     assistantId,
+  //   },
+  // })
+  //
+  //
+  // await client.beta.threads.messages.create(thread.id, {
+  //   role: 'user',
+  //   content: 'Who won the world series in 2020?'
+  // })
+  //
+  // await client.beta.threads.runs.createAndPoll(
+  //   thread.id,
+  //   {
+  //     assistant_id: assistantId,
+  //     instructions: 'Just reply',
+  //     model: 'llama3-8b-8192',
+  //   },
+  // )
+  //
+  // const threadMessages = await client.beta.threads.messages.list(thread.id)
+  //
+  // return NextResponse.json({
+  //   threadMessages,
+  // })
 }
