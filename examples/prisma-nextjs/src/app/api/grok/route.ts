@@ -27,16 +27,13 @@ export const GET = async () => {
     }),
   })
 
-  const chatCompletion = await client.chat.completions.create({
-    messages: [{ role: 'user', content: 'Say this is a test' }],
-    // model: 'gpt-3.5-turbo',
-    model: 'llama3-8b-8192',
-  })
+  // const chatCompletion = await client.chat.completions.create({
+  //   messages: [{ role: 'user', content: 'Say this is a test' }],
+  //   // model: 'gpt-3.5-turbo',
+  //   model: 'llama3-8b-8192',
+  // })
 
-  console.dir({ chatCompletion }, { depth: null })
-  return NextResponse.json({
-    success: true,
-  })
+  // console.dir({ chatCompletion }, { depth: null })
     // (...args) => {
     //   console.dir({ args }, { depth: null })
     //   return fetch(...args)
@@ -52,15 +49,18 @@ export const GET = async () => {
   //   }),
   // })
 
-  // const assistantId = 'b7fd7a65-3504-4ad3-95a0-b83a8eaff0f3'
-  //
-  // const thread = await client.beta.threads.create({
-  //   messages: [],
-  //   metadata: {
-  //     assistantId,
-  //   },
-  // })
-  //
+  const assistantId = 'b7fd7a65-3504-4ad3-95a0-b83a8eaff0f3'
+
+  const thread = await client.beta.threads.create({
+    messages: [],
+    metadata: {
+      assistantId,
+    },
+  })
+
+  return NextResponse.json({
+    success: true,
+  })
   //
   // await client.beta.threads.messages.create(thread.id, {
   //   role: 'user',

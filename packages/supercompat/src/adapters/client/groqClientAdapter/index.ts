@@ -9,17 +9,10 @@ export const groqClientAdapter = ({
   'https://api.openai.com/v1/chat/completions': {
     // @ts-ignore-next-line
     post: async (...args: Parameters<OpenAI.Completions['create']>): ReturnType<OpenAI.Completions['create']> => {
-      const [firstArg, secondArg, ...restArgs] = args
+      // const [firstArg, secondArg, ...restArgs] = args
 
-      // const a = await fetch('https://api.openai.com/v1/chat/completions', {
-      // })
-
-      // console.log({ a })
-
-
-      // console.dir({ args }, { depth: null })
       // @ts-ignore-next-line
-      const parsedSecondArg = JSON.parse(secondArg.body)
+      const parsedSecondArg = JSON.parse(args[1].body)
       // console.dir({ messages }, { depth: null })
       //
       // const resultFirstArg = {
