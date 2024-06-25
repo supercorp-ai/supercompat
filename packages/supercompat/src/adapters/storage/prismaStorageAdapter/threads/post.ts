@@ -1,17 +1,22 @@
+import type OpenAI from 'openai'
 import type { PrismaClient } from '@prisma/client'
 import dayjs from 'dayjs'
-import type OpenAI from 'openai'
 import { serializeThread } from './serializeThread'
+
+type ThreadCreateResponse = Response & {
+  json: () => Promise<OpenAI.Beta.Threads['create']>
+}
 
 export const post = ({
   prisma,
 }: {
   prisma: PrismaClient
-}) => async (...args: Parameters<OpenAI.Beta.Threads['create']>): Promise<ReturnType<OpenAI.Beta.Threads['create']>> => {
+}) => async (...args: Parameters<OpenAI.Beta.Threads['create']>): Promise<ThreadCreateResponse> => {
   // @ts-ignore-next-line
-  const messages = args[0]?.messages || []
-  // @ts-ignore-next-line
-  const metadata = args[0]?.metadata || {}
+  const body = JSON.parse(args[1].body)
+
+  const messages = body.messages || []
+  const metadata = body.metadata || {}
 
   const initialCreatedAt = dayjs().subtract(messages.length, 'seconds').format()
 
@@ -44,5 +49,12 @@ export const post = ({
     },
   })
 
-  return serializeThread({ thread })
+  return new Response(JSON.stringify({
+    data: serializeThread({ thread }),
+  }), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
 }
