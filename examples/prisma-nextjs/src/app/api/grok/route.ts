@@ -64,23 +64,18 @@ export const GET = async () => {
     content: 'Who won the world series in 2020?'
   })
 
+  await client.beta.threads.runs.createAndPoll(
+    thread.id,
+    {
+      assistant_id: assistantId,
+      instructions: 'Just reply',
+      model: 'llama3-8b-8192',
+    },
+  )
+
+  const threadMessages = await client.beta.threads.messages.list(thread.id, { limit: 10 })
+
   return NextResponse.json({
     success: true,
   })
-  //
-  //
-  // await client.beta.threads.runs.createAndPoll(
-  //   thread.id,
-  //   {
-  //     assistant_id: assistantId,
-  //     instructions: 'Just reply',
-  //     model: 'llama3-8b-8192',
-  //   },
-  // )
-  //
-  // const threadMessages = await client.beta.threads.messages.list(thread.id)
-  //
-  // return NextResponse.json({
-  //   threadMessages,
-  // })
 }

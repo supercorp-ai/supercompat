@@ -11,6 +11,6 @@ export const prismaStorageAdapter = ({
 }) => ({
   runAdapter,
 }: StorageAdapterArgs) => ({
+  '^https://api.openai.com/v1/threads/([^/]+)/messages': messages({ prisma }),
   '^https://api.openai.com/v1/threads$': threads({ prisma }),
-  '^https://api.openai.com/v1/threads/([^/]+)/messages$': messages({ prisma }),
 })
