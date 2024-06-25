@@ -1,9 +1,10 @@
 import _ from 'lodash'
 import { uid, omit, isEmpty } from 'radash'
 import dayjs from 'dayjs'
-import type OpenAI from 'openai'
+import OpenAI from 'openai'
 import { MessageWithRun } from '@/types'
 import { messages } from './messages'
+import { supercompat } from '@/supercompat'
 
 const updatedToolCall = ({
   toolCall,
@@ -59,7 +60,7 @@ export const completionsRunAdapter = ({
   messagesHistoryLength?: number
   maxTokens?: number
 }) => async ({
-  client,
+  client: clientAdapter,
   run,
   onEvent,
   getMessages,
@@ -72,6 +73,17 @@ export const completionsRunAdapter = ({
   responseFormat?: OpenAI.Beta.Threads.Run['response_format']
 }) => {
   if (run.status !== 'queued') return
+
+  const client = new OpenAI({
+    apiKey: 'SUPERCOMPAT_PLACEHOLDER_OPENAI_KEY',
+    fetch: supercompat({
+      client: clientAdapter,
+      // @ts-ignore-next-line
+      storage: () => {},
+      // @ts-ignore-next-line
+      runAdapter: {},
+    }),
+  })
 
   onEvent({
     event: 'thread.run.in_progress',

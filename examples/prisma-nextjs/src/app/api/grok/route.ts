@@ -58,7 +58,6 @@ export const GET = async () => {
     },
   })
 
-  console.dir({ thread })
   await client.beta.threads.messages.create(thread.id, {
     role: 'user',
     content: 'Who won the world series in 2020?'
@@ -74,6 +73,10 @@ export const GET = async () => {
   )
 
   const threadMessages = await client.beta.threads.messages.list(thread.id, { limit: 10 })
+
+  console.dir({
+    threadMessages,
+  }, { depth: null })
 
   return NextResponse.json({
     success: true,
