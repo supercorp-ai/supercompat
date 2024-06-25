@@ -72,6 +72,25 @@ import { requestHandlers as getRequestHandlers } from './requestHandlers'
 //   return instance;
 // }
 //
+//
+//
+
+const findRequestHandler = ({
+  url,
+  requestHandlers,
+}: {
+  url: string
+  requestHandlers: any
+}) => {
+  for (const key in requestHandlers) {
+    const regex = new RegExp(key)
+
+    if (regex.test(url)) {
+      return requestHandlers[key]
+    }
+  }
+}
+
 // @ts-ignore-next-line
 export const supercompat = ({
   client,
@@ -94,8 +113,13 @@ export const supercompat = ({
     const [url, options] = args
     console.dir({ args, url }, { depth: null })
 
-    // @ts-ignore-next-line
-    const pathHandler = requestHandlers[url]
+    const pathHandler = findRequestHandler({
+      url,
+      requestHandlers,
+    })
+
+    // // @ts-ignore-next-line
+    // const pathHandler = requestHandlers[url]
 
     if (!pathHandler) {
       // @ts-ignore-next-line

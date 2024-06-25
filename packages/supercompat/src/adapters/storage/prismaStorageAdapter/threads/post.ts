@@ -49,9 +49,9 @@ export const post = ({
     },
   })
 
-  return new Response(JSON.stringify({
-    data: serializeThread({ thread }),
-  }), {
+  return new Response(JSON.stringify(
+    serializeThread({ thread }),
+  ), {
     status: 200,
     headers: {
       'Content-Type': 'application/json',
