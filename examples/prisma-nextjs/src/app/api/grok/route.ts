@@ -54,9 +54,11 @@ export const GET = async () => {
   // console.dir({
   //   before: 1, chatCompletion,
   // }, { depth: null })
+  console.log({ before: chatCompletion })
   for await (const chunk of chatCompletion) {
     console.dir({ chunk }, { depth: null })
   }
+  console.log({ after: chatCompletion })
   // console.dir({ chatCompletion }, { depth: null })
 
   // console.dir({ chatCompletion, chatCompletion2 }, { depth: null })
