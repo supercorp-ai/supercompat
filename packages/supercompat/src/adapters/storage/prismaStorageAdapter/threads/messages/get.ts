@@ -13,9 +13,9 @@ export const get = ({
 }: {
   prisma: PrismaClient
 }) => async (urlString: string): Promise<MessageCreateResponse> => {
-  const [, threadId] = urlString.match(new RegExp('^https://api.openai.com/v1/threads/([^/]+)/messages'))!
-
   const url = new URL(urlString)
+
+  const [, threadId] = url.pathname.match(new RegExp('^/v1/threads/([^/]+)/messages$'))!
 
   const {
     limit,
