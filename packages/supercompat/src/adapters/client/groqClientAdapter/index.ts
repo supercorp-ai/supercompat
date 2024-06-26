@@ -9,23 +9,33 @@ type CreateResponse = Response & {
 }
 
 // @ts-ignore-next-line
-async function streamToReadableStream(stream) {
-    const reader = stream.iterator();
+async function* createAsyncIterator(stream) {
+    for await (const chunk of stream) {
+        yield chunk;
+    }
+}
 
-    return new ReadableStream({
-        async pull(controller) {
-          const { value, done } = await reader.next();
+// @ts-ignore-next-line
+function streamToReadable(stream) {
+  const asyncIterator = createAsyncIterator(stream);
 
-          if (done) {
-              controller.close();
-          } else {
-              controller.enqueue(value);
-          }
-        },
-        cancel() {
-          stream.controller.abort();
+  return new Readable({
+    async read() {
+      try {
+        const { value, done } = await asyncIterator.next();
+
+        console.log({ value })
+        if (done) {
+          this.push(null); // Signal the end of the stream
+        } else {
+          this.push(Buffer.from(JSON.stringify(value)))
         }
-    });
+      } catch (err) {
+        // @ts-ignore-next-line
+        this.destroy(err); // Handle any errors
+      }
+    }
+  });
 }
 
 export const groqClientAdapter = ({
@@ -47,71 +57,17 @@ export const groqClientAdapter = ({
         // console.log({ response })
 
         // @ts-ignore-next-line
-        const resp = new Response(streamToReadableStream(response), {
+        return new Response(streamToReadable(response), {
           headers: {
             'Content-Type': 'text/event-stream; charset=utf-8',
+            'connection': 'keep-alive',
+            'Cache-Control': 'no-cache',
           },
         })
-
-        // @ts-ignore-next-line
-        // for await (const chunk of response) {
-        //   console.log({ chunk })
-        // }
-
-        return resp
-        // @ts-ignore-next-line
-        // console.log({wr: response.asResponse() })
-
-        // const rs = await streamToReadableStream(response)
-        //
-        // const respo = new APIPromise(Promise.resolve({
-        //   response: new Response(rs),
-        //   options: {
-        //     method: 'post',
-        //     path: '/v1/chat/completions',
-        //   },
-        //   controller: new AbortController(),
-        // })) as APIPromise<Stream<OpenAI.ChatCompletionChunk>>
-        // // const respo = new Response(rs) as APIPromise<Stream<OpenAI.ChatCompletionChunk>>
-        // console.log({ a: typeof rs, rs })
-        //)
-        // // @ts-ignore-next-line
-        // // for await (const chunk of respo) {
-        // //   console.log({ chunk })
-        // // }
-        // // @ts-ignore-next-line
-        // return respo
-        // return new Response(rs)
-
-        // // @ts-ignore-next-line
-        // const webStream = response.pipeThrough(new TransformStream({
-        //   transform(chunk, controller) {
-        //     controller.enqueue(chunk);
-        //   },
-        //   flush(controller) {
-        //     // @ts-ignore-next-line
-        //     controller.close();
-        //   }
-        // }))
-        //
-        // return new Response(webStream)
-
-        // @ts-ignore-next-line
-        // return new Response(Readable.toWeb(response))
       } else {
         try {
           const data = await groq.chat.completions.create(body)
 
-          // const respo = new APIPromise(Promise.resolve({
-          //   response: new Response(rs),
-          //   options: {
-          //     method: 'post',
-          //     path: '/v1/chat/completions',
-          //   },
-          //   controller: new AbortController(),
-          // })) as APIPromise<Stream<OpenAI.ChatCompletion>>
-          //
-          // return respo
           return new Response(JSON.stringify({
             data,
           }), {

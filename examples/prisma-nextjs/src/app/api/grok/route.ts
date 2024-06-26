@@ -50,10 +50,14 @@ export const GET = async () => {
   //   // model: 'llama3-8b-8192',
   // })
   //
+  //
+  // console.dir({
+  //   before: 1, chatCompletion,
+  // }, { depth: null })
   for await (const chunk of chatCompletion) {
     console.dir({ chunk }, { depth: null })
   }
-  console.log({ chatCompletion })
+  // console.dir({ chatCompletion }, { depth: null })
 
   // console.dir({ chatCompletion, chatCompletion2 }, { depth: null })
   return NextResponse.json({
