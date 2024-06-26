@@ -39,11 +39,23 @@ export const GET = async () => {
     // model: 'llama3-8b-8192',
   })
 
-  // for await (const chunk of chatCompletion) {
-  //   console.dir({ chunk }, { depth: null })
-  // }
+  // const newCl = new OpenAI({
+  //   apiKey: process.env.OPENAI_API_KEY!,
+  // })
+  //
+  // const chatCompletion2 = await newCl.chat.completions.create({
+  //   messages: [{ role: 'user', content: 'Say this is a test' }],
+  //   model: 'gpt-3.5-turbo',
+  //   stream: true,
+  //   // model: 'llama3-8b-8192',
+  // })
+  //
+  for await (const chunk of chatCompletion) {
+    console.dir({ chunk }, { depth: null })
+  }
+  console.log({ chatCompletion })
 
-  console.dir({ chatCompletion }, { depth: null })
+  // console.dir({ chatCompletion, chatCompletion2 }, { depth: null })
   return NextResponse.json({
     success: false,
   })

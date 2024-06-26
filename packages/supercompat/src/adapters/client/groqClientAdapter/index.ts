@@ -8,60 +8,22 @@ type CreateResponse = Response & {
   json: () => Promise<ReturnType<OpenAI.Beta.Threads.Runs['create']>>
 }
 
-// function nodeToWebStream(nodeStream: any) {
-//   const reader = nodeStream[Symbol.asyncIterator]();
-//   return new ReadableStream({
-//     async pull(controller) {
-//       const { value, done } = await reader.next();
-//       if (done) {
-//         controller.close();
-//       } else {
-//         controller.enqueue(value);
-//       }
-//     }
-//   });
-// }
-//
-// async function iteratorToStream(iterator: AsyncGenerator<any>): Promise<PassThrough> {
-//   const parts: unknown[] = [];
-//
-//   for await (const chunk of iterator) {
-//     parts.push(chunk);
-//   }
-//
-//   let index = 0;
-//
-//   const stream = new PassThrough({
-//     read() {
-//       const value = parts[index];
-//
-//       if (value === undefined) {
-//         stream.end();
-//       } else {
-//         index += 1;
-//         stream.write(value);
-//       }
-//     },
-//   });
-//
-//   return stream;
-// }
-
 // @ts-ignore-next-line
 async function streamToReadableStream(stream) {
     const reader = stream.iterator();
 
     return new ReadableStream({
         async pull(controller) {
-            const { value, done } = await reader.next();
-            if (done) {
-                controller.close();
-            } else {
-                controller.enqueue(value);
-            }
+          const { value, done } = await reader.next();
+
+          if (done) {
+              controller.close();
+          } else {
+              controller.enqueue(value);
+          }
         },
         cancel() {
-            stream.controller.abort();
+          stream.controller.abort();
         }
     });
 }
@@ -85,9 +47,12 @@ export const groqClientAdapter = ({
         // console.log({ response })
 
         // @ts-ignore-next-line
-        const resp = new Response(streamToReadableStream(response))
+        const resp = new Response(streamToReadableStream(response), {
+          headers: {
+            'Content-Type': 'text/event-stream; charset=utf-8',
+          },
+        })
 
-        console.log({ resp })
         // @ts-ignore-next-line
         // for await (const chunk of response) {
         //   console.log({ chunk })
