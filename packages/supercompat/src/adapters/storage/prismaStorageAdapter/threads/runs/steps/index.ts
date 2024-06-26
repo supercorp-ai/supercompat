@@ -1,10 +1,10 @@
 import type { PrismaClient } from '@prisma/client'
-import { list } from './list'
+import { get } from './get'
 
 export const steps = ({
   prisma,
 }: {
   prisma: PrismaClient
 }) => ({
-  list: list({ prisma }),
+  get: get({ prisma }),
 })
