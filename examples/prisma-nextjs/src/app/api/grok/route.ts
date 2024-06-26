@@ -15,14 +15,14 @@ export const GET = async () => {
   const client = new OpenAI({
     apiKey: 'SUPERCOMPAT_PLACEHOLDER_OPENAI_KEY',
     fetch: supercompat({
-      // client: groqClientAdapter({
-      //   groq: new Groq(),
-      // }),
       client: groqClientAdapter({
-        groq: new OpenAI({
-          apiKey: process.env.OPENAI_API_KEY!,
-        }),
+        groq: new Groq(),
       }),
+      // client: groqClientAdapter({
+      //   groq: new OpenAI({
+      //     apiKey: process.env.OPENAI_API_KEY!,
+      //   }),
+      // }),
       storage: prismaStorageAdapter({
         prisma,
       }),
@@ -32,52 +32,36 @@ export const GET = async () => {
     }),
   })
 
-  const chatCompletion = await client.chat.completions.create({
-    messages: [{ role: 'user', content: 'Say this is a test' }],
-    model: 'gpt-3.5-turbo',
-    stream: true,
-    // model: 'llama3-8b-8192',
-  })
-
-  // const newCl = new OpenAI({
-  //   apiKey: process.env.OPENAI_API_KEY!,
-  // })
-  //
-  // const chatCompletion2 = await newCl.chat.completions.create({
+  // const chatCompletion = await client.chat.completions.create({
   //   messages: [{ role: 'user', content: 'Say this is a test' }],
   //   model: 'gpt-3.5-turbo',
   //   stream: true,
   //   // model: 'llama3-8b-8192',
   // })
   //
+  // // const newCl = new OpenAI({
+  // //   apiKey: process.env.OPENAI_API_KEY!,
+  // // })
+  // //
+  // // const chatCompletion2 = await newCl.chat.completions.create({
+  // //   messages: [{ role: 'user', content: 'Say this is a test' }],
+  // //   model: 'gpt-3.5-turbo',
+  // //   stream: true,
+  // //   // model: 'llama3-8b-8192',
+  // // })
+  // //
+  // //
+  // // console.dir({
+  // //   before: 1, chatCompletion,
+  // // }, { depth: null })
+  // console.log({ before: chatCompletion })
+  // for await (const chunk of chatCompletion) {
+  //   console.dir({ chunk }, { depth: null })
+  // }
+  // console.log({ after: chatCompletion })
   //
-  // console.dir({
-  //   before: 1, chatCompletion,
-  // }, { depth: null })
-  console.log({ before: chatCompletion })
-  for await (const chunk of chatCompletion) {
-    console.dir({ chunk }, { depth: null })
-  }
-  console.log({ after: chatCompletion })
-  // console.dir({ chatCompletion }, { depth: null })
-
-  // console.dir({ chatCompletion, chatCompletion2 }, { depth: null })
-  return NextResponse.json({
-    success: false,
-  })
-    // (...args) => {
-    //   console.dir({ args }, { depth: null })
-    //   return fetch(...args)
-    // },
-
-  // const client = supercompat({
-  //   client: new Groq(),
-  //   storage: prismaStorageAdapter({
-  //     prisma,
-  //   }),
-  //   runAdapter: completionsRunAdapter({
-  //     messagesHistoryLength: 10,
-  //   }),
+  // return NextResponse.json({
+  //   success: false,
   // })
 
   const assistantId = 'b7fd7a65-3504-4ad3-95a0-b83a8eaff0f3'
@@ -99,8 +83,8 @@ export const GET = async () => {
     {
       assistant_id: assistantId,
       instructions: 'Just reply',
-      // model: 'llama3-8b-8192',
-      model: 'gpt-3.5-turbo',
+      model: 'llama3-8b-8192',
+      // model: 'gpt-3.5-turbo',
     },
   )
 
