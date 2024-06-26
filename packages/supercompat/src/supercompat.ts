@@ -1,4 +1,3 @@
-import OpenAI from 'openai'
 import { RunAdapter, StorageAdapterArgs } from '@/types'
 import { requestHandlers as getRequestHandlers } from './requestHandlers'
 
@@ -25,8 +24,8 @@ export const supercompat = ({
   storage,
   runAdapter,
 }: {
-  client: OpenAI
-  storage: (arg0: StorageAdapterArgs) => OpenAI
+  client: any
+  storage: (arg0: StorageAdapterArgs) => any
   runAdapter: RunAdapter
 }) => {
   const requestHandlers = getRequestHandlers({

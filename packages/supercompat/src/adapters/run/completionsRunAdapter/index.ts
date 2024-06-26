@@ -84,7 +84,6 @@ export const completionsRunAdapter = ({
       runAdapter: {},
     }),
   })
-  console.log({ clientAdapter })
 
   onEvent({
     event: 'thread.run.in_progress',

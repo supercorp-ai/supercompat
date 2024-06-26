@@ -56,6 +56,12 @@ export const GET = async () => {
 
   const threadMessages = await client.beta.threads.messages.list(thread.id, { limit: 10 })
 
+  const runs = await client.beta.threads.runs.list(thread.id)
+  const last = runs.data[runs.data.length - 1]
+  console.dir({last}, { depth: null })
+  const steps = await client.beta.threads.runs.steps.list(thread.id, last.id)
+  console.dir({steps}, { depth: null })
+
   return NextResponse.json({
     threadMessages,
   })
