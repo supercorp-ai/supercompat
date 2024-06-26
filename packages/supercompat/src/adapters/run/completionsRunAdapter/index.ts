@@ -176,12 +176,7 @@ export const completionsRunAdapter = ({
   let currentContent = ''
   let currentToolCalls
 
-  // @ts-ignore-next-line
-  // console.dir({ before: 1, providerResponse, a: 1, isReadable: providerResponse.body instanceof ReadableStream , bo: providerResponse.body }, { depth: null })
-  console.log('before, providerResponse', providerResponse)
-
   for await (const chunk of providerResponse) {
-    console.log('inside', chunk)
     const delta = chunk.choices[0].delta
 
     if (delta.content) {
@@ -258,8 +253,6 @@ export const completionsRunAdapter = ({
       } as OpenAI.Beta.AssistantStreamEvent.ThreadMessageDelta)
     }
   }
-
-  console.log('afrer')
 
   message = await onEvent({
     event: 'thread.message.completed',

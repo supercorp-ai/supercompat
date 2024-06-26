@@ -9,10 +9,12 @@ const findRequestHandler = ({
   url: string
   requestHandlers: any
 }) => {
+  const pathname = new URL(url).pathname
+
   for (const key in requestHandlers) {
     const regex = new RegExp(key)
 
-    if (regex.test(url)) {
+    if (regex.test(pathname)) {
       return requestHandlers[key]
     }
   }
