@@ -44,6 +44,26 @@ export const GET = async () => {
     content: 'Who won the world series in 2020?'
   })
 
+  // const ru = await client.beta.threads.runs.create(
+  //   thread.id,
+  //   {
+  //     assistant_id: assistantId,
+  //     instructions: 'Just reply',
+  //     model: 'llama3-8b-8192',
+  //     stream: true,
+  //     // model: 'gpt-3.5-turbo',
+  //   },
+  // )
+  //
+  // for await (const event of ru) {
+  //   console.log({ event });
+  // }
+  // console.dir({ru}, { depth: null })
+  // return NextResponse.json({
+  //   su: 'su',
+  // })
+
+
   await client.beta.threads.runs.createAndPoll(
     thread.id,
     {

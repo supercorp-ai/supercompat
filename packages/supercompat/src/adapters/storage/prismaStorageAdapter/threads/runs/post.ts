@@ -22,7 +22,7 @@ export const post = ({
   const [, threadId] = url.pathname.match(new RegExp('^/v1/threads/([^/]+)/runs$'))!
 
   const body = JSON.parse(options.body)
-  const { assistant_id } = body
+  const { assistant_id, stream } = body
 
   const assistant = await prisma.assistant.findUnique({
     where: {
@@ -72,24 +72,42 @@ export const post = ({
 
   const data = serializeRun({ run })
 
-  new ReadableStream({
+  const readableStream = new ReadableStream({
     async start(controller) {
-      runAdapter({
+      await runAdapter({
         run: data,
-        onEvent: onEvent({ controller, prisma }),
+        onEvent: onEvent({
+          controller: {
+            ...controller,
+            enqueue: (data) => {
+              controller.enqueue(`data: ${JSON.stringify(data)}\n\n`)
+            },
+          },
+          prisma,
+        }),
         // @ts-ignore-next-line
         getMessages: getMessages({ prisma, run }),
         responseFormat: response_format,
       })
-    }
-  })
 
-  return new Response(JSON.stringify(
-    data
-  ), {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/json',
+      controller.close()
     },
   })
+
+  if (stream) {
+    return new Response(readableStream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+      },
+    })
+  } else {
+    return new Response(JSON.stringify(
+      data
+    ), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+  }
 }
