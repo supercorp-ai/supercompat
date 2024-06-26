@@ -20,6 +20,18 @@ export const GET = async () => {
     }),
   })
 
+  const groq = new Groq()
+
+  const a = await client.chat.completions.create({
+    model: 'llama3-8b-8192',
+    messages: [{ role: 'user', content: 'Say this is a test' }],
+  })
+  console.log({ a, client })
+
+  return NextResponse.json({
+    success: true,
+  })
+
   const assistantId = 'b7fd7a65-3504-4ad3-95a0-b83a8eaff0f3'
 
   const thread = await client.beta.threads.create({
