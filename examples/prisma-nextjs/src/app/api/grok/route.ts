@@ -15,8 +15,13 @@ export const GET = async () => {
   const client = new OpenAI({
     apiKey: 'SUPERCOMPAT_PLACEHOLDER_OPENAI_KEY',
     fetch: supercompat({
+      // client: groqClientAdapter({
+      //   groq: new Groq(),
+      // }),
       client: groqClientAdapter({
-        groq: new Groq(),
+        groq: new OpenAI({
+          apiKey: process.env.OPENAI_API_KEY!,
+        }),
       }),
       storage: prismaStorageAdapter({
         prisma,
@@ -27,13 +32,21 @@ export const GET = async () => {
     }),
   })
 
-  // const chatCompletion = await client.chat.completions.create({
-  //   messages: [{ role: 'user', content: 'Say this is a test' }],
-  //   // model: 'gpt-3.5-turbo',
-  //   model: 'llama3-8b-8192',
-  // })
+  const chatCompletion = await client.chat.completions.create({
+    messages: [{ role: 'user', content: 'Say this is a test' }],
+    model: 'gpt-3.5-turbo',
+    stream: true,
+    // model: 'llama3-8b-8192',
+  })
 
-  // console.dir({ chatCompletion }, { depth: null })
+  // for await (const chunk of chatCompletion) {
+  //   console.dir({ chunk }, { depth: null })
+  // }
+
+  console.dir({ chatCompletion }, { depth: null })
+  return NextResponse.json({
+    success: false,
+  })
     // (...args) => {
     //   console.dir({ args }, { depth: null })
     //   return fetch(...args)
@@ -68,7 +81,8 @@ export const GET = async () => {
     {
       assistant_id: assistantId,
       instructions: 'Just reply',
-      model: 'llama3-8b-8192',
+      // model: 'llama3-8b-8192',
+      model: 'gpt-3.5-turbo',
     },
   )
 

@@ -12,7 +12,6 @@ export const get = ({
   prisma: PrismaClient
 }) => async (urlString: string): Promise<GetResponse> => {
   const [, threadId, runId] = urlString.match(new RegExp('^https://api.openai.com/v1/threads/([^/]+)/runs/([^/]+)$'))!
-  console.log({ threadId, runId })
 
   const run = await prisma.run.findUnique({
     where: {
