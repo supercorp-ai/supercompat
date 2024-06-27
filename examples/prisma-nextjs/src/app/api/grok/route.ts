@@ -82,9 +82,7 @@ export const GET = async () => {
   for await (const event of ru) {
     if (event.event === 'thread.run.requires_action') {
       requiresActionEvent = event
-      // break
     }
-    // console.dir({ event }, { depth: null })
   }
 
   console.dir({ requiresActionEvent })
@@ -105,14 +103,13 @@ export const GET = async () => {
       ],
     }
   );
-
-  for await (const event of run) {
-    console.dir({ event }, { depth: null })
-  }
+  //
+  // for await (const event of run) {
+  //   console.dir({ event }, { depth: null })
+  // }
 
   const threadMessages = await client.beta.threads.messages.list(thread.id, { limit: 10 })
 
-  console.dir({ru, run}, { depth: null })
   return NextResponse.json({
     threadMessages,
   })
