@@ -5,6 +5,7 @@ import { messages } from './threads/messages'
 import { runs } from './threads/runs'
 import { run } from './threads/run'
 import { steps } from './threads/runs/steps'
+import { submitToolOutputs } from './threads/runs/submitToolOutputs'
 
 export const prismaStorageAdapter = ({
   prisma,
@@ -18,4 +19,5 @@ export const prismaStorageAdapter = ({
   '^/v1/threads/([^/]+)/runs$': runs({ prisma, runAdapter }),
   '^/v1/threads/([^/]+)/runs/([^/]+)$': run({ prisma, runAdapter }),
   '^/v1/threads/([^/]+)/runs/([^/]+)/steps$': steps({ prisma }),
+  '^/v1/threads/([^/]+)/runs/([^/]+)/submit_tool_outputs$': submitToolOutputs({ prisma, runAdapter }),
 })
