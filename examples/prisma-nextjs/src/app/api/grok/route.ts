@@ -45,9 +45,7 @@ export const GET = async () => {
       storage: prismaStorageAdapter({
         prisma,
       }),
-      runAdapter: completionsRunAdapter({
-        messagesHistoryLength: 10,
-      }),
+      runAdapter: completionsRunAdapter(),
     }),
   })
 
@@ -73,6 +71,10 @@ export const GET = async () => {
       model: 'llama3-8b-8192',
       stream: true,
       tools,
+      truncation_strategy: {
+        type: 'last_messages',
+        last_messages: 10,
+      },
       // model: 'gpt-3.5-turbo',
     },
   )

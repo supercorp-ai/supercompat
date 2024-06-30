@@ -3,7 +3,7 @@ import type { PrismaClient } from '@prisma/client'
 import dayjs from 'dayjs'
 import { assign } from 'radash'
 import { serializeRun } from './serializeRun'
-import { RunAdapter } from '@/types'
+import { RunAdapterPartobClient } from '@/types'
 import { onEvent } from './onEvent'
 import { getMessages } from './getMessages'
 
@@ -16,7 +16,7 @@ export const post = ({
   runAdapter,
 }: {
   prisma: PrismaClient
-  runAdapter: RunAdapter
+  runAdapter: RunAdapterPartobClient
 }) => async (urlString: string, options: any): Promise<RunCreateResponse> => {
   const url = new URL(urlString)
   const [, threadId] = url.pathname.match(new RegExp('^/v1/threads/([^/]+)/runs$'))!
@@ -41,10 +41,17 @@ export const post = ({
     tools,
     metadata,
     response_format,
+    truncation_strategy,
   } = assign({
     model: assistant.modelSlug,
     instructions: '',
     additional_instructions: null,
+    truncation_strategy: {
+      type: 'auto',
+    },
+    response_format: {
+      type: 'text',
+    },
     // tools: [],
     // metadata: {},
   }, body)
@@ -67,6 +74,8 @@ export const post = ({
           id: assistant_id,
         },
       },
+      truncationStrategy: truncation_strategy,
+      responseFormat: response_format,
     },
   })
 
@@ -85,8 +94,10 @@ export const post = ({
           },
           prisma,
         }),
-        // @ts-ignore-next-line
-        getMessages: getMessages({ prisma, run }),
+        getMessages: getMessages({
+          prisma,
+          run,
+        }),
         responseFormat: response_format,
       })
 

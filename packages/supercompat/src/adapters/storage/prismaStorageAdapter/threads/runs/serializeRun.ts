@@ -26,14 +26,14 @@ export const serializeRun = ({
   tools: run.tools as OpenAI.Beta.Threads.Run['tools'],
   metadata: run.metadata,
   usage: run.usage as OpenAI.Beta.Threads.Run['usage'],
+  truncation_strategy: {
+    type: 'auto',
+  },
   // TODO
   incomplete_details: null,
   max_completion_tokens: null,
   max_prompt_tokens: null,
   response_format: 'auto',
   tool_choice: 'auto',
-  truncation_strategy: {
-    type: 'auto',
-    last_messages: null,
-  },
+  parallel_tool_calls: true,
 })

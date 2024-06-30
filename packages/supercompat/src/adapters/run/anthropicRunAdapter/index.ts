@@ -55,13 +55,7 @@ const toolCallsData = ({
   return newToolCalls
 }
 
-export const anthropicRunAdapter = ({
-  messagesHistoryLength = 10,
-  maxTokens = 4096,
-}: {
-  messagesHistoryLength?: number
-  maxTokens?: number
-}) => async ({
+export const anthropicRunAdapter = () => async ({
   client,
   run,
   onEvent,
@@ -88,11 +82,9 @@ export const anthropicRunAdapter = ({
     messages: await messages({
       run,
       getMessages,
-      messagesHistoryLength,
     }),
     stream: isStream,
     model: run.model,
-    max_tokens: maxTokens,
     ...(isEmpty(run.tools) ? {} : { tools: serializeTools({ run }) }),
   }
 

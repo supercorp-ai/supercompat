@@ -53,13 +53,7 @@ const toolCallsData = ({
   return newToolCalls
 }
 
-export const completionsRunAdapter = ({
-  messagesHistoryLength = 10,
-  maxTokens = undefined,
-}: {
-  messagesHistoryLength?: number
-  maxTokens?: number
-}) => async ({
+export const completionsRunAdapter = () => async ({
   client: clientAdapter,
   run,
   onEvent,
@@ -97,12 +91,10 @@ export const completionsRunAdapter = ({
     messages: await messages({
       run,
       getMessages,
-      messagesHistoryLength,
     }),
     model: run.model,
     stream: true,
     ...(responseFormat ? { response_format: responseFormat } : {}),
-    ...(maxTokens ? { max_tokens: maxTokens } : {}),
     ...(isEmpty(run.tools) ? {} : { tools: run.tools }),
   } as OpenAI.ChatCompletionCreateParamsStreaming
 
