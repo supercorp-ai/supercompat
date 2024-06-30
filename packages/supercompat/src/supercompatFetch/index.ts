@@ -28,7 +28,6 @@ export const supercompatFetch = ({
     })
 
     if (!pathHandler) {
-      console.dir({ args, url }, { depth: null })
       // @ts-ignore-next-line
       return fetch(...args)
     }
@@ -36,7 +35,6 @@ export const supercompatFetch = ({
     const requestHandler = pathHandler[options?.method]
 
     if (!requestHandler) {
-      console.dir({ args, url }, { depth: null })
       // @ts-ignore-next-line
       return fetch(...args)
     }

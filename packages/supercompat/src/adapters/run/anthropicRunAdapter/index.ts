@@ -88,7 +88,6 @@ export const anthropicRunAdapter = () => async ({
     ...(isEmpty(run.tools) ? {} : { tools: serializeTools({ run }) }),
   }
 
-  console.dir({ opts }, { depth: null })
   let providerResponse
 
   try {
@@ -157,8 +156,6 @@ export const anthropicRunAdapter = () => async ({
   let toolCallsRunStep
   let currentContent = ''
   let currentToolCalls
-
-  console.dir({ providerResponse }, { depth: null })
 
   if (isStream) {
     for await (const messageStreamEvent of providerResponse) {
