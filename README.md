@@ -1,6 +1,6 @@
 # Supercompat
 
-Supercompat allows you to use any AI provider like Groq or Mistral with OpenAI-compatible Assistants API.
+Supercompat allows you to use any AI provider like Anthropic, Groq or Mistral with OpenAI-compatible Assistants API.
 
 # Install
 
@@ -13,13 +13,16 @@ npm i supercompat
 ```ts
 import {
   supercompat,
+  groqClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
 } from 'supercompat'
 import Groq from 'groq-sdk'
 
 const client = supercompat({
-  client: new Groq(),
+  client: groqClientAdapter({
+    groq: new Groq(),
+  }),
   storage: prismaStorageAdapter({
     prisma,
   }),
