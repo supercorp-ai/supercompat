@@ -66,15 +66,11 @@ export const completionsRunAdapter = () => async ({
 }) => {
   if (run.status !== 'queued') return
 
-  const client = new OpenAI({
-    apiKey: 'SUPERCOMPAT_PLACEHOLDER_OPENAI_KEY',
-    fetch: supercompat({
-      client: clientAdapter,
-      // @ts-ignore-next-line
-      storage: () => {},
-      // @ts-ignore-next-line
-      runAdapter: {},
-    }),
+  const client = supercompat({
+    client: clientAdapter,
+    storage: () => {},
+    // @ts-ignore-next-line
+    runAdapter: {},
   })
 
   onEvent({

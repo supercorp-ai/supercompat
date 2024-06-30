@@ -1,4 +1,3 @@
-import OpenAI from 'openai'
 import { NextResponse } from 'next/server'
 import {
   supercompat,
@@ -31,22 +30,19 @@ const tools = [
 ];
 
 export const GET = async () => {
-  const client = new OpenAI({
-    apiKey: 'SUPERCOMPAT_PLACEHOLDER_OPENAI_KEY',
-    fetch: supercompat({
-      client: groqClientAdapter({
-        groq: new Groq(),
-      }),
-      // client: groqClientAdapter({
-      //   groq: new OpenAI({
-      //     apiKey: process.env.OPENAI_API_KEY!,
-      //   }),
-      // }),
-      storage: prismaStorageAdapter({
-        prisma,
-      }),
-      runAdapter: completionsRunAdapter(),
+  const client = supercompat({
+    client: groqClientAdapter({
+      groq: new Groq(),
     }),
+    // client: groqClientAdapter({
+    //   groq: new OpenAI({
+    //     apiKey: process.env.OPENAI_API_KEY!,
+    //   }),
+    // }),
+    storage: prismaStorageAdapter({
+      prisma,
+    }),
+    runAdapter: completionsRunAdapter(),
   })
 
   const assistantId = 'b7fd7a65-3504-4ad3-95a0-b83a8eaff0f3'

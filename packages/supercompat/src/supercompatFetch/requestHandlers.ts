@@ -1,6 +1,6 @@
 import OpenAI from 'openai'
-import { RunAdapter, StorageAdapterArgs } from '@/types'
 import { assign, partob } from 'radash'
+import { RunAdapter, StorageAdapterArgs } from '@/types'
 
 export const requestHandlers = ({
   client,
@@ -10,11 +10,11 @@ export const requestHandlers = ({
   client: OpenAI
   storage: (arg0: StorageAdapterArgs) => OpenAI
   runAdapter: RunAdapter
-}) => {
-  return assign(
+}) => (
+  assign(
     client,
     storage({
       runAdapter: partob(runAdapter, { client }),
     }),
   )
-}
+)
