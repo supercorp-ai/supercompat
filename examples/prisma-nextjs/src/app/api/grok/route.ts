@@ -62,14 +62,14 @@ export const GET = async () => {
 
   await client.beta.threads.messages.create(thread.id, {
     role: 'user',
-    content: 'Who won the world series in 2020?'
+    content: 'What is the weather in SF?'
   })
 
   const ru = await client.beta.threads.runs.create(
     thread.id,
     {
       assistant_id: assistantId,
-      instructions: 'Use the get_current_weather and then answer the message. Look up weather and disregard the rest.',
+      instructions: 'Use the get_current_weather and then answer the message.',
       // model: 'llama3-8b-8192',
       stream: true,
       tools,
@@ -102,11 +102,11 @@ export const GET = async () => {
         },
       ],
     }
-  );
-  //
-  // for await (const event of run) {
-  //   console.dir({ event }, { depth: null })
-  // }
+  )
+
+  for await (const event of run) {
+    console.dir({ event }, { depth: null })
+  }
 
   const threadMessages = await client.beta.threads.messages.list(thread.id, { limit: 10 })
 
