@@ -16,7 +16,6 @@ export type RunAdapter = ({
   run: OpenAI.Beta.Threads.Run
   onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
   getMessages: () => Promise<MessageWithRun[]>
-  responseFormat: OpenAI.Beta.Threads.Run['response_format']
 }) => Promise<void>
 
 export type RunAdapterPartobClient = (args: Omit<Parameters<RunAdapter>[0], 'client'>) => ReturnType<RunAdapter>

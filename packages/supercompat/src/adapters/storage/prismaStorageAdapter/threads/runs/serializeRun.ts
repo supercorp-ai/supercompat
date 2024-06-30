@@ -29,11 +29,13 @@ export const serializeRun = ({
   truncation_strategy: {
     type: 'auto',
   },
+  response_format: {
+    type: 'text',
+  },
   // TODO
   incomplete_details: null,
   max_completion_tokens: null,
   max_prompt_tokens: null,
-  response_format: 'auto',
   tool_choice: 'auto',
   parallel_tool_calls: true,
 })

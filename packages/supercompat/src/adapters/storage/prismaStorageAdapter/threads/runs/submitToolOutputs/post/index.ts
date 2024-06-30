@@ -50,7 +50,6 @@ export const post = ({
             },
             prisma,
           }),
-          // @ts-ignore-next-line
           getMessages: getMessages({ prisma, run }),
         })
 
@@ -85,7 +84,6 @@ export const post = ({
               },
               prisma,
             }),
-            // @ts-ignore-next-line
             getMessages: getMessages({ prisma, run }),
           })
 

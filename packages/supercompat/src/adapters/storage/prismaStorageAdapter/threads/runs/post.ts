@@ -98,7 +98,6 @@ export const post = ({
           prisma,
           run,
         }),
-        responseFormat: response_format,
       })
 
       controller.close()

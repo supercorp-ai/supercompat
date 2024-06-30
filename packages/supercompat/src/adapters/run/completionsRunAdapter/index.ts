@@ -58,13 +58,11 @@ export const completionsRunAdapter = () => async ({
   run,
   onEvent,
   getMessages,
-  responseFormat,
 }: {
   client: OpenAI
   run: OpenAI.Beta.Threads.Run
   onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
   getMessages: () => Promise<MessageWithRun[]>
-  responseFormat?: OpenAI.Beta.Threads.Run['response_format']
 }) => {
   if (run.status !== 'queued') return
 
@@ -94,7 +92,7 @@ export const completionsRunAdapter = () => async ({
     }),
     model: run.model,
     stream: true,
-    ...(responseFormat ? { response_format: responseFormat } : {}),
+    response_format: run.response_format,
     ...(isEmpty(run.tools) ? {} : { tools: run.tools }),
   } as OpenAI.ChatCompletionCreateParamsStreaming
 

@@ -9,5 +9,9 @@ export const submitToolOutputs = ({
   prisma: PrismaClient
   runAdapter: RunAdapter
 }) => ({
-  post: post({ prisma, runAdapter }),
+  post: post({
+    prisma,
+    // @ts-ignore-next-line
+    runAdapter,
+  }),
 })
