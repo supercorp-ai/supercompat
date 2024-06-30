@@ -12,7 +12,6 @@ export const anthropicClientAdapter = ({
         const [firstArg, secondArg, ...restArgs] = args
 
         const messages = firstArg.messages
-        console.dir({ messages }, { depth: null })
 
         if (firstArg.messages[0].role != 'user') {
           messages.unshift({

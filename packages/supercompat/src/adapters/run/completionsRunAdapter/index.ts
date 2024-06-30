@@ -1,9 +1,10 @@
 import _ from 'lodash'
 import { uid, omit, isEmpty } from 'radash'
 import dayjs from 'dayjs'
-import type OpenAI from 'openai'
+import OpenAI from 'openai'
 import { MessageWithRun } from '@/types'
 import { messages } from './messages'
+import { supercompat } from '@/supercompat'
 
 const updatedToolCall = ({
   toolCall,
@@ -52,26 +53,25 @@ const toolCallsData = ({
   return newToolCalls
 }
 
-export const completionsRunAdapter = ({
-  messagesHistoryLength = 10,
-  maxTokens = undefined,
-}: {
-  messagesHistoryLength?: number
-  maxTokens?: number
-}) => async ({
-  client,
+export const completionsRunAdapter = () => async ({
+  client: clientAdapter,
   run,
   onEvent,
   getMessages,
-  responseFormat,
 }: {
   client: OpenAI
   run: OpenAI.Beta.Threads.Run
   onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
   getMessages: () => Promise<MessageWithRun[]>
-  responseFormat?: OpenAI.Beta.Threads.Run['response_format']
 }) => {
   if (run.status !== 'queued') return
+
+  const client = supercompat({
+    client: clientAdapter,
+    storage: () => {},
+    // @ts-ignore-next-line
+    runAdapter: {},
+  })
 
   onEvent({
     event: 'thread.run.in_progress',
@@ -85,21 +85,19 @@ export const completionsRunAdapter = ({
     messages: await messages({
       run,
       getMessages,
-      messagesHistoryLength,
     }),
     model: run.model,
     stream: true,
-    ...(responseFormat ? { response_format: responseFormat } : {}),
-    ...(maxTokens ? { max_tokens: maxTokens } : {}),
+    response_format: run.response_format,
     ...(isEmpty(run.tools) ? {} : { tools: run.tools }),
   } as OpenAI.ChatCompletionCreateParamsStreaming
 
-  console.dir({ opts }, { depth: null })
   let providerResponse
 
   try {
     providerResponse = await client.chat.completions.create(opts)
   } catch(e) {
+    console.log('error', e)
     console.error(e)
     return onEvent({
       event: 'thread.run.failed',
@@ -163,7 +161,6 @@ export const completionsRunAdapter = ({
   let currentContent = ''
   let currentToolCalls
 
-  console.dir({ providerResponse }, { depth: null })
   for await (const chunk of providerResponse) {
     const delta = chunk.choices[0].delta
 

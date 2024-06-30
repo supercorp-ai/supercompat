@@ -20,15 +20,18 @@
   },
   "dependencies": {
     "dayjs": "^1.11.11",
+    "deepmerge-ts": "^7.0.3",
     "lodash": "^4.17.21",
-    "radash": "^12.1.0"
+    "openai": "^4.52.0",
+    "radash": "^12.1.0",
+    "ts-deepmerge": "^7.0.0"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.21.1",
-    "@mistralai/mistralai": "^0.3.0",
-    "@prisma/client": "^5.14.0",
-    "@types/lodash": "^4.17.4",
-    "openai": "^4.47.1",
-    "tsup": "^8.0.2"
+    "@anthropic-ai/sdk": "^0.24.0",
+    "@mistralai/mistralai": "^0.5.0",
+    "@prisma/client": "^5.15.1",
+    "@types/lodash": "^4.17.5",
+    "groq-sdk": "^0.5.0",
+    "tsup": "^8.1.0"
   }
 }

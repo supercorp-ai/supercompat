@@ -18,6 +18,8 @@ export type RunAdapter = ({
   getMessages: () => Promise<MessageWithRun[]>
 }) => Promise<void>
 
+export type RunAdapterPartobClient = (args: Omit<Parameters<RunAdapter>[0], 'client'>) => ReturnType<RunAdapter>
+
 export type StorageAdapterArgs = {
   runAdapter: RunAdapter
 }

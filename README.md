@@ -23,9 +23,7 @@ const client = supercompat({
   storage: prismaStorageAdapter({
     prisma,
   }),
-  runAdapter: completionsRunAdapter({
-    messagesHistoryLength: 10,
-  }),
+  runAdapter: completionsRunAdapter(),
 })
 
 const message = await client.beta.threads.messages.create(thread.id, {
@@ -118,6 +116,8 @@ model Run {
   tools Json[] @default([])
   metadata Json?
   usage Json?
+  truncationStrategy Json @default("{ \"type\": \"auto\" }")
+  responseFormat Json @default("{ \"type\": \"text\" }")
   runSteps RunStep[]
   messages Message[]
   createdAt DateTime @default(now()) @db.Timestamptz(6)

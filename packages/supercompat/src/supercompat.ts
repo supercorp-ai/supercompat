@@ -1,20 +1,17 @@
 import OpenAI from 'openai'
-import { assign, partob } from 'radash'
-import { RunAdapter, StorageAdapterArgs } from '@/types'
+import { supercompatFetch, type Args } from './supercompatFetch'
 
 export const supercompat = ({
   client,
   storage,
   runAdapter,
-}: {
-  client: OpenAI
-  storage: (arg0: StorageAdapterArgs) => OpenAI
-  runAdapter: RunAdapter
-}) => (
-  assign(
-    client,
-    storage({
-      runAdapter: partob(runAdapter, { client }),
+}: Args) => (
+  new OpenAI({
+    apiKey: 'SUPERCOMPAT_PLACEHOLDER_OPENAI_KEY',
+    fetch: supercompatFetch({
+      client,
+      storage,
+      runAdapter,
     }),
-  )
+  })
 )

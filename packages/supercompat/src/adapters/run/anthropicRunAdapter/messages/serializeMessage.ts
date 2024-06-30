@@ -60,7 +60,6 @@ export const serializeMessage = ({
 }: {
   message: MessageWithRun
 }) => {
-  console.dir({ message }, { depth: null })
   const result = [serializeMessageWithContent({ message })]
 
   const run = message.run
