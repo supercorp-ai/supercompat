@@ -6,23 +6,15 @@ import { serializeMessage } from './serializeMessage'
 export const messages = async ({
   run,
   getMessages,
-  messagesHistoryLength,
 }: {
   run: OpenAI.Beta.Threads.Run
-  getMessages: ({
-    messagesHistoryLength,
-  }: {
-    messagesHistoryLength: number
-  }) => Promise<MessageWithRun[]>
-  messagesHistoryLength: number
+  getMessages: () => Promise<MessageWithRun[]>
 }) => (
   [
     ...(run.instructions ? [{
       role: 'system',
       content: run.instructions,
     }] : []),
-    ...flat((await getMessages({
-      messagesHistoryLength,
-    })).map((message: MessageWithRun) => serializeMessage({ message }))),
+    ...flat((await getMessages()).map((message: MessageWithRun) => serializeMessage({ message }))),
   ]
 )

@@ -27,6 +27,8 @@ export type Run = {
   fileIds: string[]
   metadata?: JSON
   usage?: JSON
+  truncationStrategy: JSON
+  responseFormat: JSON
   createdAt: string
   updatedAt: string
 }
