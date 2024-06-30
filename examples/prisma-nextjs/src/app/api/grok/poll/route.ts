@@ -35,11 +35,6 @@ export const GET = async () => {
     client: groqClientAdapter({
       groq: new Groq(),
     }),
-    // client: groqClientAdapter({
-    //   groq: new OpenAI({
-    //     apiKey: process.env.OPENAI_API_KEY!,
-    //   }),
-    // }),
     storage: prismaStorageAdapter({
       prisma,
     }),
@@ -71,7 +66,6 @@ export const GET = async () => {
         type: 'last_messages',
         last_messages: 10,
       },
-      // model: 'gpt-3.5-turbo',
     },
   )
 
