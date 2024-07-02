@@ -1,11 +1,11 @@
 import type OpenAI from 'openai'
 
 export const serializeTools = ({
-  run
+  tools,
 }: {
-  run: OpenAI.Beta.Threads.Run
+  tools: OpenAI.Beta.AssistantTool[]
 }) => (
-  run.tools.map((tool: any) => {
+  tools.map((tool: OpenAI.Beta.AssistantTool) => {
     if (tool.type === 'function') {
       return {
         name: tool.function.name,
