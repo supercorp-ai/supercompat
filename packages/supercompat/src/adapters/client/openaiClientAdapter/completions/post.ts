@@ -14,7 +14,6 @@ export const post = ({
       async start(controller) {
         // @ts-ignore-next-line
         for await (const chunk of response) {
-          console.dir({ chunk }, { depth: null })
           controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`)
         }
 
