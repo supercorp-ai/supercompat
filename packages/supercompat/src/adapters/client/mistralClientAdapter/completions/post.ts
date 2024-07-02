@@ -1,14 +1,14 @@
-import type OpenAI from 'openai'
+import type Mistral from '@mistralai/mistralai'
 
 export const post = ({
-  openai,
+  mistral,
 }: {
-  openai: OpenAI
+  mistral: Mistral
 }) => async (_url: string, options: any) => {
   const body = JSON.parse(options.body)
 
   if (body.stream) {
-    const response = await openai.chat.completions.create(body)
+    const response = await mistral.chatStream(body)
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -28,7 +28,7 @@ export const post = ({
     })
   } else {
     try {
-      const data = await openai.chat.completions.create(body)
+      const data = await mistral.chat(body)
 
       return new Response(JSON.stringify({
         data,

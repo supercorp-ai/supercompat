@@ -39,8 +39,6 @@ export const post = ({
         },
       })
     } catch (error) {
-      console.dir({ error }, { depth: null })
-      // @ts-ignore-next-line
       return new Response(JSON.stringify({
         error,
       }), {
