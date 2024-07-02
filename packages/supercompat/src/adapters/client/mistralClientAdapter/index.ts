@@ -1,18 +1,10 @@
-import type OpenAI from 'openai'
-import type MistralClient from '@mistralai/mistralai'
+import type Mistral from '@mistralai/mistralai'
+import { completions } from './completions'
 
 export const mistralClientAdapter = ({
   mistral,
 }: {
-  mistral: MistralClient
+  mistral: Mistral
 }) => ({
-  chat: {
-    completions: {
-      // @ts-ignore-next-line
-      create: (...args: Parameters<OpenAI.Chat.Completions['create']>): ReturnType<OpenAI.Chat.Completions['create']> => (
-        // @ts-ignore-next-line
-        (args[0].stream ? mistral.chatStream(...args) : mistral.chat(...args))
-      )
-    },
-  },
+  '^/v1/chat/completions$': completions({ mistral }),
 })
