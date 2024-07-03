@@ -32,12 +32,7 @@ const tools = [
 export const GET = async () => {
   const client = supercompat({
     client: openaiClientAdapter({
-      openai: new OpenAI({
-        fetch: (...args) => {
-          console.log({ args })
-          return fetch(...args)
-        },
-      }),
+      openai: new OpenAI(),
     }),
     storage: prismaStorageAdapter({
       prisma,

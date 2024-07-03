@@ -5,7 +5,7 @@ export const originalFetch = ({
   args: any[]
   client: any
 }) => {
-  if (client.client) {
+  if (client.client?.fetch) {
     const [url, options] = args
 
     const headers = {
