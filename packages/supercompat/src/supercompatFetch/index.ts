@@ -1,11 +1,12 @@
 import { RunAdapter, StorageAdapterArgs } from '@/types'
 import { requestHandlers as getRequestHandlers } from './requestHandlers'
 import { findRequestHandler } from './findRequestHandler'
+import { originalFetch } from './originalFetch'
 
 export type Args = {
   client: any
-  storage: (arg0: StorageAdapterArgs) => any
-  runAdapter: RunAdapter
+  storage?: (arg0: StorageAdapterArgs) => any
+  runAdapter?: RunAdapter
 }
 
 export const supercompatFetch = ({
@@ -19,7 +20,7 @@ export const supercompatFetch = ({
     runAdapter,
   })
 
-  return (...args: any[]) => {
+  return async (...args: any[]) => {
     const [url, options] = args
 
     const pathHandler = findRequestHandler({
@@ -28,15 +29,19 @@ export const supercompatFetch = ({
     })
 
     if (!pathHandler) {
-      // @ts-ignore-next-line
-      return fetch(...args)
+      return originalFetch({
+        client,
+        args,
+      })
     }
 
     const requestHandler = pathHandler[options?.method]
 
     if (!requestHandler) {
-      // @ts-ignore-next-line
-      return fetch(...args)
+      return originalFetch({
+        client,
+        args,
+      })
     }
 
     return requestHandler(...args)

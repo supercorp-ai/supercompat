@@ -3,10 +3,7 @@ import { NextResponse } from 'next/server'
 import {
   supercompat,
   openaiClientAdapter,
-  prismaStorageAdapter,
-  completionsRunAdapter,
 } from 'supercompat'
-import { prisma } from '@/lib/prisma'
 
 const tools = [
   {
@@ -33,19 +30,19 @@ export const GET = async () => {
   const client = supercompat({
     client: openaiClientAdapter({
       openai: new OpenAI({
-        fetch: (...args) => {
-          console.log({ args })
-          return fetch(...args)
-        },
+        fetch: (url: RequestInfo, init?: RequestInit): Promise<Response> => (
+          fetch(url, {
+            ...(init || {}),
+            cache: 'no-store',
+            // @ts-ignore-next-line
+            duplex: 'half',
+          })
+        ),
       }),
     }),
-    storage: prismaStorageAdapter({
-      prisma,
-    }),
-    runAdapter: completionsRunAdapter(),
   })
 
-  const assistantId = 'b7fd7a65-3504-4ad3-95a0-b83a8eaff0f3'
+  const assistantId = 'asst_nnbyhkbrhNpRUtVXKLtCY41j'
 
   const thread = await client.beta.threads.create({
     messages: [],

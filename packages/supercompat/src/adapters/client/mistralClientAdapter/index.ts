@@ -6,5 +6,8 @@ export const mistralClientAdapter = ({
 }: {
   mistral: Mistral
 }) => ({
-  '^/v1/chat/completions$': completions({ mistral }),
+  client: mistral,
+  routeHandlers: {
+    '^/v1/chat/completions$': completions({ mistral }),
+  },
 })

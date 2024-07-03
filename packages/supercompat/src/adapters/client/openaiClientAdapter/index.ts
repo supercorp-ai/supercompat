@@ -6,5 +6,8 @@ export const openaiClientAdapter = ({
 }: {
   openai: OpenAI
 }) => ({
-  '^/v1/chat/completions$': completions({ openai }),
+  client: openai,
+  requestHandlers: {
+    '^/v1/chat/completions$': completions({ openai }),
+  },
 })

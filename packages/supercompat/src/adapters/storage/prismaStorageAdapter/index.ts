@@ -14,10 +14,12 @@ export const prismaStorageAdapter = ({
 }) => ({
   runAdapter,
 }: StorageAdapterArgs) => ({
-  '^/v1/threads$': threads({ prisma }),
-  '^/v1/threads/([^/]+)/messages$': messages({ prisma }),
-  '^/v1/threads/([^/]+)/runs$': runs({ prisma, runAdapter }),
-  '^/v1/threads/([^/]+)/runs/([^/]+)$': run({ prisma, runAdapter }),
-  '^/v1/threads/([^/]+)/runs/([^/]+)/steps$': steps({ prisma }),
-  '^/v1/threads/([^/]+)/runs/([^/]+)/submit_tool_outputs$': submitToolOutputs({ prisma, runAdapter }),
+  routeHandlers: {
+    '^/v1/threads$': threads({ prisma }),
+    '^/v1/threads/([^/]+)/messages$': messages({ prisma }),
+    '^/v1/threads/([^/]+)/runs$': runs({ prisma, runAdapter }),
+    '^/v1/threads/([^/]+)/runs/([^/]+)$': run({ prisma, runAdapter }),
+    '^/v1/threads/([^/]+)/runs/([^/]+)/steps$': steps({ prisma }),
+    '^/v1/threads/([^/]+)/runs/([^/]+)/submit_tool_outputs$': submitToolOutputs({ prisma, runAdapter }),
+  },
 })

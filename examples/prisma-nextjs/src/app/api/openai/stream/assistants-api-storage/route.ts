@@ -3,10 +3,7 @@ import { NextResponse } from 'next/server'
 import {
   supercompat,
   openaiClientAdapter,
-  prismaStorageAdapter,
-  completionsRunAdapter,
 } from 'supercompat'
-import { prisma } from '@/lib/prisma'
 
 const tools = [
   {
@@ -33,19 +30,19 @@ export const GET = async () => {
   const client = supercompat({
     client: openaiClientAdapter({
       openai: new OpenAI({
-        fetch: (...args) => {
-          console.log({ args })
-          return fetch(...args)
-        },
+        fetch: (url: RequestInfo, init?: RequestInit): Promise<Response> => (
+          fetch(url, {
+            ...(init || {}),
+            cache: 'no-store',
+            // @ts-ignore-next-line
+            duplex: 'half',
+          })
+        ),
       }),
     }),
-    storage: prismaStorageAdapter({
-      prisma,
-    }),
-    runAdapter: completionsRunAdapter(),
   })
 
-  const assistantId = 'b7fd7a65-3504-4ad3-95a0-b83a8eaff0f3'
+  const assistantId = 'asst_nnbyhkbrhNpRUtVXKLtCY41j'
 
   const thread = await client.beta.threads.create({
     messages: [],
@@ -59,12 +56,13 @@ export const GET = async () => {
     content: 'What is the weather in SF?'
   })
 
-  const run = await client.beta.threads.runs.createAndPoll(
+  const run = await client.beta.threads.runs.create(
     thread.id,
     {
       assistant_id: assistantId,
       instructions: 'Use the get_current_weather and then answer the message.',
       model: 'gpt-3.5-turbo',
+      stream: true,
       tools,
       truncation_strategy: {
         type: 'last_messages',
@@ -73,16 +71,25 @@ export const GET = async () => {
     },
   )
 
-  if (!run.required_action) {
+  let requiresActionEvent
+
+  for await (const event of run) {
+    if (event.event === 'thread.run.requires_action') {
+      requiresActionEvent = event
+    }
+  }
+
+  if (!requiresActionEvent) {
     throw new Error('No requires action event')
   }
 
-  const toolCallId = run.required_action.submit_tool_outputs.tool_calls[0].id
+  const toolCallId = requiresActionEvent.data.required_action?.submit_tool_outputs.tool_calls[0].id
 
-  await client.beta.threads.runs.submitToolOutputs(
+  const submitToolOutputsRun = await client.beta.threads.runs.submitToolOutputs(
     thread.id,
-    run.id,
+    requiresActionEvent.data.id,
     {
+      stream: true,
       tool_outputs: [
         {
           tool_call_id: toolCallId,
@@ -92,7 +99,8 @@ export const GET = async () => {
     }
   )
 
-  await new Promise(r => setTimeout(r, 5000))
+  for await (const _event of submitToolOutputsRun) {
+  }
 
   const threadMessages = await client.beta.threads.messages.list(thread.id, { limit: 10 })
 
