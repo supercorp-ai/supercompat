@@ -7,5 +7,8 @@ export const groqClientAdapter = ({
   // TODO
   groq: any
 }) => ({
-  '^/v1/chat/completions$': completions({ groq }),
+  client: groq,
+  routeHandlers: {
+    '^/v1/chat/completions$': completions({ groq }),
+  },
 })

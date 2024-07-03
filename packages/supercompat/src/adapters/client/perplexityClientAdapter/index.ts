@@ -6,5 +6,8 @@ export const perplexityClientAdapter = ({
 }: {
   perplexity: OpenAI
 }) => ({
-  '^/v1/chat/completions$': completions({ perplexity }),
+  client: perplexity,
+  routeHandlers: {
+    '^/v1/chat/completions$': completions({ perplexity }),
+  },
 })

@@ -6,5 +6,8 @@ export const anthropicClientAdapter = ({
 }: {
   anthropic: Anthropic
 }) => ({
-  '^/v1/chat/completions$': completions({ anthropic }),
+  client: anthropic,
+  routeHandlers: {
+    '^/v1/chat/completions$': completions({ anthropic }),
+  },
 })
