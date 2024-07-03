@@ -68,9 +68,6 @@ export const completionsRunAdapter = () => async ({
 
   const client = supercompat({
     client: clientAdapter,
-    storage: () => {},
-    // @ts-ignore-next-line
-    runAdapter: {},
   })
 
   onEvent({

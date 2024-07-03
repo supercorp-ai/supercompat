@@ -14,7 +14,7 @@ export const prismaStorageAdapter = ({
 }) => ({
   runAdapter,
 }: StorageAdapterArgs) => ({
-  routeHandlers: {
+  requestHandlers: {
     '^/v1/threads$': threads({ prisma }),
     '^/v1/threads/([^/]+)/messages$': messages({ prisma }),
     '^/v1/threads/([^/]+)/runs$': runs({ prisma, runAdapter }),
