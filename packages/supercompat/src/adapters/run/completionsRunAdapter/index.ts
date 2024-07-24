@@ -93,16 +93,19 @@ export const completionsRunAdapter = () => async ({
 
   try {
     providerResponse = await client.chat.completions.create(opts)
-  } catch(e) {
-    console.log('error', e)
+  } catch(e: any) {
     console.error(e)
+
     return onEvent({
       event: 'thread.run.failed',
       data: {
         ...run,
         failed_at: dayjs().unix(),
         status: 'in_progress',
-        last_error: (e as { message: OpenAI.Beta.Threads.Runs.Run.LastError }).message,
+        last_error: {
+          code: 'server_error',
+          message: `${e?.message ?? ''} ${e?.cause?.message ?? ''}`,
+        },
       },
     })
   }
