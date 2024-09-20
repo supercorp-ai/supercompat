@@ -62,7 +62,7 @@ export const GET = async () => {
     {
       assistant_id: assistantId,
       instructions: 'Use the get_current_weather and then answer the message.',
-      model: 'mixtral-8x7b-instruct',
+      model: 'llama-3.1-sonar-huge-128k-online',
       tools,
       truncation_strategy: {
         type: 'last_messages',

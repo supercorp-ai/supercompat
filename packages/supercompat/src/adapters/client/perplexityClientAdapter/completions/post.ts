@@ -1,6 +1,5 @@
 import type OpenAI from 'openai'
-
-const agentSideRoles = ['assistant', 'system']
+import { alternatingMessages } from '@/lib/messages/alternatingMessages'
 
 export const post = ({
   perplexity,
@@ -9,29 +8,15 @@ export const post = ({
 }) => async (_url: string, options: any) => {
   const body = JSON.parse(options.body)
 
-  const messages = [] as OpenAI.Chat.ChatCompletionMessageParam[]
-
-  body.messages.forEach((message: OpenAI.Chat.ChatCompletionMessageParam, index: number) => {
-    messages.push(message)
-
-    const nextMessage = body.messages[index + 1]
-    if (!nextMessage) return
-
-    if (message.role === 'user' && nextMessage.role === 'user') {
-      messages.push({
-        role: 'assistant',
-        content: '',
-      })
-    } else if (agentSideRoles.includes(message.role) && agentSideRoles.includes(nextMessage.role)) {
-      messages.push({
-        role: 'user',
-        content: '',
-      })
-    }
+  const messages = alternatingMessages({
+    messages: body.messages,
   })
 
   if (body.stream) {
-    const response = await perplexity.chat.completions.create(body)
+    const response = await perplexity.chat.completions.create({
+      ...body,
+      messages,
+    })
 
     const stream = new ReadableStream({
       async start(controller) {
