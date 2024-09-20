@@ -44,7 +44,16 @@ export const GET = async () => {
   const assistantId = 'b7fd7a65-3504-4ad3-95a0-b83a8eaff0f3'
 
   const thread = await client.beta.threads.create({
-    messages: [],
+    messages: [
+      {
+        role: 'assistant',
+        content: 'What is the weather in San Francisco, CA? In celsius.'
+      },
+      {
+        role: 'assistant',
+        content: 'What is the weather in San Francisco, CA? In celsius.'
+      },
+    ],
     metadata: {
       assistantId,
     },
