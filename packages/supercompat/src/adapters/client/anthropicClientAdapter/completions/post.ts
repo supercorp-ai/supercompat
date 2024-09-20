@@ -1,6 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import type OpenAI from 'openai'
 import { uid, fork, omit, isEmpty } from 'radash'
+import { nonEmptyMessages } from '@/lib/messages/nonEmptyMessages'
 import { alternatingMessages } from '@/lib/messages/alternatingMessages'
 import { firstUserMessages } from '@/lib/messages/firstUserMessages'
 import { serializeTools } from './serializeTools'
@@ -17,10 +18,12 @@ export const post = ({
   const [systemMessages, otherMessages] = fork(messages, (message) => message.role === 'system')
   const system = systemMessages.map((message) => message.content).join('\n')
 
-  const chatMessages = firstUserMessages({
-    messages: alternatingMessages({
-      messages: otherMessages,
-    })
+  const chatMessages = nonEmptyMessages({
+    messages: firstUserMessages({
+      messages: alternatingMessages({
+        messages: otherMessages,
+      }),
+    }),
   })
 
   const resultOptions = {
