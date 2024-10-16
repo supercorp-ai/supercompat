@@ -33,7 +33,6 @@ export const GET = async () => {
   const client = supercompat({
     client: openaiClientAdapter({
       openai: new AzureOpenAI({
-        deployment: 'gpt-4o-mini',
         endpoint: process.env.AZURE_OPENAI_ENDPOINT,
         apiVersion: '2024-09-01-preview',
       }),
@@ -63,7 +62,7 @@ export const GET = async () => {
     {
       assistant_id: assistantId,
       instructions: 'Use the get_current_weather and then answer the message.',
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4o-mini',
       stream: true,
       tools,
       truncation_strategy: {
