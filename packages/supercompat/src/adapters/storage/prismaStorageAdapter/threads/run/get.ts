@@ -1,5 +1,6 @@
 import type OpenAI from 'openai'
 import type { PrismaClient } from '@prisma/client'
+import { runRegexp } from '@/lib/runs/runRegexp'
 import { serializeRun } from '../runs/serializeRun'
 
 type GetResponse = Response & {
@@ -13,7 +14,7 @@ export const get = ({
 }) => async (urlString: string): Promise<GetResponse> => {
   const url = new URL(urlString)
 
-  const [, threadId, runId] = url.pathname.match(new RegExp('^/v1/threads/([^/]+)/runs/([^/]+)$'))!
+  const [, threadId, runId] = url.pathname.match(new RegExp(runRegexp))!
 
   const run = await prisma.run.findUnique({
     where: {

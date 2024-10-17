@@ -1,6 +1,7 @@
 import type OpenAI from 'openai'
 import type { PrismaClient } from '@prisma/client'
 import { serializeMessage } from './serializeMessage'
+import { messagesRegexp } from '@/lib/messages/messagesRegexp'
 
 type MessageCreateResponse = Response & {
   json: () => Promise<ReturnType<OpenAI.Beta.Threads.Messages['create']>>
@@ -27,7 +28,8 @@ export const post = ({
 }) => async (urlString: string, options: any): Promise<MessageCreateResponse> => {
   const url = new URL(urlString)
 
-  const [, threadId] = url.pathname.match(new RegExp('^/v1/threads/([^/]+)/messages$'))!
+  const [, threadId] = url.pathname.match(new RegExp(messagesRegexp))!
+  console.log({ threadId, url, messagesRegexp })
 
   const body = JSON.parse(options.body)
   const { role, content } = body

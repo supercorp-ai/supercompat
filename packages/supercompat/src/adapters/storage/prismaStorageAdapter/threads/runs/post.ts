@@ -2,6 +2,7 @@ import type OpenAI from 'openai'
 import type { PrismaClient } from '@prisma/client'
 import dayjs from 'dayjs'
 import { assign } from 'radash'
+import { runsRegexp } from '@/lib/runs/runsRegexp'
 import { serializeRun } from './serializeRun'
 import { RunAdapterPartobClient } from '@/types'
 import { onEvent } from './onEvent'
@@ -19,7 +20,7 @@ export const post = ({
   runAdapter: RunAdapterPartobClient
 }) => async (urlString: string, options: any): Promise<RunCreateResponse> => {
   const url = new URL(urlString)
-  const [, threadId] = url.pathname.match(new RegExp('^/v1/threads/([^/]+)/runs$'))!
+  const [, threadId] = url.pathname.match(new RegExp(runsRegexp))!
 
   const body = JSON.parse(options.body)
   const { assistant_id, stream } = body

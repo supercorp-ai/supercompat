@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client'
-import { serializeRun } from '../../serializeRun'
+import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
 import { RunAdapterPartobClient } from '@/types'
+import { serializeRun } from '../../serializeRun'
 import { onEvent } from '../../onEvent'
 import { getMessages } from '../../getMessages'
 import { serializeRunStep } from '../../steps/serializeRunStep'
@@ -14,7 +15,7 @@ export const post = ({
   runAdapter: RunAdapterPartobClient
 }) => async (urlString: string, options: any) => {
   const url = new URL(urlString)
-  const [, threadId, runId] = url.pathname.match(new RegExp('^/v1/threads/([^/]+)/runs/([^/]+)/submit_tool_outputs$'))!
+  const [, threadId, runId] = url.pathname.match(new RegExp(submitToolOutputsRegexp))!
 
   const body = JSON.parse(options.body)
 
