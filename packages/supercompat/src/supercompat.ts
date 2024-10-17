@@ -1,12 +1,24 @@
-import OpenAI from 'openai'
+import OpenAI, { AzureOpenAI } from 'openai'
 import { supercompatFetch, type Args } from './supercompatFetch'
 
 export const supercompat = ({
   client,
   storage,
   runAdapter,
-}: Args) => (
-  new OpenAI({
+}: Args) => {
+  if (client.client.constructor.name === 'AzureOpenAI') {
+    return new AzureOpenAI({
+      apiKey: client.client.apiKey,
+      apiVersion: client.client.apiVersion,
+      fetch: supercompatFetch({
+        client,
+        storage,
+        runAdapter,
+      }),
+    })
+  }
+
+  return new OpenAI({
     apiKey: 'SUPERCOMPAT_PLACEHOLDER_OPENAI_KEY',
     fetch: supercompatFetch({
       client,
@@ -14,4 +26,4 @@ export const supercompat = ({
       runAdapter,
     }),
   })
-)
+}
