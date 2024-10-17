@@ -32,19 +32,19 @@ export const GET = async () => {
       openai: new AzureOpenAI({
         endpoint: process.env.AZURE_OPENAI_ENDPOINT,
         apiVersion: '2024-09-01-preview',
-        // fetch: (url: RequestInfo, init?: RequestInit): Promise<Response> => (
-        //   fetch(url, {
-        //     ...(init || {}),
-        //     cache: 'no-store',
-        //     // @ts-ignore-next-line
-        //     duplex: 'half',
-        //   })
-        // ),
+        fetch: (url: RequestInfo, init?: RequestInit): Promise<Response> => (
+          fetch(url, {
+            ...(init || {}),
+            cache: 'no-store',
+            // @ts-ignore-next-line
+            duplex: 'half',
+          })
+        ),
       }),
     }),
   })
 
-  const assistantId = 'asst_nnbyhkbrhNpRUtVXKLtCY41j'
+  const assistantId = 'asst_ZrKBc3znUGrm6L0cKzSpfqXG'
 
   const thread = await client.beta.threads.create({
     messages: [],
@@ -75,13 +75,17 @@ export const GET = async () => {
 
   let requiresActionEvent
 
+  let lastEvent
+
   for await (const event of run) {
     if (event.event === 'thread.run.requires_action') {
       requiresActionEvent = event
     }
+    lastEvent = event
   }
 
   if (!requiresActionEvent) {
+    console.dir({ lastEvent }, { depth: null })
     throw new Error('No requires action event')
   }
 
