@@ -10,6 +10,7 @@ export const supercompat = ({
     return new AzureOpenAI({
       apiKey: client.client.apiKey,
       apiVersion: client.client.apiVersion,
+      baseURL: client.client.baseURL,
       fetch: supercompatFetch({
         client,
         storage,
