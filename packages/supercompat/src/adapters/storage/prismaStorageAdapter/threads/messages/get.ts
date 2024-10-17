@@ -2,6 +2,7 @@ import type OpenAI from 'openai'
 // @ts-ignore-next-line
 import type { PrismaClient, Message } from '@prisma/client'
 import { assign, last } from 'radash'
+import { messagesRegexp } from '@/lib/messages/messagesRegexp'
 import { serializeMessage } from './serializeMessage'
 
 type MessageCreateResponse = Response & {
@@ -15,7 +16,7 @@ export const get = ({
 }) => async (urlString: string): Promise<MessageCreateResponse> => {
   const url = new URL(urlString)
 
-  const [, threadId] = url.pathname.match(new RegExp('^/v1/threads/([^/]+)/messages$'))!
+  const [, threadId] = url.pathname.match(new RegExp(messagesRegexp))!
 
   const {
     limit,

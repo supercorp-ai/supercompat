@@ -8,6 +8,6 @@ export const openaiClientAdapter = ({
 }) => ({
   client: openai,
   requestHandlers: {
-    '^/v1/chat/completions$': completions({ openai }),
+    '^/(?:v1|/?openai)/chat/completions$': completions({ openai }),
   },
 })

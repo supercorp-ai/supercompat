@@ -1,6 +1,7 @@
 // @ts-ignore-next-line
 import type { PrismaClient, RunStep } from '@prisma/client'
 import { assign, last } from 'radash'
+import { stepsRegexp } from '@/lib/steps/stepsRegexp'
 import { serializeRunStep } from './serializeRunStep'
 
 export const get = ({
@@ -10,7 +11,7 @@ export const get = ({
 }) => async (urlString: string) => {
   const url = new URL(urlString)
 
-  const [, threadId,, runId] = url.pathname.match(new RegExp('^/v1/threads/([^/]+)/runs/([^/]+)/steps$'))!
+  const [, threadId,, runId] = url.pathname.match(new RegExp(stepsRegexp))!
 
   const {
     limit,

@@ -33,7 +33,7 @@ export const GET = async () => {
   const client = supercompat({
     client: openaiClientAdapter({
       openai: new AzureOpenAI({
-        endpoint: process.env.AZURE_OPENAI_ENDPOINT,
+        endpoint: process.env.EXAMPLE_AZURE_OPENAI_ENDPOINT,
         apiVersion: '2024-09-01-preview',
       }),
     }),

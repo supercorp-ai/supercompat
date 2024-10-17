@@ -7,10 +7,12 @@ export const supercompat = ({
   runAdapter,
 }: Args) => {
   if (client.client.constructor.name === 'AzureOpenAI') {
+    console.log({ client })
     return new AzureOpenAI({
       apiKey: client.client.apiKey,
       apiVersion: client.client.apiVersion,
-      baseURL: client.client.baseURL,
+      endpoint: 'https://ai-domasaiuksouth776179364551.openai.azure.com/',
+      // endpoint: client.client.baseURL,
       fetch: supercompatFetch({
         client,
         storage,

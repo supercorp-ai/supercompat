@@ -6,6 +6,7 @@ export const findRequestHandler = ({
   requestHandlers: any
 }) => {
   const pathname = new URL(url).pathname
+  console.log({ pathname, requestHandlers })
 
   for (const key in requestHandlers) {
     const regex = new RegExp(key)
