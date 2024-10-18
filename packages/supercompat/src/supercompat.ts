@@ -1,5 +1,6 @@
 import OpenAI, { AzureOpenAI } from 'openai'
 import { supercompatFetch, type Args } from './supercompatFetch'
+import { endpointFromBaseUrl } from '@/lib/azureOpenai/endpointFromBaseUrl'
 
 export const supercompat = ({
   client,
@@ -7,12 +8,10 @@ export const supercompat = ({
   runAdapter,
 }: Args) => {
   if (client.client.constructor.name === 'AzureOpenAI') {
-    console.log({ client })
     return new AzureOpenAI({
       apiKey: client.client.apiKey,
       apiVersion: client.client.apiVersion,
-      endpoint: 'https://ai-domasaiuksouth776179364551.openai.azure.com/',
-      // endpoint: client.client.baseURL,
+      endpoint: endpointFromBaseUrl({ baseURL: client.client.baseURL }),
       fetch: supercompatFetch({
         client,
         storage,

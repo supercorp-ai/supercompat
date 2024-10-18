@@ -29,7 +29,6 @@ export const post = ({
   const url = new URL(urlString)
 
   const [, threadId] = url.pathname.match(new RegExp(messagesRegexp))!
-  console.log({ threadId, url, messagesRegexp })
 
   const body = JSON.parse(options.body)
   const { role, content } = body
