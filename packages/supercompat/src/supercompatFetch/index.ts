@@ -22,14 +22,11 @@ export const supercompatFetch = ({
 
   return async (...args: any[]) => {
     const [url, options] = args
-    console.log({ url })
 
     const pathHandler = findRequestHandler({
       url,
       requestHandlers,
     })
-
-    console.log({ pathHandler, options })
 
     if (!pathHandler) {
       return originalFetch({
@@ -46,8 +43,6 @@ export const supercompatFetch = ({
         args,
       })
     }
-
-    console.log({ requestHandler })
 
     return requestHandler(...args)
   }

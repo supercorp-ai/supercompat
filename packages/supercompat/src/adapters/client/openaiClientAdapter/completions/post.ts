@@ -6,7 +6,6 @@ export const post = ({
   openai: OpenAI
 }) => async (_url: string, options: any) => {
   const body = JSON.parse(options.body)
-  console.log({ body, openai })
 
   if (body.stream) {
     const response = await openai.chat.completions.create(body)
