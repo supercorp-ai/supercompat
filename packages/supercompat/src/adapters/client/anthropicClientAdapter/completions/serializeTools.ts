@@ -10,7 +10,9 @@ export const serializeTools = ({
       return {
         name: tool.function.name,
         description: tool.function.description,
-        input_schema: tool.function.parameters,
+        input_schema: tool.function.parameters ?? {
+          type: 'object',
+        },
       }
     }
 
