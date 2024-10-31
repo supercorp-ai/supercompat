@@ -22,7 +22,7 @@ export const serializeMessage = ({
           type: 'tool_use',
           id: toolCall.id,
           name: toolCall.function.name,
-          ...(toolCall.function.arguments ? { input: JSON.parse(toolCall.function.arguments) } : {}),
+          input: toolCall.function.arguments ? JSON.parse(toolCall.function.arguments) : {},
         })),
       ],
     }
