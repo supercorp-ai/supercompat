@@ -1,4 +1,6 @@
 import type { Mistral } from '@mistralai/mistralai'
+import { serializeChunk } from './serializeChunk'
+import { serializeBody } from './serializeBody'
 
 export const post = ({
   mistral,
@@ -6,14 +8,21 @@ export const post = ({
   mistral: Mistral
 }) => async (_url: string, options: any) => {
   const body = JSON.parse(options.body)
+  const serializedBody = serializeBody({
+    body,
+  })
 
   if (body.stream) {
-    const response = await mistral.chat.stream(body)
+    const response = await mistral.chat.stream(serializedBody)
 
     const stream = new ReadableStream({
       async start(controller) {
         for await (const chunk of response) {
-          controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`)
+          const serializedChunk = serializeChunk({
+            chunk,
+          })
+
+          controller.enqueue(`data: ${JSON.stringify(serializedChunk)}\n\n`)
         }
 
         controller.close()
@@ -27,7 +36,7 @@ export const post = ({
     })
   } else {
     try {
-      const data = await mistral.chat.complete(body)
+      const data = await mistral.chat.complete(serializedBody)
 
       return new Response(JSON.stringify({
         data,
