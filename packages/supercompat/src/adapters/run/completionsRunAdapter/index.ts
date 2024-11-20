@@ -162,7 +162,8 @@ export const completionsRunAdapter = () => async ({
   let currentToolCalls
 
   for await (const chunk of providerResponse) {
-    const choice = chunk.choices[0]
+    const choices = chunk.choices ?? []
+    const choice = choices[0]
     if (!choice) continue
 
     const delta = choice.delta
