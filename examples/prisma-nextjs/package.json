@@ -18,7 +18,8 @@
     "next": "15.0.3",
     "openai": "^4.72.0",
     "react": "19.0.0-rc-66855b96-20241106",
-    "react-dom": "19.0.0-rc-66855b96-20241106"
+    "react-dom": "19.0.0-rc-66855b96-20241106",
+    "supercompat": "^2.8.0"
   },
   "devDependencies": {
     "@types/node": "^22",
