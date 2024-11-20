@@ -54,7 +54,7 @@ export const GET = async () => {
 
   await client.beta.threads.messages.create(thread.id, {
     role: 'user',
-    content: 'What is the weather in SF?'
+    content: 'What is the weather in San Francisco, CA? In celsius. Use the get_current_weather function.',
   })
 
   const run = await client.beta.threads.runs.create(
@@ -62,7 +62,7 @@ export const GET = async () => {
     {
       assistant_id: assistantId,
       instructions: 'Use the get_current_weather and then answer the message.',
-      model: 'mistral-large-latest',
+      model: 'pixtral-large-latest',
       stream: true,
       tools,
       truncation_strategy: {
