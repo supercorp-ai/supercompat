@@ -6,6 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
+    "postinstall": "prisma generate",
     "lint": "next lint"
   },
   "dependencies": {
@@ -27,6 +28,7 @@
     "@types/react-dom": "npm:types-react-dom@19.0.0-rc.1",
     "eslint": "^8",
     "eslint-config-next": "15.0.3",
+    "prisma": "^5.22.0",
     "typescript": "^5"
   },
   "overrides": {
