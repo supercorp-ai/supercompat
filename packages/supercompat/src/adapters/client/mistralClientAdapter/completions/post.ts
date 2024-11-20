@@ -1,4 +1,4 @@
-import type Mistral from '@mistralai/mistralai'
+import type { Mistral } from '@mistralai/mistralai'
 
 export const post = ({
   mistral,
@@ -8,11 +8,10 @@ export const post = ({
   const body = JSON.parse(options.body)
 
   if (body.stream) {
-    const response = await mistral.chatStream(body)
+    const response = await mistral.chat.stream(body)
 
     const stream = new ReadableStream({
       async start(controller) {
-        // @ts-ignore-next-line
         for await (const chunk of response) {
           controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`)
         }
@@ -28,7 +27,7 @@ export const post = ({
     })
   } else {
     try {
-      const data = await mistral.chat(body)
+      const data = await mistral.chat.complete(body)
 
       return new Response(JSON.stringify({
         data,

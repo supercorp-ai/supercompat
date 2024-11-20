@@ -1,4 +1,4 @@
-import type Mistral from '@mistralai/mistralai'
+import type { Mistral } from '@mistralai/mistralai'
 import { completions } from './completions'
 
 export const mistralClientAdapter = ({
