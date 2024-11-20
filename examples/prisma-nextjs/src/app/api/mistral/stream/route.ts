@@ -6,7 +6,7 @@ import {
   prismaStorageAdapter,
   completionsRunAdapter,
 } from 'supercompat'
-import Mistral from '@mistralai/mistralai'
+import { Mistral } from '@mistralai/mistralai'
 import { prisma } from '@/lib/prisma'
 
 const tools = [
@@ -33,7 +33,9 @@ const tools = [
 export const GET = async () => {
   const client = supercompat({
     client: mistralClientAdapter({
-      mistral: new Mistral(process.env.MISTRAL_API_KEY),
+      mistral: new Mistral({
+        apiKey: process.env.MISTRAL_API_KEY,
+      }),
     }),
     storage: prismaStorageAdapter({
       prisma,
