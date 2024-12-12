@@ -30,10 +30,12 @@ const tools = [
 ] as OpenAI.Beta.AssistantTool[]
 
 export const GET = async () => {
+
   const client = supercompat({
     client: openaiClientAdapter({
       openai: new OpenAI({
-        baseUrl: 'https://moai-service-app.humiris.ai/api/gating/chat/stream',
+        baseURL: 'https://basic-chat.humiris.ai/v1/',
+        apiKey: '123',
       }),
     }),
     storage: prismaStorageAdapter({
@@ -60,9 +62,9 @@ export const GET = async () => {
     thread.id,
     {
       assistant_id: assistantId,
-      instructions: 'Use the get_current_weather and then answer the message.',
-      model: 'gpt-3.5-turbo',
-      tools,
+      instructions: 'Answer user questions.',
+      model: 'Humiris/humiris-moai',
+      tools: [],
       truncation_strategy: {
         type: 'last_messages',
         last_messages: 10,
@@ -70,25 +72,25 @@ export const GET = async () => {
     },
   )
 
-  if (!run.required_action) {
-    throw new Error('No requires action event')
-  }
-
-  const toolCallId = run.required_action.submit_tool_outputs.tool_calls[0].id
-
-  await client.beta.threads.runs.submitToolOutputs(
-    thread.id,
-    run.id,
-    {
-      tool_outputs: [
-        {
-          tool_call_id: toolCallId,
-          output: '70 degrees and sunny.',
-        },
-      ],
-    }
-  )
-
+  // if (!run.required_action) {
+  //   throw new Error('No requires action event')
+  // }
+  //
+  // const toolCallId = run.required_action.submit_tool_outputs.tool_calls[0].id
+  //
+  // await client.beta.threads.runs.submitToolOutputs(
+  //   thread.id,
+  //   run.id,
+  //   {
+  //     tool_outputs: [
+  //       {
+  //         tool_call_id: toolCallId,
+  //         output: '70 degrees and sunny.',
+  //       },
+  //     ],
+  //   }
+  // )
+  //
   await new Promise(r => setTimeout(r, 5000))
 
   const threadMessages = await client.beta.threads.messages.list(thread.id, { limit: 10 })
