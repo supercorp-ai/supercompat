@@ -1,17 +1,17 @@
+import Anthropic from '@anthropic-ai/sdk'
 import { NextResponse } from 'next/server'
 import {
   supercompat,
-  groqClientAdapter,
+  anthropicClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
 } from 'supercompat'
-import Groq from 'groq-sdk'
 import { prisma } from '@/lib/prisma'
 
 export const GET = async () => {
   const client = supercompat({
-    client: groqClientAdapter({
-      groq: new Groq(),
+    client: anthropicClientAdapter({
+      anthropic: new Anthropic(),
     }),
     storage: prismaStorageAdapter({
       prisma,
@@ -26,8 +26,6 @@ export const GET = async () => {
   for await (const model of response) {
     models.push(model)
   }
-
-  console.log({ models })
 
   return NextResponse.json({
     models,
