@@ -1,22 +1,39 @@
 import type OpenAI from 'openai'
 
 export const post = ({
-  openai,
+  humiris,
 }: {
-  openai: OpenAI
+  humiris: OpenAI
 }) => async (_url: string, options: any) => {
   const body = JSON.parse(options.body)
 
   if (body.stream) {
-    const response = await openai.chat.completions.create(body)
+    const data = await humiris.chat.completions.create({
+      ...body,
+      stream: false,
+    })
 
     const stream = new ReadableStream({
       async start(controller) {
-        // @ts-ignore-next-line
-        for await (const chunk of response) {
-          controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`)
+        const chunk = {
+          id: data.id,
+          object: 'chat.completion.chunk',
+          created: data.created,
+          model: data.created,
+          choices: [
+            {
+              index: 0,
+              delta: {
+                role: data.choices[0].message.role,
+                content: data.choices[0].message.content,
+              },
+              logprobs: null,
+              finish_reason: data.choices[0].finish_reason,
+            }
+          ]
         }
 
+        controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`)
         controller.close()
       },
     })
@@ -28,7 +45,7 @@ export const post = ({
     })
   } else {
     try {
-      const data = await openai.chat.completions.create(body)
+      const data = await humiris.chat.completions.create(body)
 
       return new Response(JSON.stringify({
         data,

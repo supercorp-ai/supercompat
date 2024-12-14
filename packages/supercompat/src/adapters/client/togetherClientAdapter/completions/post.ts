@@ -9,7 +9,6 @@ export const post = ({
 
   if (body.stream) {
     const response = await together.chat.completions.create(body)
-    console.dir({ response }, { depth: null })
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -30,7 +29,6 @@ export const post = ({
   } else {
     try {
       const data = await together.chat.completions.create(body)
-      console.dir({ data }, { depth: null })
 
       return new Response(JSON.stringify({
         data,

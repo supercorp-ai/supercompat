@@ -7,6 +7,7 @@ export { perplexityClientAdapter } from './adapters/client/perplexityClientAdapt
 export { anthropicClientAdapter } from './adapters/client/anthropicClientAdapter'
 export { togetherClientAdapter } from './adapters/client/togetherClientAdapter'
 export { googleClientAdapter } from './adapters/client/googleClientAdapter'
+export { humirisClientAdapter } from './adapters/client/humirisClientAdapter'
 export { ollamaClientAdapter } from './adapters/client/ollamaClientAdapter'
 export { completionsRunAdapter } from './adapters/run/completionsRunAdapter'
 export { prismaStorageAdapter } from './adapters/storage/prismaStorageAdapter'
