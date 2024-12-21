@@ -32,7 +32,9 @@ const tools = [
 export const GET = async () => {
   const client = supercompat({
     client: openaiClientAdapter({
-      openai: new OpenAI(),
+      openai: new OpenAI({
+        apiKey: process.env.RENAMED_OPENAI_API_KEY!,
+      }),
     }),
     storage: prismaStorageAdapter({
       prisma,

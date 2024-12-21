@@ -3,7 +3,10 @@ import { NextResponse } from 'next/server'
 import {
   supercompat,
   openaiClientAdapter,
+  prismaStorageAdapter,
+  completionsRunAdapter,
 } from 'supercompat'
+import { prisma } from '@/lib/prisma'
 
 const tools = [
   {
@@ -31,19 +34,15 @@ export const GET = async () => {
     client: openaiClientAdapter({
       openai: new OpenAI({
         apiKey: process.env.RENAMED_OPENAI_API_KEY!,
-        fetch: (url: RequestInfo, init?: RequestInit): Promise<Response> => (
-          fetch(url, {
-            ...(init || {}),
-            cache: 'no-store',
-            // @ts-ignore-next-line
-            duplex: 'half',
-          })
-        ),
       }),
     }),
+    storage: prismaStorageAdapter({
+      prisma,
+    }),
+    runAdapter: completionsRunAdapter(),
   })
 
-  const assistantId = 'asst_nnbyhkbrhNpRUtVXKLtCY41j'
+  const assistantId = 'b7fd7a65-3504-4ad3-95a0-b83a8eaff0f3'
 
   const thread = await client.beta.threads.create({
     messages: [],
@@ -57,12 +56,13 @@ export const GET = async () => {
     content: 'What is the weather in SF?'
   })
 
-  const run = await client.beta.threads.runs.createAndPoll(
+  const run = await client.beta.threads.runs.create(
     thread.id,
     {
       assistant_id: assistantId,
       instructions: 'Use the get_current_weather and then answer the message.',
-      model: 'gpt-3.5-turbo',
+      model: 'o1-preview',
+      stream: true,
       tools,
       truncation_strategy: {
         type: 'last_messages',
@@ -71,26 +71,8 @@ export const GET = async () => {
     },
   )
 
-  if (!run.required_action) {
-    throw new Error('No requires action event')
+  for await (const _event of run) {
   }
-
-  const toolCallId = run.required_action.submit_tool_outputs.tool_calls[0].id
-
-  await client.beta.threads.runs.submitToolOutputs(
-    thread.id,
-    run.id,
-    {
-      tool_outputs: [
-        {
-          tool_call_id: toolCallId,
-          output: '70 degrees and sunny.',
-        },
-      ],
-    }
-  )
-
-  await new Promise(r => setTimeout(r, 5000))
 
   const threadMessages = await client.beta.threads.messages.list(thread.id, { limit: 10 })
 

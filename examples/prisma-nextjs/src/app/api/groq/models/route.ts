@@ -27,8 +27,6 @@ export const GET = async () => {
     models.push(model)
   }
 
-  console.log({ models })
-
   return NextResponse.json({
     models,
   })

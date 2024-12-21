@@ -1,4 +1,19 @@
 import type OpenAI from 'openai'
+import { omit } from 'radash'
+import { systemDeveloperMessages } from '@/lib/messages/systemDeveloperMessages'
+import { isOModel } from '@/lib/models/isOModel'
+
+const omitKeys = ({
+  model,
+}: {
+  model: string
+}) => {
+  if (isOModel({ model })) {
+    return ['tools']
+  }
+
+  return []
+}
 
 export const post = ({
   openai,
@@ -6,9 +21,18 @@ export const post = ({
   openai: OpenAI
 }) => async (_url: string, options: any) => {
   const body = JSON.parse(options.body)
+  const messages = body.messages as OpenAI.ChatCompletionMessageParam[]
+
+  const resultOptions = {
+    ...omit(body, omitKeys({ model: body.model })),
+    messages: systemDeveloperMessages({
+      messages,
+      model: body.model,
+    }),
+  } as OpenAI.Chat.ChatCompletionCreateParams
 
   if (body.stream) {
-    const response = await openai.chat.completions.create(body)
+    const response = await openai.chat.completions.create(resultOptions)
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -28,7 +52,7 @@ export const post = ({
     })
   } else {
     try {
-      const data = await openai.chat.completions.create(body)
+      const data = await openai.chat.completions.create(resultOptions)
 
       return new Response(JSON.stringify({
         data,
