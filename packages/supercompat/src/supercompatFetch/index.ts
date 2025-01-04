@@ -35,7 +35,9 @@ export const supercompatFetch = ({
       })
     }
 
-    const requestHandler = pathHandler[options?.method]
+    const method = options?.method ?? ''
+
+    const requestHandler = pathHandler[method.toLowerCase()]
 
     if (!requestHandler) {
       return originalFetch({
