@@ -49,9 +49,7 @@ export const get = ({
       serializeMessage({ message })
     )),
     hasNextPage: () => messages.length === parseInt(limit),
-    body: {
-      last_id: last(messages)?.id ?? null,
-    },
+    last_id: last(messages)?.id ?? null,
   }), {
     status: 200,
     headers: {

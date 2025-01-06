@@ -49,10 +49,8 @@ export const get = ({
       serializeRun({ run })
     )),
     hasNextPage: () => runs.length === parseInt(limit),
-    body: {
-      // @ts-ignore-next-line
-      last_id: last(runs)?.id ?? null,
-    },
+    // @ts-ignore-next-line
+    last_id: last(runs)?.id ?? null,
   }), {
     status: 200,
     headers: {

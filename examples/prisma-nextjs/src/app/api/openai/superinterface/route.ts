@@ -7,6 +7,9 @@ import {
   completionsRunAdapter,
 } from 'supercompat'
 import { prisma } from '@/lib/prisma'
+import {
+  messagesResponse,
+} from '@superinterface/react/server'
 
 export const GET = async () => {
   const client = supercompat({
@@ -22,9 +25,14 @@ export const GET = async () => {
   })
 
   const threadId = '1ea8b616-fcec-4f0c-a3cb-9df81b67a241'
-  const threadMessages = await client.beta.threads.messages.list(threadId, { limit: 10 })
+  // const threadMessages = await client.beta.threads.messages.list(threadId, { limit: 10 })
+
+  const response = await messagesResponse({
+    threadId,
+    client,
+  })
 
   return NextResponse.json({
-    threadMessages,
+    response,
   })
 }
