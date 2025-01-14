@@ -47,6 +47,10 @@ export const GET = async () => {
     messages: [
       {
         role: 'assistant',
+        content: ''
+      },
+      {
+        role: 'assistant',
         content: 'What is the weather in San Francisco, CA? In celsius.'
       },
       {

@@ -6,7 +6,7 @@ const nonEmptyContent = ({
 }: {
   message: OpenAI.Chat.ChatCompletionMessageParam
 }): OpenAI.Chat.ChatCompletionMessageParam['content'] => {
-  if (isEmpty({ value: message.content })) {
+  if (isEmpty(message.content)) {
     return '-'
   }
 
