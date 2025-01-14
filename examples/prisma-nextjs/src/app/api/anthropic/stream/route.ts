@@ -47,6 +47,10 @@ export const GET = async () => {
     messages: [
       {
         role: 'assistant',
+        content: '\n\n'
+      },
+      {
+        role: 'assistant',
         content: ''
       },
       {
