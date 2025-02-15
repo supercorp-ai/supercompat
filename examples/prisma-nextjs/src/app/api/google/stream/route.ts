@@ -62,7 +62,7 @@ export const GET = async () => {
     {
       assistant_id: assistantId,
       instructions: 'Use the get_current_weather and then answer the message.',
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash-exp',
       stream: true,
       tools,
       truncation_strategy: {

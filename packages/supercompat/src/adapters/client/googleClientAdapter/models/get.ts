@@ -2,10 +2,11 @@ import type OpenAI from 'openai'
 
 const models = [
   'gemini-2.0-flash-exp',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite-preview-02-05',
   'gemini-1.5-flash',
   'gemini-1.5-flash-8b',
   'gemini-1.5-pro',
-  'gemini-1.0-pro',
   'text-embedding-004',
   'aqa',
 ]
