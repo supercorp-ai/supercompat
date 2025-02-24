@@ -1,6 +1,11 @@
 import type OpenAI from 'openai'
 
 const models = [
+  'sonar-reasoning-pro',
+  'sonar-reasoning',
+  'sonar-pro',
+  'sonar',
+  'r1-1776',
   'llama-3.1-sonar-small-128k-online',
   'llama-3.1-sonar-large-128k-online',
   'llama-3.1-sonar-huge-128k-online',
