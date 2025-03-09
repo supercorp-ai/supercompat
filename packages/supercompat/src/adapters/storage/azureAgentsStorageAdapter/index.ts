@@ -1,3 +1,6 @@
+import type {
+  AIProjectsClient,
+} from '@azure/ai-projects'
 import type { PrismaClient } from '@prisma/client'
 import { StorageAdapterArgs } from '@/types'
 import { messagesRegexp } from '@/lib/messages/messagesRegexp'
@@ -13,19 +16,19 @@ import { run } from './threads/run'
 import { steps } from './threads/runs/steps'
 import { submitToolOutputs } from './threads/runs/submitToolOutputs'
 
-export const prismaStorageAdapter = ({
-  prisma,
+export const azureAgentsStorageAdapter = ({
+  azureAiProjectsClient,
 }: {
-  prisma: PrismaClient
+  azureAiProjectsClient: AIProjectsClient
 }) => ({
   runAdapter,
 }: StorageAdapterArgs) => ({
   requestHandlers: {
-    [threadsRegexp]: threads({ prisma }),
-    [messagesRegexp]: messages({ prisma }),
-    [runsRegexp]: runs({ prisma, runAdapter }),
-    [runRegexp]: run({ prisma, runAdapter }),
-    [stepsRegexp]: steps({ prisma }),
-    [submitToolOutputsRegexp]: submitToolOutputs({ prisma, runAdapter }),
+    [threadsRegexp]: threads({ azureAiProjectsClient }),
+    [messagesRegexp]: messages({ azureAiProjectsClient }),
+    [runsRegexp]: runs({ azureAiProjectsClient, runAdapter }),
+    [runRegexp]: run({ azureAiProjectsClient, runAdapter }),
+    [stepsRegexp]: steps({ azureAiProjectsClient }),
+    [submitToolOutputsRegexp]: submitToolOutputs({ azureAiProjectsClient, runAdapter }),
   },
 })

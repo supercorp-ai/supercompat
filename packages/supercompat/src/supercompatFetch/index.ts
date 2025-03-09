@@ -19,6 +19,7 @@ export const supercompatFetch = ({
     storage,
     runAdapter,
   })
+  console.log({ storage, client })
 
   return async (...args: any[]) => {
     const [url, options] = args
