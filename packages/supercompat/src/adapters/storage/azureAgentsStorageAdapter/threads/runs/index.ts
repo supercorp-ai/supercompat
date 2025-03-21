@@ -1,18 +1,18 @@
-import type { PrismaClient } from '@prisma/client'
+import type { AIProjectsClient } from '@azure/ai-projects'
 import type { RunAdapter } from '@/types'
 import { get } from './get'
 import { post } from './post'
 
 export const runs = ({
-  prisma,
+  azureAiProjectsClient,
   runAdapter,
 }: {
-  prisma: PrismaClient
+  azureAiProjectsClient: AIProjectsClient
   runAdapter: RunAdapter
 }) => ({
-  get: get({ prisma }),
+  get: get({ azureAiProjectsClient }),
   post: post({
-    prisma,
+    azureAiProjectsClient,
     // @ts-expect-error: partob is hard to match
     runAdapter,
   }),
