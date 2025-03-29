@@ -11,7 +11,7 @@ export const get = ({
 }) => async (urlString: string) => {
   const url = new URL(urlString)
 
-  const [, threadId,, runId] = url.pathname.match(new RegExp(stepsRegexp))!
+  const [, threadId, runId] = url.pathname.match(new RegExp(stepsRegexp))!
 
   const {
     limit,
