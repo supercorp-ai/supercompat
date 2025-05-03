@@ -28,27 +28,25 @@ export const get = ({
     // after: null,
   }, Object.fromEntries(url.searchParams))
 
-  const messages = await prisma.message.findMany({
-    where: {
-      threadId,
-    },
-    take: parseInt(limit),
-    orderBy: {
-      createdAt: order,
-    },
-    ...(after ? {
+  const pageSize = parseInt(limit)
+
+  const messagesPlusOne = await prisma.message.findMany({
+    where: { threadId },
+    take: pageSize + 1,
+    orderBy: { createdAt: order },
+    ...(after && {
       skip: 1,
-      cursor: {
-        id: after,
-      },
-    }: {}),
+      cursor: { id: after },
+    }),
   }) as Message[]
+
+  const messages = messagesPlusOne.slice(0, pageSize);
 
   return new Response(JSON.stringify({
     data: messages.map((message: Message) => (
       serializeMessage({ message })
     )),
-    hasNextPage: () => messages.length === parseInt(limit),
+    hasNextPage: () => messagesPlusOne.length > pageSize,
     last_id: last(messages)?.id ?? null,
   }), {
     status: 200,
