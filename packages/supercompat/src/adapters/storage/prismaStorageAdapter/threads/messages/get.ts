@@ -40,13 +40,13 @@ export const get = ({
     }),
   }) as Message[]
 
-  const messages = messagesPlusOne.slice(0, pageSize);
+  const messages = messagesPlusOne.slice(0, pageSize)
 
   return new Response(JSON.stringify({
     data: messages.map((message: Message) => (
       serializeMessage({ message })
     )),
-    hasNextPage: () => messagesPlusOne.length > pageSize,
+    has_more: messagesPlusOne.length > pageSize,
     last_id: last(messages)?.id ?? null,
   }), {
     status: 200,

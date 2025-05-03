@@ -24,7 +24,10 @@ export const GET = async () => {
   const threadId = '1ea8b616-fcec-4f0c-a3cb-9df81b67a241'
   const threadMessages = await client.beta.threads.messages.list(threadId, { limit: 10 })
 
+  const hasNextPage = threadMessages.hasNextPage()
+
   return NextResponse.json({
     threadMessages,
+    hasNextPage,
   })
 }

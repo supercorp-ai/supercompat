@@ -28,33 +28,26 @@ export const get = ({
     // after: null,
   }, Object.fromEntries(url.searchParams))
 
-  const runs = await prisma.run.findMany({
-    where: {
-      threadId,
-    },
-    take: parseInt(limit),
-    orderBy: {
-      createdAt: order,
-    },
-    ...(after ? {
+  const pageSize = parseInt(limit, 10)
+
+  const runsPlusOne = await prisma.run.findMany({
+    where: { threadId },
+    take: pageSize + 1,
+    orderBy: { createdAt: order },
+    ...(after && {
       skip: 1,
-      cursor: {
-        id: after,
-      },
-    }: {}),
-  })
+      cursor: { id: after },
+    }),
+  }) as Run[]
+
+  const runs = runsPlusOne.slice(0, pageSize)
 
   return new Response(JSON.stringify({
-    data: runs.map((run: Run) => (
-      serializeRun({ run })
-    )),
-    hasNextPage: () => runs.length === parseInt(limit),
-    // @ts-ignore-next-line
-    last_id: last(runs)?.id ?? null,
+    data: runs.map((run: Run) => serializeRun({ run })),
+    has_more: runsPlusOne.length > pageSize,
+    last_id: runs.at(-1)?.id ?? null,
   }), {
     status: 200,
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
   })
 }

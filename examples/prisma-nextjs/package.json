@@ -15,10 +15,10 @@
     "@neondatabase/serverless": "^1.0.0",
     "@prisma/adapter-neon": "^6.5.0",
     "@prisma/client": "^6.5.0",
-    "@superinterface/react": "^3.20.1",
+    "@superinterface/react": "^3.23.0",
     "groq-sdk": "^0.19.0",
     "next": "15.2.4",
-    "openai": "^4.91.1",
+    "openai": "^4.97.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "supercompat": "file:../../packages/supercompat"
