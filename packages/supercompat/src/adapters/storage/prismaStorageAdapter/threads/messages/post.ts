@@ -14,7 +14,19 @@ const messageContentBlocks = ({
   content: string | OpenAI.Beta.Threads.Messages.MessageContentPartParam[]
 }) => {
   if (isArray(content)) {
-    return content
+    return content.map((item) => {
+      if (item.type === 'text') {
+        return {
+          type: 'text',
+          text: {
+            value: item.text ?? '',
+            annotations: [],
+          },
+        }
+      }
+
+      return item
+    })
   }
 
   return [
