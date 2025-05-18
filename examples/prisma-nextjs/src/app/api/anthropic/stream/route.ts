@@ -69,7 +69,10 @@ export const GET = async () => {
 
   await client.beta.threads.messages.create(thread.id, {
     role: 'user',
-    content: 'What is the weather in SF? Use get_current_weather'
+    content: [{
+      type: 'text',
+      text: 'What is the weather in SF? Use get_current_weather',
+    }],
   })
 
   const run = await client.beta.threads.runs.create(
