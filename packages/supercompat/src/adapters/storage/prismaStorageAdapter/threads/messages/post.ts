@@ -1,4 +1,5 @@
 import type OpenAI from 'openai'
+import { isArray } from 'radash'
 import type { PrismaClient } from '@prisma/client'
 import { serializeMessage } from './serializeMessage'
 import { messagesRegexp } from '@/lib/messages/messagesRegexp'
@@ -10,16 +11,22 @@ type MessageCreateResponse = Response & {
 const messageContentBlocks = ({
   content,
 }: {
-  content: string
-}) => ([
-  {
-    type: 'text',
-    text: {
-      value: content ?? '',
-      annotations: [],
+  content: string | OpenAI.Beta.Threads.Messages.MessageContentPartParam[]
+}) => {
+  if (isArray(content)) {
+    return content
+  }
+
+  return [
+    {
+      type: 'text',
+      text: {
+        value: content ?? '',
+        annotations: [],
+      },
     },
-  },
-])
+  ]
+}
 
 export const post = ({
   prisma,
