@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "rootDir": ".",
+    "outDir": "dist-tests",
+    "types": ["node"],
+    "noEmitOnError": false,
+    "allowImportingTsExtensions": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["packages/supercompat/src/*"]
+    }
+  },
+  "include": [
+    "packages/supercompat/tests/**/*.ts",
+    "packages/supercompat/src/**/*.ts"
+  ]
+}
