@@ -57,6 +57,9 @@ export const GET = async () => {
       type: 'text',
       text: 'What is the weather in SF?',
     }],
+    metadata: {
+      testMetadataKey: 'testMetadataValue',
+    },
   })
 
   const run = await client.beta.threads.runs.create(

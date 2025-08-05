@@ -50,13 +50,14 @@ export const post = ({
   const [, threadId] = url.pathname.match(new RegExp(messagesRegexp))!
 
   const body = JSON.parse(options.body)
-  const { role, content } = body
+  const { role, content, metadata } = body
 
   const message = await prisma.message.create({
     data: {
       threadId,
       content: messageContentBlocks({ content }),
       role: role === 'user' ? 'USER' : 'ASSISTANT',
+      metadata: metadata || {},
     },
   })
 
