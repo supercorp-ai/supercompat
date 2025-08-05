@@ -6,7 +6,7 @@
     "dev": "turbo run build --force -- --watch",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "test": "bash -O globstar -c 'npx tsx --tsconfig tsconfig.test.json --test packages/supercompat/tests/**/*.test.ts'"
+    "test": "npx tsx --tsconfig tsconfig.test.json --test \"packages/supercompat/tests/**/*.test.ts\""
   },
   "devDependencies": {
     "@swc/core": "^1.10.1",
