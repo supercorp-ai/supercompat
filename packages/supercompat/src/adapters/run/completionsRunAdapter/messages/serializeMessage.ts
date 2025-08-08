@@ -1,5 +1,33 @@
 import type OpenAI from 'openai'
 import { MessageWithRun } from '@/types'
+import { isArray, isObject } from 'radash'
+
+const validToolCallContentTypes = [
+  'image',
+  'text',
+]
+
+const serializeToolContent = ({
+  toolCall,
+}: {
+  toolCall: OpenAI.Beta.Threads.Runs.Steps.FunctionToolCall
+}) => {
+  if (isArray(toolCall.function.output)) {
+    const isEveryToolPartValid = toolCall.function.output.every((toolPart) => {
+      if (!isObject(toolPart)) return false
+
+      return validToolCallContentTypes.includes((toolPart as any).type)
+    })
+
+    if (isEveryToolPartValid) {
+      return toolCall.function.output
+    }
+
+    return JSON.stringify(toolCall.function.output)
+  }
+
+  return toolCall.function.output ?? ''
+}
 
 const serializeToolCall = ({
   toolCall,
@@ -9,7 +37,9 @@ const serializeToolCall = ({
   tool_call_id: toolCall.id,
   role: 'tool' as 'tool',
   name: toolCall.function.name,
-  content: toolCall.function.output ?? '',
+  content: serializeToolContent({
+    toolCall,
+  }),
 })
 
 const serializeMessageWithContent = ({
