@@ -7,6 +7,7 @@ import { threadRunStepDelta } from './threadRunStepDelta'
 import { threadMessageCreated } from './threadMessageCreated'
 import { threadMessageDelta } from './threadMessageDelta'
 import { threadMessageCompleted } from './threadMessageCompleted'
+import { threadUpdated } from './threadUpdated'
 
 export const handlers = {
   'thread.run.in_progress': threadRunInProgress,
@@ -18,4 +19,5 @@ export const handlers = {
   'thread.message.created': threadMessageCreated,
   'thread.message.delta': threadMessageDelta,
   'thread.message.completed': threadMessageCompleted,
+  'thread.updated': threadUpdated,
 }

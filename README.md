@@ -16,6 +16,7 @@ import {
   groqClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
+  responsesRunAdapter,
 } from 'supercompat'
 import Groq from 'groq-sdk'
 
@@ -26,7 +27,7 @@ const client = supercompat({
   storage: prismaStorageAdapter({
     prisma,
   }),
-  runAdapter: completionsRunAdapter(),
+  runAdapter: responsesRunAdapter(),
 })
 
 const message = await client.beta.threads.messages.create(thread.id, {

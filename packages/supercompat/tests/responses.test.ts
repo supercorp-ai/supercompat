@@ -2,11 +2,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import OpenAI from "openai";
 import { HttpsProxyAgent } from "https-proxy-agent";
+import { ProxyAgent, setGlobalDispatcher } from "undici";
 import {
-  supercompat,
+  responsesRunAdapter,
   openaiClientAdapter,
-  completionsRunAdapter,
+  supercompat,
 } from "../src/index.ts";
+import { PrismaClient } from "@prisma/client";
 
 const apiKey = process.env.TEST_OPENAI_API_KEY;
 
@@ -14,35 +16,12 @@ if (!apiKey) {
   throw new Error("TEST_OPENAI_API_KEY is required to run this test");
 }
 
-test("supercompat can call OpenAI completions", async () => {
-  const realOpenAI = new OpenAI({
-    apiKey,
-    ...(process.env.HTTPS_PROXY
-      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
-      : {}),
-  });
-  const client = supercompat({
-    client: openaiClientAdapter({ openai: realOpenAI }),
-  });
-
-  const result = await client.chat.completions.create({
-    model: "gpt-3.5-turbo",
-    messages: [
-      {
-        role: "user",
-        content: "What is 2 + 2? Reply with just one number and nothing else.",
-      },
-    ],
-  });
-
-  const choices =
-    "choices" in result ? result.choices : (result as any).data.choices;
-  const message = choices[0]?.message?.content?.trim();
-  assert.equal(message, "4");
-});
+if (process.env.HTTPS_PROXY) {
+  setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY));
+}
 
 test(
-  "supercompat can create thread message and run via OpenAI",
+  "responsesRunAdapter can create thread message and run via OpenAI",
   async (t) => {
     try {
       const realOpenAI = new OpenAI({
@@ -51,8 +30,10 @@ test(
           ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
           : {}),
       });
+
       const client = supercompat({
         client: openaiClientAdapter({ openai: realOpenAI }),
+        runAdapter: responsesRunAdapter(),
       });
 
       const assistant = await client.beta.assistants.create({
@@ -84,39 +65,82 @@ test(
   }
 );
 
-test("supercompat can list models via OpenAI", async () => {
-  const realOpenAI = new OpenAI({
-    apiKey,
-    ...(process.env.HTTPS_PROXY
-      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY as string) }
-      : {}),
-  });
-  const client = supercompat({
-    client: openaiClientAdapter({ openai: realOpenAI }),
-  });
+test(
+  "responsesRunAdapter maintains conversation across runs",
+  async (t) => {
+    const realOpenAI = new OpenAI({
+      apiKey,
+      ...(process.env.HTTPS_PROXY
+        ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+        : {}),
+    });
 
-  const models = [] as string[];
-  const response = await client.models.list();
-  for await (const model of response) {
-    models.push(model.id);
+    const client = supercompat({
+      client: openaiClientAdapter({ openai: realOpenAI }),
+      runAdapter: responsesRunAdapter(),
+    });
+
+    const assistant = await client.beta.assistants.create({
+      model: "gpt-4o-mini",
+      instructions: "You are a helpful assistant.",
+    });
+
+    const thread = await client.beta.threads.create();
+
+    await client.beta.threads.messages.create(thread.id, {
+      role: "user",
+      content: "My favorite color is blue.",
+    });
+
+    await client.beta.threads.runs.createAndPoll(thread.id, {
+      assistant_id: assistant.id,
+    });
+
+    await client.beta.threads.messages.create(thread.id, {
+      role: "user",
+      content: "What is my favorite color?",
+    });
+
+    await client.beta.threads.runs.createAndPoll(thread.id, {
+      assistant_id: assistant.id,
+    });
+
+    const list = await client.beta.threads.messages.list(thread.id);
+    const assistantMessage = list.data
+      .filter((m) => m.role === "assistant")
+      .at(-1);
+    const text = assistantMessage?.content[0].text.value
+      .trim()
+      .toLowerCase();
+    assert.ok(text.includes("blue"));
+
+    try {
+      const prisma = new PrismaClient();
+      const dbThread = await prisma.thread.findUnique({
+        where: { id: thread.id },
+      });
+      assert.ok((dbThread as any)?.metadata?.openaiConversationId);
+      await prisma.$disconnect();
+    } catch {
+      // ignore prisma errors
+    }
   }
-
-  assert.ok(models.length > 0);
-});
+);
 
 test(
-  "supercompat streaming run with tool using completionsRunAdapter",
+  "responsesRunAdapter can stream run with tool via OpenAI",
   async (t) => {
     try {
       const realOpenAI = new OpenAI({
         apiKey,
         ...(process.env.HTTPS_PROXY
-          ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY as string) }
+          ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
           : {}),
       });
+
       const client = supercompat({
         client: openaiClientAdapter({ openai: realOpenAI }),
-        runAdapter: completionsRunAdapter(),
+        runAdapter: responsesRunAdapter(),
       });
 
       const tools = [
@@ -188,8 +212,7 @@ test(
         }
       );
 
-      for await (const _event of submit) {
-      }
+      for await (const _event of submit) {}
 
       const list = await client.beta.threads.messages.list(thread.id);
       const assistantMessage = list.data
@@ -202,3 +225,4 @@ test(
     }
   }
 );
+

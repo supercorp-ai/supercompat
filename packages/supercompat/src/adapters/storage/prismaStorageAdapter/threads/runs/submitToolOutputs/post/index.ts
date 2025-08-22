@@ -6,6 +6,7 @@ import { onEvent } from '../../onEvent'
 import { getMessages } from '../../getMessages'
 import { serializeRunStep } from '../../steps/serializeRunStep'
 import { updateRun } from './updateRun'
+import { getThread } from '../../getThread'
 
 export const post = ({
   prisma,
@@ -52,6 +53,7 @@ export const post = ({
             prisma,
           }),
           getMessages: getMessages({ prisma, run }),
+          getThread: getThread({ prisma, threadId }),
         })
 
         controller.close()
@@ -86,6 +88,7 @@ export const post = ({
               prisma,
             }),
             getMessages: getMessages({ prisma, run }),
+            getThread: getThread({ prisma, threadId }),
           })
 
           controller.close()

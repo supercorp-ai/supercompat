@@ -58,11 +58,13 @@ export const completionsRunAdapter = () => async ({
   run,
   onEvent,
   getMessages,
+  getThread,
 }: {
   client: OpenAI
   run: OpenAI.Beta.Threads.Run
   onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
   getMessages: () => Promise<MessageWithRun[]>
+  getThread: () => Promise<any>
 }) => {
   if (run.status !== 'queued') return
 

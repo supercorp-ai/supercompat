@@ -16,6 +16,7 @@ export const originalFetch = ({
     return client.client.fetch(url, {
       ...options,
       headers,
+      ...(client.client.httpAgent ? { agent: client.client.httpAgent } : {}),
     })
   } else {
     // @ts-ignore-next-line

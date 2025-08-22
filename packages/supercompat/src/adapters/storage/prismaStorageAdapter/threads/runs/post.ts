@@ -7,6 +7,7 @@ import { serializeRun } from './serializeRun'
 import { RunAdapterPartobClient } from '@/types'
 import { onEvent } from './onEvent'
 import { getMessages } from './getMessages'
+import { getThread } from './getThread'
 
 type RunCreateResponse = Response & {
   json: () => Promise<ReturnType<OpenAI.Beta.Threads.Runs['create']>>
@@ -100,6 +101,7 @@ export const post = ({
             prisma,
             run,
           }),
+          getThread: getThread({ prisma, threadId }),
         })
       } catch (error: any) {
         console.error(error)
