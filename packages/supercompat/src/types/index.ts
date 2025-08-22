@@ -1,5 +1,9 @@
 import type OpenAI from 'openai'
 
+export type ThreadWithConversationId = OpenAI.Beta.Threads.Thread & {
+  openaiConversationId: string | null
+}
+
 export type MessageWithRun = OpenAI.Beta.Threads.Message & {
   run: (OpenAI.Beta.Threads.Run & {
     runSteps: OpenAI.Beta.Threads.Runs.RunStep[]
@@ -17,7 +21,7 @@ export type RunAdapter = ({
   run: OpenAI.Beta.Threads.Run
   onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
   getMessages: () => Promise<MessageWithRun[]>
-  getThread: () => Promise<any>
+  getThread: () => Promise<ThreadWithConversationId | null>
 }) => Promise<void>
 
 export type RunAdapterPartobClient = (args: Omit<Parameters<RunAdapter>[0], 'client'>) => ReturnType<RunAdapter>

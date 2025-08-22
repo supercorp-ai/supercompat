@@ -2,7 +2,7 @@ import _ from 'lodash'
 import { uid, omit, isEmpty } from 'radash'
 import dayjs from 'dayjs'
 import OpenAI from 'openai'
-import { MessageWithRun } from '@/types'
+import { MessageWithRun, ThreadWithConversationId } from '@/types'
 import { messages } from './messages'
 import { supercompat } from '@/supercompat'
 
@@ -64,7 +64,7 @@ export const completionsRunAdapter = () => async ({
   run: OpenAI.Beta.Threads.Run
   onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
   getMessages: () => Promise<MessageWithRun[]>
-  getThread: () => Promise<any>
+  getThread: () => Promise<ThreadWithConversationId | null>
 }) => {
   if (run.status !== 'queued') return
 
