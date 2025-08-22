@@ -51,9 +51,8 @@ export const responsesRunAdapter =
     };
 
     let providerResponse: any;
-    const thread = await getThread();
-    const openaiConversationId = (thread as any)?.metadata
-      ?.openaiConversationId;
+    const thread = await getThread()
+    const openaiConversationId = (thread as any)?.openaiConversationId
 
     try {
       providerResponse = await (client as any).responses.create({

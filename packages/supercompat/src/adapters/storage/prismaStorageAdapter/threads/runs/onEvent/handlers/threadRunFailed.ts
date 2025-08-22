@@ -1,17 +1,17 @@
-import type OpenAI from "openai";
-import { RunStatus } from "@/types/prisma";
-import type { PrismaClient } from "@prisma/client";
+import type OpenAI from 'openai'
+import { RunStatus } from '@/types/prisma'
+import type { PrismaClient } from '@prisma/client'
 
 export const threadRunFailed = async ({
   prisma,
   event,
   controller,
 }: {
-  prisma: PrismaClient;
-  event: OpenAI.Beta.AssistantStreamEvent.ThreadRunFailed;
-  controller: ReadableStreamDefaultController<OpenAI.Beta.AssistantStreamEvent.ThreadRunFailed>;
+  prisma: PrismaClient
+  event: OpenAI.Beta.AssistantStreamEvent.ThreadRunFailed
+  controller: ReadableStreamDefaultController<OpenAI.Beta.AssistantStreamEvent.ThreadRunFailed>
 }) => {
-  controller.enqueue(event);
+  controller.enqueue(event)
 
   const runRecord = await prisma.run.update({
     where: {
@@ -22,22 +22,16 @@ export const threadRunFailed = async ({
       failedAt: event.data.failed_at,
       lastError: event.data.last_error,
     },
-  });
+  })
 
   if (event.data.metadata?.openaiConversationId) {
-    const thread = await prisma.thread.findUnique({
-      where: { id: event.data.thread_id },
-    });
     await prisma.thread.update({
       where: { id: event.data.thread_id },
       data: {
-        metadata: {
-          ...(thread?.metadata as any),
-          openaiConversationId: event.data.metadata.openaiConversationId,
-        },
+        openaiConversationId: event.data.metadata.openaiConversationId,
       },
-    });
+    })
   }
 
-  return runRecord;
-};
+  return runRecord
+}

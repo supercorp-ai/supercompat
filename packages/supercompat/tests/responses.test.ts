@@ -112,7 +112,7 @@ test("responsesRunAdapter maintains conversation across runs", async (t) => {
     const dbThread = await prisma.thread.findUnique({
       where: { id: thread.id },
     });
-    assert.ok((dbThread as any)?.metadata?.openaiConversationId);
+    assert.ok((dbThread as any)?.openaiConversationId);
     await prisma.$disconnect();
   } catch {
     // ignore prisma errors

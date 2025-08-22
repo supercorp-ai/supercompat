@@ -11,7 +11,7 @@ export const serializeThread = ({
   object: 'thread' as 'thread',
   created_at: dayjs(thread.createdAt).unix(),
   metadata: thread.metadata,
-  openaiConversationId: (thread as any)?.metadata?.openaiConversationId ?? null,
+  openaiConversationId: (thread as any)?.openaiConversationId ?? null,
   // TODO
   tool_resources: null,
 })
