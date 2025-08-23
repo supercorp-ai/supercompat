@@ -1,32 +1,30 @@
-type FetchArgs = Parameters<typeof fetch>
-
 export const originalFetch = ({
   args,
   client,
 }: {
-  args: FetchArgs
+  args: any[]
   client: any
 }) => {
-  const [url, options = {}] = args
+  if (client.client?.fetch) {
+    const [url, options] = args
 
-  if (client.client?.apiKey) {
+    const headersInit = options?.headers as HeadersInit
+    const requestHeaders =
+      headersInit instanceof Headers
+        ? Object.fromEntries(headersInit.entries())
+        : headersInit
+
     const headers = {
-      ...(options.headers as HeadersInit),
-      authorization: `Bearer ${client.client.apiKey}`,
-      'openai-beta': 'assistants=v2',
+      ...(requestHeaders as Record<string, string>),
+      authorization: client.client.defaultHeaders().Authorization,
     }
 
-    if (options.body &&
-      !(headers as Record<string, string>)['content-type'] &&
-      !(headers as Record<string, string>)['Content-Type']) {
-      ;(headers as Record<string, string>)['content-type'] = 'application/json'
-    }
-
-    return fetch(url, {
+    return client.client.fetch(url, {
       ...options,
       headers,
     })
+  } else {
+    // @ts-ignore-next-line
+    return fetch(...args)
   }
-
-  return fetch(url, options)
 }
