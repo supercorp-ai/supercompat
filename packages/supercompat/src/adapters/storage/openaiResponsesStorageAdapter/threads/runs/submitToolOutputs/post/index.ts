@@ -6,7 +6,7 @@ import {
   MessageWithRun,
 } from '@/types'
 import dayjs from 'dayjs'
-import { getRun, setRun } from '../../store'
+
 
 export const post = ({
   openai,
@@ -22,7 +22,8 @@ export const post = ({
   const body = JSON.parse(options.body)
   const { tool_outputs, stream } = body
 
-  const conversation = await openai.conversations
+  const oai = openai as any
+  const conversation = await oai.conversations
     .retrieve(threadId)
     .catch(() => null)
   if (!conversation) return new Response('Not found', { status: 404 })
@@ -36,11 +37,12 @@ export const post = ({
     openaiConversationId: threadId,
   }
 
-  const run = getRun(runId)
+  const runStr = (thread.metadata as Record<string, string>)[`run_${runId}`]
+  const run: OpenAI.Beta.Threads.Run | undefined = runStr ? JSON.parse(runStr) : undefined
   if (!run) return new Response('Not found', { status: 404 })
 
   for (const t of tool_outputs) {
-    await openai.conversations.items.create(thread.openaiConversationId as string, {
+    await oai.conversations.items.create(thread.openaiConversationId as string, {
       items: [
         {
           type: 'function_call_output',
@@ -67,7 +69,7 @@ export const post = ({
 
   const getThread = async () => thread
   const getMessages = async (): Promise<MessageWithRun[]> => {
-    const items = await openai.conversations.items.list(
+    const items = await oai.conversations.items.list(
       thread.openaiConversationId as string,
     )
     return (items.data || [])
@@ -94,6 +96,17 @@ export const post = ({
       })) as MessageWithRun[]
   }
 
+  const saveRun = async () => {
+    thread.metadata = {
+      ...(thread.metadata as Record<string, string>),
+      [`run_${run.id}`]: JSON.stringify(run),
+    }
+    await oai.conversations.update(
+      thread.openaiConversationId as string,
+      { metadata: thread.metadata },
+    )
+  }
+
   if (stream) {
     const readableStream = new ReadableStream({
       async start(controller) {
@@ -106,7 +119,7 @@ export const post = ({
           getMessages,
           getThread,
         })
-        setRun(run)
+        await saveRun()
         controller.close()
       },
     })
@@ -116,7 +129,7 @@ export const post = ({
   }
 
   await runAdapter({ run, onEvent, getMessages, getThread })
-  setRun(run)
+  await saveRun()
 
   return new Response(JSON.stringify(run), {
     status: 200,

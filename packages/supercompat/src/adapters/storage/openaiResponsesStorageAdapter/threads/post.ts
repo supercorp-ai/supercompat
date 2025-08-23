@@ -6,8 +6,8 @@ export const post = ({ openai }: { openai: OpenAI }) => async (
   options: any,
 ): Promise<Response> => {
   const body = options?.body ? JSON.parse(options.body) : {}
-
-  const conversation = await openai.conversations.create({
+  const oai = openai as any
+  const conversation = await oai.conversations.create({
     metadata: body.metadata || {},
   })
 

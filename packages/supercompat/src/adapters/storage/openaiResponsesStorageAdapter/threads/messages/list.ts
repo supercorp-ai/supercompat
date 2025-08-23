@@ -7,8 +7,8 @@ export const list = ({ openai }: { openai: OpenAI }) => async (
 ): Promise<Response> => {
   const url = new URL(urlString)
   const [, threadId] = url.pathname.match(new RegExp(messagesRegexp))!
-
-  const items = await openai.conversations.items.list(threadId)
+  const oai = openai as any
+  const items = await oai.conversations.items.list(threadId)
 
   const messages = (items.data || [])
     .filter((item: any) => item.type === 'message')

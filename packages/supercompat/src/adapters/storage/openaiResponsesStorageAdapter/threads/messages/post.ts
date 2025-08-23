@@ -10,8 +10,8 @@ export const post = ({ openai }: { openai: OpenAI }) => async (
   const [, threadId] = url.pathname.match(new RegExp(messagesRegexp))!
   const body = JSON.parse(options.body)
   const content = typeof body.content === 'string' ? body.content : ''
-
-  await openai.conversations.items.create(threadId, {
+  const oai = openai as any
+  await oai.conversations.items.create(threadId, {
     items: [
       {
         type: 'message',
