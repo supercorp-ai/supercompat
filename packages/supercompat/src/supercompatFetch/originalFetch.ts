@@ -1,15 +1,17 @@
+type FetchArgs = Parameters<typeof fetch>
+
 export const originalFetch = ({
   args,
   client,
 }: {
-  args: any[]
+  args: FetchArgs
   client: any
 }) => {
   if (client.client?.fetch) {
-    const [url, options] = args
+    const [url, options = {}] = args
 
     const headers = {
-      ...options.headers,
+      ...(options.headers as HeadersInit),
       authorization: client.client.defaultHeaders().Authorization,
     }
 
@@ -18,8 +20,7 @@ export const originalFetch = ({
       headers,
       ...(client.client.httpAgent ? { agent: client.client.httpAgent } : {}),
     })
-  } else {
-    // @ts-ignore-next-line
-    return fetch(...args)
   }
+
+  return fetch(...args)
 }

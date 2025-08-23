@@ -16,7 +16,9 @@ const serializeToolContent = ({
     const isEveryToolPartValid = toolCall.function.output.every((toolPart) => {
       if (!isObject(toolPart)) return false
 
-      return validToolCallContentTypes.includes((toolPart as any).type)
+      return validToolCallContentTypes.includes(
+        (toolPart as { type?: string }).type ?? '',
+      )
     })
 
     if (isEveryToolPartValid) {
@@ -46,13 +48,25 @@ const serializeMessageWithContent = ({
   message,
 }: {
   message: MessageWithRun
-}) => ({
-  role: message.role,
-  content: serializeContent({
+}): OpenAI.ChatCompletionMessageParam => {
+  const content = serializeContent({
     content: message.content as unknown as OpenAI.Beta.Threads.Messages.TextContentBlock[],
-  }),
-  ...(message?.metadata?.toolCalls ? { tool_calls: message.metadata.toolCalls } : {}),
-})
+  })
+
+  if (message.role === 'assistant' && message.metadata?.toolCalls) {
+    return {
+      role: 'assistant',
+      content,
+      tool_calls: message.metadata
+        .toolCalls as OpenAI.ChatCompletionMessageToolCall[],
+    }
+  }
+
+  return {
+    role: message.role,
+    content,
+  }
+}
 
 const serializeContent = ({
   content,
@@ -61,22 +75,23 @@ const serializeContent = ({
 }) => content.map((content) => content.text.value).join('\n')
 
 export const serializeMessage = ({
-  message
+  message,
 }: {
   message: MessageWithRun
-}) => {
-  const result: any[] = [serializeMessageWithContent({ message })]
+}): OpenAI.ChatCompletionMessageParam[] => {
+  const result: OpenAI.ChatCompletionMessageParam[] = [
+    serializeMessageWithContent({ message }),
+  ]
 
   const run = message.run
 
   if (!run) return result
 
-  const messageToolCalls = (message.metadata as any)?.toolCalls as
-    | OpenAI.Beta.Threads.Runs.Steps.ToolCall[]
-    | undefined
+  const messageToolCalls = Array.isArray(message.metadata?.toolCalls)
+    ? (message.metadata?.toolCalls as OpenAI.Beta.Threads.Runs.Steps.ToolCall[])
+    : undefined
 
-  ;(messageToolCalls || []).forEach(
-    (tc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
+  ;(messageToolCalls || []).forEach((tc) => {
       const runStep = run.runSteps.find((rs) => {
         if (rs.type !== 'tool_calls') return false
 
@@ -104,8 +119,7 @@ export const serializeMessage = ({
       ) as OpenAI.Beta.Threads.Runs.Steps.FunctionToolCall
 
       result.push(serializeToolCall({ toolCall }))
-    }
-  )
+    })
 
   return result
 }
