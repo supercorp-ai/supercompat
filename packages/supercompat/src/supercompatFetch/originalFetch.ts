@@ -7,20 +7,26 @@ export const originalFetch = ({
   args: FetchArgs
   client: any
 }) => {
-  if (client.client?.fetch) {
-    const [url, options = {}] = args
+  const [url, options = {}] = args
 
+  if (client.client?.apiKey) {
     const headers = {
       ...(options.headers as HeadersInit),
-      authorization: client.client.defaultHeaders().Authorization,
+      authorization: `Bearer ${client.client.apiKey}`,
+      'openai-beta': 'assistants=v2',
     }
 
-    return client.client.fetch(url, {
+    if (options.body &&
+      !(headers as Record<string, string>)['content-type'] &&
+      !(headers as Record<string, string>)['Content-Type']) {
+      ;(headers as Record<string, string>)['content-type'] = 'application/json'
+    }
+
+    return fetch(url, {
       ...options,
       headers,
-      ...(client.client.httpAgent ? { agent: client.client.httpAgent } : {}),
     })
   }
 
-  return fetch(...args)
+  return fetch(url, options)
 }

@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
 import type { ChatCompletion } from 'openai/resources/chat/completions'
 import { ProxyAgent, setGlobalDispatcher } from 'undici'
+import { HttpsProxyAgent } from 'https-proxy-agent'
 import {
   supercompat,
   openaiClientAdapter,
@@ -16,7 +17,12 @@ if (process.env.HTTPS_PROXY) {
 }
 
 test('supercompat can create thread message and run via OpenAI', async (t) => {
-  const realOpenAI = new OpenAI({ apiKey })
+  const realOpenAI = new OpenAI({
+    apiKey,
+    ...(process.env.HTTPS_PROXY
+      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+      : {}),
+  })
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
   })
@@ -48,7 +54,12 @@ test('supercompat can create thread message and run via OpenAI', async (t) => {
 })
 
 test('supercompat can list models via OpenAI', async (t) => {
-  const realOpenAI = new OpenAI({ apiKey })
+  const realOpenAI = new OpenAI({
+    apiKey,
+    ...(process.env.HTTPS_PROXY
+      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+      : {}),
+  })
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
   })
@@ -63,7 +74,12 @@ test('supercompat can list models via OpenAI', async (t) => {
 })
 
 test('supercompat streaming run with tool using completionsRunAdapter', async (t) => {
-  const realOpenAI = new OpenAI({ apiKey })
+  const realOpenAI = new OpenAI({
+    apiKey,
+    ...(process.env.HTTPS_PROXY
+      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+      : {}),
+  })
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: completionsRunAdapter(),
@@ -126,9 +142,9 @@ test('supercompat streaming run with tool using completionsRunAdapter', async (t
       .id
 
   const submit = await client.beta.threads.runs.submitToolOutputs(
-    thread.id,
     requiresActionEvent.data.id,
     {
+      thread_id: thread.id,
       stream: true,
       tool_outputs: [
         {

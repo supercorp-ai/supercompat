@@ -279,7 +279,10 @@ export const responsesRunAdapter =
       }
     }
 
-    await providerResponse.finalResponse().catch(() => {});
+    // finalize the streamed response if supported
+    if (typeof providerResponse.final === 'function') {
+      await providerResponse.final().catch(() => {})
+    }
 
     message = await onEvent({
       event: 'thread.message.completed',
