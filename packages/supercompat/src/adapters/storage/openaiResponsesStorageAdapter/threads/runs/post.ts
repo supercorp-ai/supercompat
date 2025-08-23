@@ -7,6 +7,7 @@ import {
   ThreadWithConversationId,
   MessageWithRun,
 } from '@/types'
+import { setRun } from './store'
 
 export const post = ({
   openai,
@@ -51,14 +52,6 @@ export const post = ({
       metadata: body.metadata || {},
     } as any
 
-    await openai.conversations.update(threadId, {
-      metadata: { ...(thread.metadata as Record<string, string>), [`run_${run.id}`]: JSON.stringify(run) },
-    })
-    thread.metadata = {
-      ...(thread.metadata as Record<string, string>),
-      [`run_${run.id}`]: JSON.stringify(run),
-    }
-
     const onEvent = async (event: OpenAI.Beta.AssistantStreamEvent) => {
       if (event.event === 'thread.run.completed') {
         run = { ...run, status: 'completed' }
@@ -74,16 +67,6 @@ export const post = ({
       const conv = (event.data as any)?.metadata?.openaiConversationId
       if (conv && conv !== thread.openaiConversationId) {
         thread.openaiConversationId = conv
-      }
-      await openai.conversations.update(thread.openaiConversationId as string, {
-        metadata: {
-          ...(thread.metadata as Record<string, string>),
-          [`run_${run.id}`]: JSON.stringify(run),
-        },
-      })
-      thread.metadata = {
-        ...(thread.metadata as Record<string, string>),
-        [`run_${run.id}`]: JSON.stringify(run),
       }
       return event.data
     }
@@ -117,17 +100,6 @@ export const post = ({
         })) as MessageWithRun[]
     }
 
-    const finalize = async () => {
-      if (run.status !== 'requires_action') {
-        const { [`run_${run.id}`]: _ignored, ...rest } =
-          thread.metadata as Record<string, string>
-        await openai.conversations.update(thread.openaiConversationId as string, {
-          metadata: rest,
-        })
-        thread.metadata = rest
-      }
-    }
-
     if (stream) {
       const readableStream = new ReadableStream({
         async start(controller) {
@@ -140,7 +112,7 @@ export const post = ({
             getMessages,
             getThread,
           })
-          await finalize()
+          setRun(run)
           controller.close()
         },
       })
@@ -151,7 +123,7 @@ export const post = ({
     }
 
     await runAdapter({ run, onEvent, getMessages, getThread })
-    await finalize()
+    setRun(run)
 
     return new Response(JSON.stringify(run), {
       status: 200,
