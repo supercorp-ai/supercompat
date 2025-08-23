@@ -9,7 +9,6 @@ import {
   supercompat,
   openaiResponsesStorageAdapter,
 } from '../src/index'
-import { PrismaClient } from '@prisma/client'
 
 const apiKey = process.env.TEST_OPENAI_API_KEY
 
