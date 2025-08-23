@@ -22,6 +22,7 @@ test('responsesRunAdapter can create thread message and run via OpenAI', async (
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: responsesRunAdapter(),
+    storage: openaiResponsesStorageAdapter({ openai: realOpenAI }),
   })
 
   const assistant = await client.beta.assistants.create({
@@ -56,6 +57,7 @@ test('responsesRunAdapter maintains conversation across runs', async (t) => {
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: responsesRunAdapter(),
+    storage: openaiResponsesStorageAdapter({ openai: realOpenAI }),
   })
 
   const assistant = await client.beta.assistants.create({
@@ -112,6 +114,7 @@ test('responsesRunAdapter can stream run with tool via OpenAI', async (t) => {
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: responsesRunAdapter(),
+    storage: openaiResponsesStorageAdapter({ openai: realOpenAI }),
   })
 
   const tools = [
