@@ -5,6 +5,7 @@
     "build": "turbo build",
     "dev": "turbo run build --force -- --watch",
     "lint": "turbo lint",
+    "lint:ts": "tsc -p packages/supercompat/tsconfig.json --noEmit",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "test": "npx tsx --tsconfig tsconfig.test.json --test packages/supercompat/tests/*.test.ts"
   },
