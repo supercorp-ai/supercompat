@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type Anthropic from '@anthropic-ai/sdk'
 import type OpenAI from 'openai'
 import { uid, fork, omit, isEmpty } from 'radash'

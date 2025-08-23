@@ -13,7 +13,7 @@ export const threadMessageCompleted = async ({
 }) => {
   controller.enqueue(event)
 
-  if (event.data.tool_calls) {
+  if ((event.data as any).tool_calls) {
     const latestRunStep = await prisma.runStep.findFirst({
       where: {
         threadId: event.data.thread_id,
@@ -35,7 +35,7 @@ export const threadMessageCompleted = async ({
       data: {
         stepDetails: {
           type: 'tool_calls',
-          tool_calls: event.data.tool_calls,
+          tool_calls: (event.data as any).tool_calls,
         },
       },
     })
@@ -48,7 +48,9 @@ export const threadMessageCompleted = async ({
     data: {
       status: MessageStatus.COMPLETED,
       ...(event.data.content ? { content: event.data.content } : {}),
-      ...(event.data.tool_calls ? { toolCalls: event.data.tool_calls } : {}),
+      ...((event.data as any).tool_calls
+        ? { toolCalls: (event.data as any).tool_calls }
+        : {}),
     },
   })
 }

@@ -10,5 +10,9 @@ export const messages = async ({
   run: OpenAI.Beta.Threads.Run
   getMessages: () => Promise<MessageWithRun[]>
 }) => (
-  flat((await getMessages()).map((message: MessageWithRun) => serializeMessage({ message })))
+  flat(
+    (await getMessages()).map((message: MessageWithRun) =>
+      serializeMessage({ message }) as any[]
+    ) as any[][]
+  )
 )

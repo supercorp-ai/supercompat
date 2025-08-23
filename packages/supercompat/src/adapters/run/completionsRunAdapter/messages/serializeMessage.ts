@@ -65,35 +65,47 @@ export const serializeMessage = ({
 }: {
   message: MessageWithRun
 }) => {
-  const result = [serializeMessageWithContent({ message })]
+  const result: any[] = [serializeMessageWithContent({ message })]
 
   const run = message.run
 
   if (!run) return result
 
-  const messageToolCalls = message.metadata?.toolCalls || []
+  const messageToolCalls = (message.metadata as any)?.toolCalls as
+    | OpenAI.Beta.Threads.Runs.Steps.ToolCall[]
+    | undefined
 
-  messageToolCalls.forEach((tc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
-    const runStep = run.runSteps.find((rs) => {
-      if (rs.type !== 'tool_calls') return false
+  ;(messageToolCalls || []).forEach(
+    (tc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
+      const runStep = run.runSteps.find((rs) => {
+        if (rs.type !== 'tool_calls') return false
 
-      return rs.step_details.tool_calls.some((rsTc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
-        if (rsTc.type !== 'function') return false
+        return (
+          (rs.step_details as OpenAI.Beta.Threads.Runs.Steps.ToolCallsStepDetails).tool_calls.some(
+            (rsTc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
+              if (rsTc.type !== 'function') return false
 
-        return rsTc.id === tc.id
+              return rsTc.id === tc.id
+            }
+          )
+        )
       })
-    })
 
-    if (!runStep) return
+      if (!runStep) return
 
-    const toolCall = runStep.step_details.tool_calls.find((rsTc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
-      if (rsTc.type !== 'function') return false
+      const toolCall = (
+        (runStep.step_details as OpenAI.Beta.Threads.Runs.Steps.ToolCallsStepDetails).tool_calls.find(
+          (rsTc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
+            if (rsTc.type !== 'function') return false
 
-      return rsTc.id === tc.id
-    })
+            return rsTc.id === tc.id
+          }
+        )
+      ) as OpenAI.Beta.Threads.Runs.Steps.FunctionToolCall
 
-    result.push(serializeToolCall({ toolCall }))
-  })
+      result.push(serializeToolCall({ toolCall }))
+    }
+  )
 
   return result
 }

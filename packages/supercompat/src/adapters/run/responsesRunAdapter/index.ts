@@ -1,10 +1,10 @@
-import _ from "lodash";
-import { uid, isEmpty } from "radash";
-import dayjs from "dayjs";
-import OpenAI from "openai";
-import { MessageWithRun, ThreadWithConversationId } from "@/types";
-import { messages } from "./messages";
-import { supercompat } from "@/supercompat";
+import _ from 'lodash';
+import { uid, isEmpty } from 'radash';
+import dayjs from 'dayjs';
+import OpenAI from 'openai';
+import { MessageWithRun, ThreadWithConversationId } from '@/types';
+import { messages } from './messages';
+import { supercompat } from '@/supercompat';
 
 export const responsesRunAdapter =
   () =>
@@ -21,17 +21,17 @@ export const responsesRunAdapter =
     getMessages: () => Promise<MessageWithRun[]>;
     getThread: () => Promise<ThreadWithConversationId | null>;
   }) => {
-    if (run.status !== "queued") return;
+    if (run.status !== 'queued') return;
 
     const client = supercompat({
       client: clientAdapter,
     });
 
     onEvent({
-      event: "thread.run.in_progress",
+      event: 'thread.run.in_progress',
       data: {
         ...run,
-        status: "in_progress",
+        status: 'in_progress',
       },
     });
 
@@ -45,7 +45,9 @@ export const responsesRunAdapter =
       input,
       ...(run.instructions ? { instructions: run.instructions } : {}),
       ...(isEmpty(run.tools) ? {} : { tools: run.tools }),
-      ...(run.response_format && run.response_format.type !== "text"
+      ...(typeof run.response_format === 'object' &&
+      (run.response_format as any).type &&
+      (run.response_format as any).type !== 'text'
         ? { response_format: run.response_format }
         : {}),
     };
@@ -63,24 +65,24 @@ export const responsesRunAdapter =
     } catch (e: any) {
       console.error(e);
       return onEvent({
-        event: "thread.run.failed",
+        event: 'thread.run.failed',
         data: {
           ...run,
           failed_at: dayjs().unix(),
-          status: "in_progress",
+          status: 'in_progress',
           last_error: {
-            code: "server_error",
-            message: `${e?.message ?? ""} ${e?.cause?.message ?? ""}`,
+            code: 'server_error',
+            message: `${e?.message ?? ''} ${e?.cause?.message ?? ''}`,
           },
         },
       });
     }
 
     let message = await onEvent({
-      event: "thread.message.created",
+      event: 'thread.message.created',
       data: {
-        id: "THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID",
-        object: "thread.message",
+        id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
+        object: 'thread.message',
         completed_at: null,
         run_id: run.id,
         created_at: dayjs().unix(),
@@ -90,22 +92,22 @@ export const responsesRunAdapter =
         metadata: {},
         attachments: [],
         thread_id: run.thread_id,
-        content: [{ text: { value: "", annotations: [] }, type: "text" }],
-        role: "assistant",
-        status: "in_progress",
+        content: [{ text: { value: '', annotations: [] }, type: 'text' }],
+        role: 'assistant',
+        status: 'in_progress',
       },
     });
 
     onEvent({
-      event: "thread.run.step.created",
+      event: 'thread.run.step.created',
       data: {
-        id: "THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID",
-        object: "thread.run.step",
+        id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
+        object: 'thread.run.step',
         run_id: run.id,
         assistant_id: run.assistant_id,
         thread_id: run.thread_id,
-        type: "message_creation",
-        status: "completed",
+        type: 'message_creation',
+        status: 'completed',
         completed_at: dayjs().unix(),
         created_at: dayjs().unix(),
         expired_at: null,
@@ -115,7 +117,7 @@ export const responsesRunAdapter =
         cancelled_at: null,
         usage: null,
         step_details: {
-          type: "message_creation",
+          type: 'message_creation',
           message_creation: {
             message_id: message.id,
           },
@@ -124,13 +126,13 @@ export const responsesRunAdapter =
     });
 
     let toolCallsRunStep: any;
-    let currentContent = "";
+    let currentContent = '';
     let currentToolCalls: any[] = [];
     let newConversationId: string | undefined;
 
     for await (const event of providerResponse) {
       switch (event.type) {
-        case "response.created": {
+        case 'response.created': {
           const convId =
             event.response?.conversation_id ?? event.response?.conversation?.id;
           if (convId) {
@@ -138,16 +140,16 @@ export const responsesRunAdapter =
           }
           break;
         }
-        case "response.output_text.delta": {
+        case 'response.output_text.delta': {
           currentContent = `${currentContent}${event.delta}`;
           onEvent({
-            event: "thread.message.delta",
+            event: 'thread.message.delta',
             data: {
               id: message.id,
               delta: {
                 content: [
                   {
-                    type: "text",
+                    type: 'text',
                     index: 0,
                     text: {
                       value: event.delta,
@@ -159,19 +161,19 @@ export const responsesRunAdapter =
           } as OpenAI.Beta.AssistantStreamEvent.ThreadMessageDelta);
           break;
         }
-        case "response.output_item.added": {
-          if (event.item.type === "function_call") {
+        case 'response.output_item.added': {
+          if (event.item.type === 'function_call') {
             if (!toolCallsRunStep) {
               toolCallsRunStep = await onEvent({
-                event: "thread.run.step.created",
+                event: 'thread.run.step.created',
                 data: {
-                  id: "THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID",
-                  object: "thread.run.step",
+                  id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
+                  object: 'thread.run.step',
                   run_id: run.id,
                   assistant_id: run.assistant_id,
                   thread_id: run.thread_id,
-                  type: "tool_calls",
-                  status: "in_progress",
+                  type: 'tool_calls',
+                  status: 'in_progress',
                   completed_at: null,
                   created_at: dayjs().unix(),
                   expired_at: null,
@@ -181,7 +183,7 @@ export const responsesRunAdapter =
                   cancelled_at: null,
                   usage: null,
                   step_details: {
-                    type: "tool_calls",
+                    type: 'tool_calls',
                     tool_calls: [],
                   },
                 },
@@ -190,64 +192,68 @@ export const responsesRunAdapter =
 
             const newToolCall = {
               id: event.item.id ?? uid(24),
-              type: "function",
+              type: 'function',
               function: {
                 name: event.item.name,
-                arguments: "",
+                arguments: '',
               },
+              index: currentToolCalls.length,
             };
             currentToolCalls.push(_.cloneDeep(newToolCall));
 
             onEvent({
-              event: "thread.run.step.delta",
+              event: 'thread.run.step.delta',
               data: {
-                object: "thread.run.step.delta",
+                object: 'thread.run.step.delta',
                 run_id: run.id,
                 id: toolCallsRunStep.id,
                 delta: {
                   step_details: {
-                    type: "tool_calls",
+                    type: 'tool_calls',
                     tool_calls: [newToolCall],
                   },
                 },
               },
-            } as OpenAI.Beta.AssistantStreamEvent.ThreadRunStepDelta);
+            } as unknown as OpenAI.Beta.AssistantStreamEvent.ThreadRunStepDelta);
           }
           break;
         }
-        case "response.function_call_arguments.delta": {
+        case 'response.function_call_arguments.delta': {
           const tc = currentToolCalls.find((t) => t.id === event.item_id);
           if (tc) {
             tc.function.arguments = `${tc.function.arguments}${event.delta}`;
             onEvent({
-              event: "thread.run.step.delta",
+              event: 'thread.run.step.delta',
               data: {
-                object: "thread.run.step.delta",
+                object: 'thread.run.step.delta',
                 run_id: run.id,
                 id: toolCallsRunStep.id,
                 delta: {
                   step_details: {
-                    type: "tool_calls",
+                    type: 'tool_calls',
                     tool_calls: [
                       {
                         id: tc.id,
-                        type: "function",
+                        type: 'function',
                         function: {
                           name: tc.function.name,
                           arguments: tc.function.arguments,
                         },
+                        index: currentToolCalls.findIndex(
+                          (t) => t.id === tc.id,
+                        ),
                       },
                     ],
                   },
                 },
               },
-            } as OpenAI.Beta.AssistantStreamEvent.ThreadRunStepDelta);
+            } as unknown as OpenAI.Beta.AssistantStreamEvent.ThreadRunStepDelta);
           }
           break;
         }
-        case "response.error": {
+        case 'response.error': {
           await onEvent({
-            event: "thread.run.failed",
+            event: 'thread.run.failed',
             data: {
               ...run,
               ...(newConversationId
@@ -259,10 +265,10 @@ export const responsesRunAdapter =
                   }
                 : {}),
               failed_at: dayjs().unix(),
-              status: "in_progress",
+              status: 'in_progress',
               last_error: {
-                code: "server_error",
-                message: event.error?.message ?? "unknown_error",
+                code: 'server_error',
+                message: event.error?.message ?? 'unknown_error',
               },
             },
           });
@@ -276,12 +282,12 @@ export const responsesRunAdapter =
     await providerResponse.finalResponse().catch(() => {});
 
     message = await onEvent({
-      event: "thread.message.completed",
+      event: 'thread.message.completed',
       data: {
         ...message,
-        status: "completed",
+        status: 'completed',
         content: [
-          { text: { value: currentContent, annotations: [] }, type: "text" },
+          { text: { value: currentContent, annotations: [] }, type: 'text' },
         ],
         tool_calls: currentToolCalls,
       },
@@ -289,10 +295,10 @@ export const responsesRunAdapter =
 
     if (isEmpty(message.toolCalls)) {
       return onEvent({
-        event: "thread.run.completed",
+        event: 'thread.run.completed',
         data: {
           ...run,
-          status: "completed",
+          status: 'completed',
           completed_at: dayjs().unix(),
           ...(newConversationId
             ? {
@@ -307,10 +313,10 @@ export const responsesRunAdapter =
     }
 
     return onEvent({
-      event: "thread.run.requires_action",
+      event: 'thread.run.requires_action',
       data: {
         ...run,
-        status: "requires_action",
+        status: 'requires_action',
         ...(newConversationId
           ? {
               metadata: {
@@ -320,7 +326,7 @@ export const responsesRunAdapter =
             }
           : {}),
         required_action: {
-          type: "submit_tool_outputs",
+          type: 'submit_tool_outputs',
           submit_tool_outputs: {
             tool_calls: message.toolCalls,
           },

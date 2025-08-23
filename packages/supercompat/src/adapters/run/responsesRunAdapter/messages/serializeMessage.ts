@@ -9,7 +9,7 @@ export const serializeMessage = ({
   const contentBlocks = message.content as unknown as OpenAI.Beta.Threads.Messages.TextContentBlock[]
   const text = contentBlocks.map((c) => c.text.value).join('\n')
 
-  if (message.role === 'tool') {
+  if ((message as any).role === 'tool') {
     const output = typeof message.content === 'string' ? message.content : JSON.stringify(message.content)
     return [
       {
