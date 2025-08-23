@@ -15,9 +15,9 @@ import {
   supercompat,
   groqClientAdapter,
   prismaStorageAdapter,
-  completionsRunAdapter,
-  responsesRunAdapter,
-} from 'supercompat'
+    completionsRunAdapter,
+    responsesRunAdapter, // use the Responses API
+  } from 'supercompat'
 import Groq from 'groq-sdk'
 
 const client = supercompat({
