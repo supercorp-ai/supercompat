@@ -19,44 +19,40 @@ if (process.env.HTTPS_PROXY) {
 test("responsesRunAdapter can create thread message and run via OpenAI", async (t) => {
   if (!apiKey)
     return t.skip("TEST_OPENAI_API_KEY is required to run this test");
-  try {
-    const realOpenAI = new OpenAI({
-      apiKey,
-      ...(process.env.HTTPS_PROXY
-        ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
-        : {}),
-    });
+  const realOpenAI = new OpenAI({
+    apiKey,
+    ...(process.env.HTTPS_PROXY
+      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+      : {}),
+  });
 
-    const client = supercompat({
-      client: openaiClientAdapter({ openai: realOpenAI }),
-      runAdapter: responsesRunAdapter(),
-    });
+  const client = supercompat({
+    client: openaiClientAdapter({ openai: realOpenAI }),
+    runAdapter: responsesRunAdapter(),
+  });
 
-    const assistant = await client.beta.assistants.create({
-      model: "gpt-4o-mini",
-      instructions: "You are a helpful assistant.",
-    });
+  const assistant = await client.beta.assistants.create({
+    model: "gpt-4o-mini",
+    instructions: "You are a helpful assistant.",
+  });
 
-    const thread = await client.beta.threads.create();
+  const thread = await client.beta.threads.create();
 
-    await client.beta.threads.messages.create(thread.id, {
-      role: "user",
-      content: "What is 2 + 2? Reply with just one number and nothing else.",
-    });
+  await client.beta.threads.messages.create(thread.id, {
+    role: "user",
+    content: "What is 2 + 2? Reply with just one number and nothing else.",
+  });
 
-    await client.beta.threads.runs.createAndPoll(thread.id, {
-      assistant_id: assistant.id,
-    });
+  await client.beta.threads.runs.createAndPoll(thread.id, {
+    assistant_id: assistant.id,
+  });
 
-    const list = await client.beta.threads.messages.list(thread.id);
-    const assistantMessage = list.data
-      .filter((m) => m.role === "assistant")
-      .at(-1);
-    const text = assistantMessage?.content[0].text.value.trim();
-    assert.equal(text, "4");
-  } catch (err: any) {
-    t.skip(err.message);
-  }
+  const list = await client.beta.threads.messages.list(thread.id);
+  const assistantMessage = list.data
+    .filter((m) => m.role === "assistant")
+    .at(-1);
+  const text = assistantMessage?.content[0].text.value.trim();
+  assert.equal(text, "4");
 });
 
 test("responsesRunAdapter maintains conversation across runs", async (t) => {
@@ -106,113 +102,106 @@ test("responsesRunAdapter maintains conversation across runs", async (t) => {
     .at(-1);
   const text = assistantMessage?.content[0].text.value.trim().toLowerCase();
   assert.ok(text.includes("blue"));
-
-  try {
+  if (process.env.DATABASE_URL) {
     const prisma = new PrismaClient();
     const dbThread = await prisma.thread.findUnique({
       where: { id: thread.id },
     });
     assert.ok((dbThread as any)?.openaiConversationId);
     await prisma.$disconnect();
-  } catch {
-    // ignore prisma errors
   }
 });
 
 test("responsesRunAdapter can stream run with tool via OpenAI", async (t) => {
   if (!apiKey)
     return t.skip("TEST_OPENAI_API_KEY is required to run this test");
-  try {
-    const realOpenAI = new OpenAI({
-      apiKey,
-      ...(process.env.HTTPS_PROXY
-        ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
-        : {}),
-    });
+  const realOpenAI = new OpenAI({
+    apiKey,
+    ...(process.env.HTTPS_PROXY
+      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+      : {}),
+  });
 
-    const client = supercompat({
-      client: openaiClientAdapter({ openai: realOpenAI }),
-      runAdapter: responsesRunAdapter(),
-    });
+  const client = supercompat({
+    client: openaiClientAdapter({ openai: realOpenAI }),
+    runAdapter: responsesRunAdapter(),
+  });
 
-    const tools = [
-      {
-        type: "function",
-        function: {
-          name: "get_current_weather",
-          description: "Get the current weather in a given location",
-          parameters: {
-            type: "object",
-            properties: {
-              location: {
-                type: "string",
-                description: "The city and state, e.g. San Francisco, CA",
-              },
-              unit: { type: "string", enum: ["celsius", "fahrenheit"] },
+  const tools = [
+    {
+      type: "function",
+      function: {
+        name: "get_current_weather",
+        description: "Get the current weather in a given location",
+        parameters: {
+          type: "object",
+          properties: {
+            location: {
+              type: "string",
+              description: "The city and state, e.g. San Francisco, CA",
             },
-            required: ["location"],
+            unit: { type: "string", enum: ["celsius", "fahrenheit"] },
           },
+          required: ["location"],
         },
       },
-    ] as OpenAI.Beta.AssistantTool[];
+    },
+  ] as OpenAI.Beta.AssistantTool[];
 
-    const assistant = await client.beta.assistants.create({
-      model: "gpt-4o-mini",
-      instructions: "You are a helpful assistant.",
-      tools,
-    });
+  const assistant = await client.beta.assistants.create({
+    model: "gpt-4o-mini",
+    instructions: "You are a helpful assistant.",
+    tools,
+  });
 
-    const thread = await client.beta.threads.create();
+  const thread = await client.beta.threads.create();
 
-    await client.beta.threads.messages.create(thread.id, {
-      role: "user",
-      content: "What is the weather in SF?",
-    });
+  await client.beta.threads.messages.create(thread.id, {
+    role: "user",
+    content: "What is the weather in SF?",
+  });
 
-    const run = await client.beta.threads.runs.create(thread.id, {
-      assistant_id: assistant.id,
-      instructions:
-        "Use the get_current_weather tool and then answer the message.",
-      stream: true,
-    });
+  const run = await client.beta.threads.runs.create(thread.id, {
+    assistant_id: assistant.id,
+    instructions:
+      "Use the get_current_weather tool and then answer the message.",
+    stream: true,
+  });
 
-    let requiresActionEvent: any;
-    for await (const event of run) {
-      if (event.event === "thread.run.requires_action") {
-        requiresActionEvent = event;
-      }
+  let requiresActionEvent: any;
+  for await (const event of run) {
+    if (event.event === "thread.run.requires_action") {
+      requiresActionEvent = event;
     }
-
-    assert.ok(requiresActionEvent);
-
-    const toolCallId =
-      requiresActionEvent.data.required_action?.submit_tool_outputs
-        .tool_calls[0].id;
-
-    const submit = await client.beta.threads.runs.submitToolOutputs(
-      thread.id,
-      requiresActionEvent.data.id,
-      {
-        stream: true,
-        tool_outputs: [
-          {
-            tool_call_id: toolCallId,
-            output: "70 degrees and sunny.",
-          },
-        ],
-      },
-    );
-
-    for await (const _event of submit) {
-    }
-
-    const list = await client.beta.threads.messages.list(thread.id);
-    const assistantMessage = list.data
-      .filter((m) => m.role === "assistant")
-      .at(-1);
-    const text = assistantMessage?.content[0].text.value.toLowerCase();
-    assert.ok(text?.includes("70 degrees"));
-  } catch (err: any) {
-    t.skip(err.message);
   }
+
+  assert.ok(requiresActionEvent);
+
+  const toolCallId =
+    requiresActionEvent.data.required_action?.submit_tool_outputs
+      .tool_calls[0].id;
+
+  const submit = await client.beta.threads.runs.submitToolOutputs(
+    thread.id,
+    requiresActionEvent.data.id,
+    {
+      stream: true,
+      tool_outputs: [
+        {
+          tool_call_id: toolCallId,
+          output: "70 degrees and sunny.",
+        },
+      ],
+    },
+  );
+
+  for await (const _event of submit) {
+  }
+
+  const list = await client.beta.threads.messages.list(thread.id);
+  const assistantMessage = list.data
+    .filter((m) => m.role === "assistant")
+    .at(-1);
+  const text = assistantMessage?.content[0].text.value.toLowerCase();
+  assert.ok(text?.includes("70 degrees"));
 });
