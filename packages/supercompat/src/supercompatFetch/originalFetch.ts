@@ -1,4 +1,4 @@
-export const originalFetch = ({
+export const originalFetch = async ({
   args,
   client,
 }: {
@@ -14,9 +14,10 @@ export const originalFetch = ({
         ? Object.fromEntries(headersInit.entries())
         : headersInit
 
+    const auth = await client.client.authHeaders()
     const headers = {
       ...(requestHeaders as Record<string, string>),
-      authorization: client.client.defaultHeaders().Authorization,
+      authorization: auth.values.get('Authorization') ?? '',
     }
 
     return client.client.fetch(url, {
