@@ -8,13 +8,14 @@ import {
   MessageWithRun,
 } from '@/types'
 
-export const post = ({
-  openai,
-  runAdapter,
-}: {
-  openai: OpenAI
-  runAdapter: RunAdapterPartobClient
-}) =>
+export const post =
+  ({
+    openai,
+    runAdapter,
+  }: {
+    openai: OpenAI
+    runAdapter: RunAdapterPartobClient
+  }) =>
   async (urlString: string, options: any): Promise<Response> => {
     const url = new URL(urlString)
     const [, threadId] = url.pathname.match(new RegExp(runsRegexp))!
@@ -47,7 +48,7 @@ export const post = ({
       model: body.model || assistant.model,
       instructions: body.instructions || '',
       status: 'queued',
-      tools: body.tools || [],
+      tools: body.tools || (assistant.tools as any) || [],
       response_format: body.response_format || { type: 'text' },
       metadata: body.metadata || {},
     } as any
@@ -56,7 +57,11 @@ export const post = ({
       if (event.event === 'thread.run.completed') {
         run = { ...run, status: 'completed' }
       } else if (event.event === 'thread.run.failed') {
-        run = { ...run, status: 'failed', last_error: event.data.last_error } as any
+        run = {
+          ...run,
+          status: 'failed',
+          last_error: event.data.last_error,
+        } as any
       } else if (event.event === 'thread.run.requires_action') {
         run = {
           ...run,
@@ -101,14 +106,14 @@ export const post = ({
     }
 
     const saveRun = async () => {
+      const minimalRun = { id: run.id, status: run.status }
       thread.metadata = {
         ...(thread.metadata as Record<string, string>),
-        [`run_${run.id}`]: JSON.stringify(run),
+        [`run_${run.id}`]: JSON.stringify(minimalRun),
       }
-      await oai.conversations.update(
-        thread.openaiConversationId as string,
-        { metadata: thread.metadata },
-      )
+      await oai.conversations.update(thread.openaiConversationId as string, {
+        metadata: thread.metadata,
+      })
     }
 
     if (stream) {

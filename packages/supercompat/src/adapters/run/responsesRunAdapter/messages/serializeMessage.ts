@@ -38,7 +38,6 @@ export const serializeMessage = ({
   if (message.role === 'assistant') {
     return [
       {
-        id: message.id,
         role: 'assistant',
         content: [
           {
