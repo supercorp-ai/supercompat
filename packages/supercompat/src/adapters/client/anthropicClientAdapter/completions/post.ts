@@ -183,14 +183,17 @@ export const post = ({
           'Content-Type': 'application/json',
         },
       })
-    } catch (error) {
-      return new Response(JSON.stringify({
-        error,
-      }), {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
+    } catch (error: unknown) {
+      return new Response(
+        JSON.stringify({
+          error,
+        }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+          },
         },
-      })
+      )
     }
   }
