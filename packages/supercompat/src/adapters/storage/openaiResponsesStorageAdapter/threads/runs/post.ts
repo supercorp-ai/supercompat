@@ -2,8 +2,11 @@ import OpenAI from 'openai'
 import dayjs from 'dayjs'
 import { uid } from 'radash'
 import { runsRegexp } from '@/lib/runs/runsRegexp'
-import { RunAdapterPartobClient, ThreadWithConversationId } from '@/types'
-import { runs, threads } from '../../state'
+import {
+  RunAdapterPartobClient,
+  ThreadWithConversationId,
+  MessageWithRun,
+} from '@/types'
 
 export const post = ({
   openai,
@@ -11,79 +14,147 @@ export const post = ({
 }: {
   openai: OpenAI
   runAdapter: RunAdapterPartobClient
-}) => async (urlString: string, options: any): Promise<Response> => {
-  const url = new URL(urlString)
-  const [, threadId] = url.pathname.match(new RegExp(runsRegexp))!
-  const body = JSON.parse(options.body)
-  const { assistant_id, stream } = body
+}) =>
+  async (urlString: string, options: any): Promise<Response> => {
+    const url = new URL(urlString)
+    const [, threadId] = url.pathname.match(new RegExp(runsRegexp))!
+    const body = JSON.parse(options.body)
+    const { assistant_id, stream } = body
 
-  const thread = threads.get(threadId) as ThreadWithConversationId | undefined
-  if (!thread) {
-    return new Response('Thread not found', { status: 404 })
-  }
+    const conversation = await openai.conversations
+      .retrieve(threadId)
+      .catch(() => null)
+    if (!conversation) return new Response('Thread not found', { status: 404 })
 
-  const assistant = await openai.beta.assistants.retrieve(assistant_id)
-
-  const run: any = {
-    id: `run_${uid(24)}`,
-    object: 'thread.run',
-    created_at: dayjs().unix(),
-    thread_id: threadId,
-    assistant_id,
-    model: body.model || assistant.model,
-    instructions: body.instructions || '',
-    status: 'queued' as const,
-    tools: body.tools || [],
-    response_format: body.response_format || { type: 'text' },
-    metadata: body.metadata || {},
-  }
-
-  runs.set(run.id, run)
-
-  const onEvent = async (event: OpenAI.Beta.AssistantStreamEvent) => {
-    if (event.event === 'thread.run.completed') {
-      runs.set(run.id, { ...run, status: 'completed' })
-    } else if (event.event === 'thread.run.failed') {
-      runs.set(run.id, { ...run, status: 'failed', last_error: event.data.last_error })
-    } else if (event.event === 'thread.run.requires_action') {
-      runs.set(run.id, { ...run, status: 'requires_action', required_action: event.data.required_action })
+    const thread: ThreadWithConversationId = {
+      id: threadId,
+      object: 'thread',
+      created_at: conversation.created_at ?? dayjs().unix(),
+      metadata: (conversation.metadata ?? {}) as Record<string, string>,
+      tool_resources: null,
+      openaiConversationId: threadId,
     }
-    const conv = (event.data as any)?.metadata?.openaiConversationId
-    if (conv) {
-      thread.openaiConversationId = conv
-      threads.set(thread.id, thread)
+
+    const assistant = await openai.beta.assistants.retrieve(assistant_id)
+
+    let run: OpenAI.Beta.Threads.Run = {
+      id: `run_${uid(24)}`,
+      object: 'thread.run',
+      created_at: dayjs().unix(),
+      thread_id: threadId,
+      assistant_id,
+      model: body.model || assistant.model,
+      instructions: body.instructions || '',
+      status: 'queued',
+      tools: body.tools || [],
+      response_format: body.response_format || { type: 'text' },
+      metadata: body.metadata || {},
+    } as any
+
+    await openai.conversations.update(threadId, {
+      metadata: { ...(thread.metadata as Record<string, string>), [`run_${run.id}`]: JSON.stringify(run) },
+    })
+    thread.metadata = {
+      ...(thread.metadata as Record<string, string>),
+      [`run_${run.id}`]: JSON.stringify(run),
     }
-    return event.data
-  }
 
-  const getThread = async () => thread
-  const getMessages = async () => []
+    const onEvent = async (event: OpenAI.Beta.AssistantStreamEvent) => {
+      if (event.event === 'thread.run.completed') {
+        run = { ...run, status: 'completed' }
+      } else if (event.event === 'thread.run.failed') {
+        run = { ...run, status: 'failed', last_error: event.data.last_error } as any
+      } else if (event.event === 'thread.run.requires_action') {
+        run = {
+          ...run,
+          status: 'requires_action',
+          required_action: event.data.required_action,
+        } as any
+      }
+      const conv = (event.data as any)?.metadata?.openaiConversationId
+      if (conv && conv !== thread.openaiConversationId) {
+        thread.openaiConversationId = conv
+      }
+      await openai.conversations.update(thread.openaiConversationId as string, {
+        metadata: {
+          ...(thread.metadata as Record<string, string>),
+          [`run_${run.id}`]: JSON.stringify(run),
+        },
+      })
+      thread.metadata = {
+        ...(thread.metadata as Record<string, string>),
+        [`run_${run.id}`]: JSON.stringify(run),
+      }
+      return event.data
+    }
 
-  if (stream) {
-    const readableStream = new ReadableStream({
-      async start(controller) {
-        await runAdapter({
-          run,
-          onEvent: (event) => {
-            controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
-            return onEvent(event)
-          },
-          getMessages,
-          getThread,
+    const getThread = async () => thread
+    const getMessages = async (): Promise<MessageWithRun[]> => {
+      const items = await openai.conversations.items.list(
+        thread.openaiConversationId as string,
+      )
+      return (items.data || [])
+        .filter((i: any) => i.type === 'message')
+        .map((item: any) => ({
+          id: item.id,
+          object: 'thread.message',
+          created_at: item.created_at ?? dayjs().unix(),
+          thread_id: threadId,
+          role: item.role,
+          content: (item.content || []).map((c: any) => ({
+            type: 'text',
+            text: { value: c.text, annotations: [] },
+          })),
+          metadata: null,
+          assistant_id: null,
+          run_id: null,
+          attachments: [],
+          status: 'completed',
+          completed_at: item.completed_at ?? dayjs().unix(),
+          incomplete_at: null,
+          incomplete_details: null,
+          run: null,
+        })) as MessageWithRun[]
+    }
+
+    const finalize = async () => {
+      if (run.status !== 'requires_action') {
+        const { [`run_${run.id}`]: _ignored, ...rest } =
+          thread.metadata as Record<string, string>
+        await openai.conversations.update(thread.openaiConversationId as string, {
+          metadata: rest,
         })
-        controller.close()
-      },
-    })
+        thread.metadata = rest
+      }
+    }
 
-    return new Response(readableStream, {
-      headers: { 'Content-Type': 'text/event-stream' },
+    if (stream) {
+      const readableStream = new ReadableStream({
+        async start(controller) {
+          await runAdapter({
+            run,
+            onEvent: (event) => {
+              controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
+              return onEvent(event)
+            },
+            getMessages,
+            getThread,
+          })
+          await finalize()
+          controller.close()
+        },
+      })
+
+      return new Response(readableStream, {
+        headers: { 'Content-Type': 'text/event-stream' },
+      })
+    }
+
+    await runAdapter({ run, onEvent, getMessages, getThread })
+    await finalize()
+
+    return new Response(JSON.stringify(run), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
     })
   }
-
-  await runAdapter({ run, onEvent, getMessages, getThread })
-
-  return new Response(JSON.stringify(runs.get(run.id)), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  })
-}

@@ -1,7 +1,6 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
-import { HttpsProxyAgent } from 'https-proxy-agent'
 import { ProxyAgent, setGlobalDispatcher } from 'undici'
 import {
   responsesRunAdapter,
@@ -18,12 +17,7 @@ if (process.env.HTTPS_PROXY) {
 }
 
 test('responsesRunAdapter can create thread message and run via OpenAI', async (t) => {
-  const realOpenAI = new OpenAI({
-    apiKey,
-    ...(process.env.HTTPS_PROXY
-      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
-      : {}),
-  })
+  const realOpenAI = new OpenAI({ apiKey })
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
@@ -57,12 +51,7 @@ test('responsesRunAdapter can create thread message and run via OpenAI', async (
 })
 
 test('responsesRunAdapter maintains conversation across runs', async (t) => {
-  const realOpenAI = new OpenAI({
-    apiKey,
-    ...(process.env.HTTPS_PROXY
-      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
-      : {}),
-  })
+  const realOpenAI = new OpenAI({ apiKey })
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
@@ -118,12 +107,7 @@ test('responsesRunAdapter maintains conversation across runs', async (t) => {
 })
 
 test('responsesRunAdapter can stream run with tool via OpenAI', async (t) => {
-  const realOpenAI = new OpenAI({
-    apiKey,
-    ...(process.env.HTTPS_PROXY
-      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
-      : {}),
-  })
+  const realOpenAI = new OpenAI({ apiKey })
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
@@ -214,12 +198,7 @@ test('responsesRunAdapter can stream run with tool via OpenAI', async (t) => {
 })
 
 test('openaiResponsesStorageAdapter works with polling', async (t) => {
-  const realOpenAI = new OpenAI({
-    apiKey,
-    ...(process.env.HTTPS_PROXY
-      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
-      : {}),
-  })
+  const realOpenAI = new OpenAI({ apiKey })
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
@@ -254,12 +233,7 @@ test('openaiResponsesStorageAdapter works with polling', async (t) => {
 })
 
 test('openaiResponsesStorageAdapter streams with tool', async (t) => {
-  const realOpenAI = new OpenAI({
-    apiKey,
-    ...(process.env.HTTPS_PROXY
-      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
-      : {}),
-  })
+  const realOpenAI = new OpenAI({ apiKey })
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),

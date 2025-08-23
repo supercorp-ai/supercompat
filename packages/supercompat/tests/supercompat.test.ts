@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
 import type { ChatCompletion } from 'openai/resources/chat/completions'
-import { HttpsProxyAgent } from 'https-proxy-agent'
+import { ProxyAgent, setGlobalDispatcher } from 'undici'
 import {
   supercompat,
   openaiClientAdapter,
@@ -11,13 +11,12 @@ import {
 
 const apiKey = process.env.TEST_OPENAI_API_KEY
 
+if (process.env.HTTPS_PROXY) {
+  setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY))
+}
+
 test('supercompat can create thread message and run via OpenAI', async (t) => {
-  const realOpenAI = new OpenAI({
-    apiKey,
-    ...(process.env.HTTPS_PROXY
-      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
-      : {}),
-  })
+  const realOpenAI = new OpenAI({ apiKey })
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
   })
@@ -49,12 +48,7 @@ test('supercompat can create thread message and run via OpenAI', async (t) => {
 })
 
 test('supercompat can list models via OpenAI', async (t) => {
-  const realOpenAI = new OpenAI({
-    apiKey,
-    ...(process.env.HTTPS_PROXY
-      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY as string) }
-      : {}),
-  })
+  const realOpenAI = new OpenAI({ apiKey })
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
   })
@@ -69,12 +63,7 @@ test('supercompat can list models via OpenAI', async (t) => {
 })
 
 test('supercompat streaming run with tool using completionsRunAdapter', async (t) => {
-  const realOpenAI = new OpenAI({
-    apiKey,
-    ...(process.env.HTTPS_PROXY
-      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY as string) }
-      : {}),
-  })
+  const realOpenAI = new OpenAI({ apiKey })
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: completionsRunAdapter(),

@@ -7,4 +7,4 @@ export const threads = ({
   prisma: PrismaClient
 }) => ({
   post: post({ prisma }),
-})
+}) as { post: (url: string, options: any) => Promise<Response> }

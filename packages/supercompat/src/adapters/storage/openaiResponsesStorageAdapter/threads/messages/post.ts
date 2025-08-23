@@ -11,26 +11,15 @@ export const post = ({ openai }: { openai: OpenAI }) => async (
   const body = JSON.parse(options.body)
   const content = typeof body.content === 'string' ? body.content : ''
 
-  const base = (openai.baseURL || 'https://api.openai.com/v1').replace(/\/$/, '')
-  await fetch(
-    `${base}/conversations/${threadId}/items`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openai.apiKey}`,
-        'Content-Type': 'application/json',
+  await openai.conversations.items.create(threadId, {
+    items: [
+      {
+        type: 'message',
+        role: body.role,
+        content: [{ type: 'input_text', text: content }],
       },
-      body: JSON.stringify({
-        items: [
-          {
-            type: 'message',
-            role: body.role,
-            content: [{ type: 'input_text', text: content }],
-          },
-        ],
-      }),
-    },
-  )
+    ],
+  })
 
   return new Response(
     JSON.stringify({
