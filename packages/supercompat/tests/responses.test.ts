@@ -17,7 +17,6 @@ if (process.env.HTTPS_PROXY) {
 }
 
 test('responsesRunAdapter can create thread message and run via OpenAI', async (t) => {
-  if (!apiKey) return t.skip('TEST_OPENAI_API_KEY is required to run this test')
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -57,8 +56,6 @@ test('responsesRunAdapter can create thread message and run via OpenAI', async (
 })
 
 test('responsesRunAdapter maintains conversation across runs', async (t) => {
-  if (!apiKey) return t.skip('TEST_OPENAI_API_KEY is required to run this test')
-
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -111,13 +108,15 @@ test('responsesRunAdapter maintains conversation across runs', async (t) => {
     const dbThread = await prisma.thread.findUnique({
       where: { id: thread.id },
     })
-    assert.ok((dbThread as any)?.openaiConversationId)
+    assert.ok(
+      (dbThread as { openaiConversationId: string | null } | null)
+        ?.openaiConversationId,
+    )
     await prisma.$disconnect()
   }
 })
 
 test('responsesRunAdapter can stream run with tool via OpenAI', async (t) => {
-  if (!apiKey) return t.skip('TEST_OPENAI_API_KEY is required to run this test')
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -171,10 +170,12 @@ test('responsesRunAdapter can stream run with tool via OpenAI', async (t) => {
     stream: true,
   })
 
-  let requiresActionEvent: any
+  let requiresActionEvent:
+    | OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
+    | undefined
   for await (const event of run) {
     if (event.event === 'thread.run.requires_action') {
-      requiresActionEvent = event
+      requiresActionEvent = event as OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
     }
   }
 

@@ -14,14 +14,14 @@
     "@swc/core": "^1.10.1",
     "@types/node": "^22.15.18",
     "https-proxy-agent": "^7.0.6",
-    "undici": "^7.15.0",
-    "prettier": "^3.4.2",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.2",
+    "prettier": "^3.4.2",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.3",
     "turbo": "^2.3.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "undici": "^7.15.0"
   },
   "engines": {
     "node": ">=18"
@@ -33,6 +33,5 @@
   ],
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown"
-  },
-  "dependencies": {}
+  }
 }

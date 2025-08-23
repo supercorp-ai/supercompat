@@ -4,7 +4,7 @@ export const get = ({
   anthropic,
 }: {
   anthropic: Anthropic
-}) => async (_url: string, _options: any) => {
+}) => async (_url: string, _options: RequestInit) => {
   try {
     const response = await anthropic.models.list()
 
@@ -20,7 +20,7 @@ export const get = ({
         'Content-Type': 'application/json',
       },
     })
-  } catch (error) {
+  } catch (error: unknown) {
     return new Response(JSON.stringify({
       error,
     }), {

@@ -1,6 +1,11 @@
 import type OpenAI from 'openai'
+import type { ChatCompletionMessageToolCall } from 'openai/resources/chat/completions'
 import { MessageStatus, RunStepType } from '@/types/prisma'
 import type { PrismaClient } from '@prisma/client'
+
+type MessageWithToolCalls = OpenAI.Beta.Threads.Messages.Message & {
+  tool_calls?: ChatCompletionMessageToolCall[]
+}
 
 export const threadMessageCompleted = async ({
   prisma,
@@ -13,7 +18,9 @@ export const threadMessageCompleted = async ({
 }) => {
   controller.enqueue(event)
 
-  if ((event.data as any).tool_calls) {
+  const data = event.data as MessageWithToolCalls
+
+  if (data.tool_calls) {
     const latestRunStep = await prisma.runStep.findFirst({
       where: {
         threadId: event.data.thread_id,
@@ -35,7 +42,7 @@ export const threadMessageCompleted = async ({
       data: {
         stepDetails: {
           type: 'tool_calls',
-          tool_calls: (event.data as any).tool_calls,
+          tool_calls: data.tool_calls,
         },
       },
     })
@@ -47,10 +54,8 @@ export const threadMessageCompleted = async ({
     },
     data: {
       status: MessageStatus.COMPLETED,
-      ...(event.data.content ? { content: event.data.content } : {}),
-      ...((event.data as any).tool_calls
-        ? { toolCalls: (event.data as any).tool_calls }
-        : {}),
+      ...(data.content ? { content: data.content } : {}),
+      ...(data.tool_calls ? { toolCalls: data.tool_calls } : {}),
     },
   })
 }

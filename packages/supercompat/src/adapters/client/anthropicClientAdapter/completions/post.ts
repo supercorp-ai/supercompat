@@ -12,54 +12,61 @@ export const post = ({
   anthropic,
 }: {
   anthropic: Anthropic
-}) => async (_url: string, options: any) => {
-  const body = JSON.parse(options.body)
+}) =>
+  async (
+    _url: string,
+    options: RequestInit & { body: string },
+  ) => {
+    const body = JSON.parse(options.body)
 
   const messages = body.messages as OpenAI.ChatCompletionMessageParam[]
   const [systemMessages, otherMessages] = fork(messages, (message) => message.role === 'system')
   const system = systemMessages.map((message) => message.content).join('\n')
 
-  const chatMessages = nonEmptyMessages({
-    messages: firstUserMessages({
-      messages: alternatingMessages({
-        messages: otherMessages,
+    const chatMessages = nonEmptyMessages({
+      messages: firstUserMessages({
+        messages: alternatingMessages({
+          messages: otherMessages,
+        }),
       }),
-    }),
-  })
+    })
 
-  const resultOptions = {
-    ...omit(body, ['response_format']),
-    stream: body.stream ? isEmpty(body.tools) : false,
-    system,
-    messages: serializeMessages({
+    // @ts-ignore
+    const serializedMessages = serializeMessages({
       messages: chatMessages,
-    }),
-    max_tokens: 4096,
-    tools: serializeTools({
-      tools: body.tools,
-    }),
-  }
+    })
+
+    // @ts-ignore
+    const resultOptions = {
+      ...omit(body, ['response_format']),
+      stream: body.stream ? isEmpty(body.tools) : false,
+      system,
+      messages: serializedMessages,
+      max_tokens: 4096,
+      tools: serializeTools({
+        tools: body.tools,
+      }),
+    } as any
 
   if (body.stream) {
-    // @ts-ignore-next-line
-    const response = await anthropic.messages.stream(resultOptions)
+    const response = await anthropic.messages.stream(resultOptions as any)
 
     const stream = new ReadableStream({
       async start(controller) {
         for await (const chunk of response) {
           if (chunk.type === 'content_block_delta') {
-            const delta = chunk.delta.type === 'input_json_delta' ? {
-              tool_calls: [
-                {
-                  index: 0,
-                  function: {
-                    arguments: chunk.delta.partial_json,
+              const delta = (chunk.delta as any).type === 'input_json_delta' ? {
+                tool_calls: [
+                  {
+                    index: 0,
+                    function: {
+                      arguments: (chunk.delta as any).partial_json,
+                    },
                   },
-                },
-              ]
-            } : {
-              content: chunk.delta.text,
-            }
+                ]
+              } : {
+                content: (chunk.delta as any).text,
+              }
 
             const messageDelta = {
               id: `chatcmpl-${uid(29)}`,
@@ -74,22 +81,22 @@ export const post = ({
 
             controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
           } else if (chunk.type === 'content_block_start') {
-            const delta = chunk.content_block.type === 'tool_use' ? {
-              content: null,
-              tool_calls: [
-                {
-                  index: 0,
-                  id: chunk.content_block.id,
-                  type: 'function',
-                  function: {
-                    name: chunk.content_block.name,
-                    arguments: '',
+              const delta = (chunk.content_block as any).type === 'tool_use' ? {
+                content: null,
+                tool_calls: [
+                  {
+                    index: 0,
+                    id: (chunk.content_block as any).id,
+                    type: 'function',
+                    function: {
+                      name: (chunk.content_block as any).name,
+                      arguments: '',
+                    }
                   }
-                }
-              ],
-            } : {
-              content: chunk.content_block.text,
-            }
+                ],
+              } : {
+                content: (chunk.content_block as any).text,
+              }
 
             const messageDelta = {
               id: `chatcmpl-${uid(29)}`,
@@ -132,8 +139,7 @@ export const post = ({
     })
   } else {
     try {
-      // @ts-ignore-next-line
-      const data = await anthropic.messages.create(resultOptions)
+      const data = await anthropic.messages.create(resultOptions as any)
 
       return new Response(JSON.stringify({
         data,
@@ -143,7 +149,7 @@ export const post = ({
           'Content-Type': 'application/json',
         },
       })
-    } catch (error) {
+    } catch (error: unknown) {
       return new Response(JSON.stringify({
         error,
       }), {

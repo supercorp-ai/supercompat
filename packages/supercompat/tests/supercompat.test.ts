@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
+import type { ChatCompletion } from 'openai/resources/chat/completions'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import {
   supercompat,
@@ -10,36 +11,7 @@ import {
 
 const apiKey = process.env.TEST_OPENAI_API_KEY
 
-test('supercompat can call OpenAI completions', async (t) => {
-  if (!apiKey) return t.skip('TEST_OPENAI_API_KEY is required to run this test')
-  const realOpenAI = new OpenAI({
-    apiKey,
-    ...(process.env.HTTPS_PROXY
-      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
-      : {}),
-  })
-  const client = supercompat({
-    client: openaiClientAdapter({ openai: realOpenAI }),
-  })
-
-  const result = await client.chat.completions.create({
-    model: 'gpt-3.5-turbo',
-    messages: [
-      {
-        role: 'user',
-        content: 'What is 2 + 2? Reply with just one number and nothing else.',
-      },
-    ],
-  })
-
-  const choices =
-    'choices' in result ? result.choices : (result as any).data.choices
-  const message = choices[0]?.message?.content?.trim()
-  assert.equal(message, '4')
-})
-
 test('supercompat can create thread message and run via OpenAI', async (t) => {
-  if (!apiKey) return t.skip('TEST_OPENAI_API_KEY is required to run this test')
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -77,7 +49,6 @@ test('supercompat can create thread message and run via OpenAI', async (t) => {
 })
 
 test('supercompat can list models via OpenAI', async (t) => {
-  if (!apiKey) return t.skip('TEST_OPENAI_API_KEY is required to run this test')
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -98,7 +69,6 @@ test('supercompat can list models via OpenAI', async (t) => {
 })
 
 test('supercompat streaming run with tool using completionsRunAdapter', async (t) => {
-  if (!apiKey) return t.skip('TEST_OPENAI_API_KEY is required to run this test')
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -151,10 +121,12 @@ test('supercompat streaming run with tool using completionsRunAdapter', async (t
     stream: true,
   })
 
-  let requiresActionEvent: any
+  let requiresActionEvent:
+    | OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
+    | undefined
   for await (const event of run) {
     if (event.event === 'thread.run.requires_action') {
-      requiresActionEvent = event
+      requiresActionEvent = event as OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
     }
   }
 

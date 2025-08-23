@@ -1,23 +1,38 @@
 import type OpenAI from 'openai'
+import type { ResponseInputItem } from 'openai/resources/responses/responses'
 import { MessageWithRun } from '@/types'
+
+interface ToolMessage {
+  id: string
+  role: 'tool'
+  content: unknown
+  tool_call_id?: string
+}
+
+type MessageForSerialization = MessageWithRun | ToolMessage
 
 export const serializeMessage = ({
   message,
 }: {
-  message: MessageWithRun
-}) => {
-  const contentBlocks = message.content as unknown as OpenAI.Beta.Threads.Messages.TextContentBlock[]
+  message: MessageForSerialization
+}): ResponseInputItem[] => {
+  const contentBlocks =
+    message.content as OpenAI.Beta.Threads.Messages.TextContentBlock[]
   const text = contentBlocks.map((c) => c.text.value).join('\n')
 
-  if ((message as any).role === 'tool') {
-    const output = typeof message.content === 'string' ? message.content : JSON.stringify(message.content)
+  if (message.role === 'tool') {
+    const toolMessage = message as ToolMessage
+    const output =
+      typeof toolMessage.content === 'string'
+        ? toolMessage.content
+        : JSON.stringify(toolMessage.content)
     return [
       {
         type: 'function_call_output',
-        call_id: (message as any).tool_call_id ?? message.id,
+        call_id: toolMessage.tool_call_id ?? toolMessage.id,
         output,
       },
-    ]
+    ] as ResponseInputItem[]
   }
 
   if (message.role === 'assistant') {
@@ -34,7 +49,7 @@ export const serializeMessage = ({
         status: 'completed',
         type: 'message',
       },
-    ]
+    ] as ResponseInputItem[]
   }
 
   return [
@@ -48,5 +63,5 @@ export const serializeMessage = ({
       ],
       type: 'message',
     },
-  ]
+  ] as ResponseInputItem[]
 }
