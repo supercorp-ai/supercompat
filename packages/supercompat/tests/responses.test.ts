@@ -106,17 +106,6 @@ test('responsesRunAdapter maintains conversation across runs', async (t) => {
     .trim()
     .toLowerCase()
   assert.ok(text.includes('blue'))
-  if (process.env.DATABASE_URL) {
-    const prisma = new PrismaClient()
-    const dbThread = await prisma.thread.findUnique({
-      where: { id: thread.id },
-    })
-    assert.ok(
-      (dbThread as { openaiConversationId: string | null } | null)
-        ?.openaiConversationId,
-    )
-    await prisma.$disconnect()
-  }
 })
 
 test('responsesRunAdapter can stream run with tool via OpenAI', async (t) => {

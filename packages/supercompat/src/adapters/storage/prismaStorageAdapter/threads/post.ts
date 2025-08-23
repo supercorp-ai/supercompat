@@ -23,13 +23,16 @@ export const post = ({
   const thread = await prisma.thread.create({
     data: {
       metadata,
-      ...(metadata.assistantId ? ({
-        assistant: {
-          connect: {
-            id: metadata.assistantId,
-          },
-        },
-      }) : {}),
+      ...(metadata.assistantId
+        ? {
+            assistant: {
+              connectOrCreate: {
+                where: { id: metadata.assistantId },
+                create: { id: metadata.assistantId },
+              },
+            },
+          }
+        : {}),
       messages: {
         create: messages.map((message: OpenAI.Beta.ThreadCreateParams.Message, index: number) => ({
           role: message.role === 'user' ? 'USER' : 'ASSISTANT',
