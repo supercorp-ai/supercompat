@@ -23,14 +23,5 @@ export const threadRunCompleted = async ({
     },
   })
 
-  if (event.data.metadata?.openaiConversationId) {
-    await prisma.thread.update({
-      where: { id: event.data.thread_id },
-      data: {
-        openaiConversationId: event.data.metadata.openaiConversationId,
-      },
-    })
+    return runRecord
   }
-
-  return runRecord
-}

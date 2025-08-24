@@ -5,6 +5,7 @@ import type OpenAI from 'openai'
 import { ProxyAgent, setGlobalDispatcher } from 'undici'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import { PrismaClient } from '@prisma/client'
+import dns from 'node:dns'
 import {
   supercompat,
   groqClientAdapter,
@@ -13,6 +14,8 @@ import {
 } from '../src/index'
 
 const groqKey = process.env.GROQ_API_KEY!
+
+dns.setDefaultResultOrder('ipv4first')
 
 if (process.env.HTTPS_PROXY) {
   setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY))
@@ -38,7 +41,9 @@ test('supercompat can run via Groq', async () => {
     instructions: 'You are a helpful assistant.',
   })
 
-  const thread = await client.beta.threads.create()
+  const thread = await prisma.thread.create({
+    data: { assistantId: assistant.id },
+  })
 
   await client.beta.threads.messages.create(thread.id, {
     role: 'user',

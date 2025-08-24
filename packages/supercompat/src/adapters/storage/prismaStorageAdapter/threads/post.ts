@@ -17,14 +17,13 @@ export const post =
 
     const messages = body.messages || []
     const metadata = body.metadata || {}
-
     const initialCreatedAt = dayjs()
       .subtract(messages.length, 'seconds')
       .format()
 
     const thread = await prisma.thread.create({
       data: {
-        metadata,
+        metadata: metadata as any,
         messages: {
           create: messages.map(
             (
@@ -41,13 +40,13 @@ export const post =
                   },
                 },
               ],
-              attachments: message.attachments,
-              metadata: message.metadata,
+              attachments: message.attachments as any,
+              metadata: message.metadata as any,
               createdAt: dayjs(initialCreatedAt).add(index, 'seconds').toDate(),
             }),
-          ),
+          ) as any,
         },
-      },
+      } as any,
     })
 
     return new Response(JSON.stringify(serializeThread({ thread })), {

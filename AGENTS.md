@@ -32,3 +32,4 @@
 - Use two spaces for indentation, single quotes for strings, and omit semicolons.
 - Avoid barrel files; import helpers directly from their files.
 - Prefer ripgrep (`rg`) over recursive `grep`.
+- Avoid nested ternary expressions; extract complex logic into helper functions instead.

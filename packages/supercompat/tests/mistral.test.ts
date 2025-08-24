@@ -38,7 +38,9 @@ test('supercompat can run via Mistral', async () => {
     instructions: 'You are a helpful assistant.',
   })
 
-  const thread = await client.beta.threads.create()
+  const thread = await prisma.thread.create({
+    data: { assistantId: assistant.id },
+  })
 
   await client.beta.threads.messages.create(thread.id, {
     role: 'user',

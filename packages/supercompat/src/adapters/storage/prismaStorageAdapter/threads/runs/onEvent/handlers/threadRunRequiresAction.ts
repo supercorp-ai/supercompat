@@ -13,24 +13,15 @@ export const threadRunRequiresAction = async ({
 }) => {
   controller.enqueue(event)
 
-  const runRecord = await prisma.run.update({
-    where: {
-      id: event.data.id,
-    },
-    data: {
-      status: RunStatus.REQUIRES_ACTION,
-      requiredAction: event.data.required_action,
-    },
-  })
-
-  if (event.data.metadata?.openaiConversationId) {
-    await prisma.thread.update({
-      where: { id: event.data.thread_id },
+    const runRecord = await prisma.run.update({
+      where: {
+        id: event.data.id,
+      },
       data: {
-        openaiConversationId: event.data.metadata.openaiConversationId,
+        status: RunStatus.REQUIRES_ACTION,
+        requiredAction: event.data.required_action as any,
       },
     })
-  }
 
-  return runRecord
-}
+    return runRecord
+  }

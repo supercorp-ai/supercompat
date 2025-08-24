@@ -1,8 +1,8 @@
-import type { PrismaClient } from '@prisma/client'
+import type { PrismaClient, Message, Run, RunStep } from '@prisma/client'
 import { serializeMessage } from '../messages/serializeMessage'
 import { serializeRunStep } from './steps/serializeRunStep'
 import { serializeRun } from './serializeRun'
-import type { Run, MessageWithRun, RunStep } from '@/types/prisma'
+import type { MessageWithRun as OpenAIMessageWithRun } from '@/types'
 
 const getTake = ({
   run,
@@ -40,7 +40,7 @@ export const getMessages = ({
     run,
   })
 
-  const messages = await prisma.message.findMany({
+  const messages = (await prisma.message.findMany({
     where: {
       threadId: run.threadId,
     },
@@ -55,9 +55,9 @@ export const getMessages = ({
       createdAt: 'asc',
     },
     ...(take ? { take } : {}),
-  })
+  })) as (Message & { run: (Run & { runSteps: RunStep[] }) | null })[]
 
-  return messages.map((message: MessageWithRun) => ({
+  return messages.map((message) => ({
     ...serializeMessage({ message }),
     run: message.run ? ({
       ...serializeRun({ run: message.run }),
@@ -65,5 +65,5 @@ export const getMessages = ({
         serializeRunStep({ runStep })
       )),
     }) : null,
-  }))
+  })) as OpenAIMessageWithRun[]
 }
