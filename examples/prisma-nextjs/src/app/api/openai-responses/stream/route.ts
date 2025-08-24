@@ -78,9 +78,9 @@ export const GET = async () => {
   const toolCallId = requiresActionEvent.data.required_action?.submit_tool_outputs.tool_calls[0].id
 
   const submit = await client.beta.threads.runs.submitToolOutputs(
-    thread.id,
     requiresActionEvent.data.id,
     {
+      thread_id: thread.id,
       stream: true,
       tool_outputs: [
         {
