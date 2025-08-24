@@ -24,6 +24,13 @@ export const post =
     const thread = await prisma.thread.create({
       data: {
         metadata: metadata as any,
+        ...(metadata.assistantId ? ({
+          assistant: {
+            connect: {
+              id: metadata.assistantId,
+            },
+          },
+        }) : {}),
         messages: {
           create: messages.map(
             (

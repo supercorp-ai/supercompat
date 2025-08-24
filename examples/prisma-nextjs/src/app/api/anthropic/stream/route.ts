@@ -93,6 +93,7 @@ export const GET = async () => {
   let requiresActionEvent
 
   for await (const event of run) {
+    console.dir({ event }, { depth: null })
     if (event.event === 'thread.run.requires_action') {
       requiresActionEvent = event
     }
