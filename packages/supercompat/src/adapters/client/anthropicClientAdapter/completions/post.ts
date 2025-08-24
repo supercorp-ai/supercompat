@@ -1,6 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import type OpenAI from 'openai'
-import { uid, fork, omit, isEmpty } from 'radash'
+import { uid, fork, omit } from 'radash'
 import { nonEmptyMessages } from '@/lib/messages/nonEmptyMessages'
 import { alternatingMessages } from '@/lib/messages/alternatingMessages'
 import { firstUserMessages } from '@/lib/messages/firstUserMessages'
@@ -52,7 +52,7 @@ export const post = ({
       }) as unknown as Anthropic.Messages.ToolUnion[],
     }
 
-    if (body.stream && isEmpty(body.tools)) {
+    if (body.stream) {
       const response = await anthropic.messages.stream(
         baseOptions as Anthropic.Messages.MessageStreamParams,
       )

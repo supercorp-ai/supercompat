@@ -35,6 +35,5 @@ export const serializeRun = ({
   incomplete_details: null,
   max_completion_tokens: null,
   max_prompt_tokens: null,
-  tool_choice: 'auto',
   parallel_tool_calls: true,
-})
+} as OpenAI.Beta.Threads.Run)
