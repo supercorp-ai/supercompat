@@ -255,7 +255,7 @@ export const completionsRunAdapter = () => async ({
     },
   })
 
-  if (isEmpty(message.toolCalls)) {
+  if (isEmpty(currentToolCalls)) {
     return onEvent({
       event: 'thread.run.completed',
       data: {
@@ -274,7 +274,7 @@ export const completionsRunAdapter = () => async ({
       required_action: {
         type: 'submit_tool_outputs',
         submit_tool_outputs: {
-          tool_calls: message.toolCalls,
+          tool_calls: currentToolCalls,
         },
       },
     },
