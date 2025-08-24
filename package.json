@@ -8,7 +8,7 @@
     "lint:ts": "tsc -p packages/supercompat/tsconfig.json --noEmit",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "test": "npx tsx --tsconfig tsconfig.test.json --test packages/supercompat/tests/*.test.ts",
-    "test:example-env": "npx env-cmd -f examples/prisma-nextjs/.env npm test",
+    "test:env": "npx env-cmd -f examples/prisma-nextjs/.env npm test",
     "prepare": "husky",
     "setup:prisma": "createdb supercompat_test || true && DATABASE_URL=postgresql://postgres:postgres@localhost:5432/supercompat_test npx prisma migrate deploy --schema examples/prisma-nextjs/prisma/schema.prisma && DATABASE_URL=postgresql://postgres:postgres@localhost:5432/supercompat_test npx prisma generate --schema examples/prisma-nextjs/prisma/schema.prisma && cp -r examples/prisma-nextjs/node_modules/.prisma packages/supercompat/node_modules/ && cp -r examples/prisma-nextjs/node_modules/@prisma packages/supercompat/node_modules/"
   },
