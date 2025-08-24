@@ -1,5 +1,4 @@
 import type OpenAI from 'openai'
-// @ts-ignore-next-line
 import type { PrismaClient, Run } from '@prisma/client'
 import { assign, last } from 'radash'
 import { runsRegexp } from '@/lib/runs/runsRegexp'
@@ -30,15 +29,15 @@ export const get = ({
 
   const pageSize = parseInt(limit, 10)
 
-  const runsPlusOne = await prisma.run.findMany({
-    where: { threadId },
-    take: pageSize + 1,
-    orderBy: { createdAt: order },
-    ...(after && {
-      skip: 1,
-      cursor: { id: after },
-    }),
-  }) as Run[]
+    const runsPlusOne = await prisma.run.findMany({
+      where: { threadId },
+      take: pageSize + 1,
+      orderBy: { createdAt: order as any },
+      ...(after && {
+        skip: 1,
+        cursor: { id: after },
+      }),
+    }) as Run[]
 
   const runs = runsPlusOne.slice(0, pageSize)
 

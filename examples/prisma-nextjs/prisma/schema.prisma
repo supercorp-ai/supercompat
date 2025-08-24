@@ -16,8 +16,8 @@ datasource db {
 
 model Thread {
   id  String @id @default(dbgenerated("gen_random_uuid()"))
-  assistantId String
-  assistant Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  assistantId String?
+  assistant Assistant? @relation(fields: [assistantId], references: [id], onDelete: Cascade)
   metadata Json?
   messages Message[]
   runs Run[]
@@ -142,6 +142,8 @@ model RunStep {
 
 model Assistant {
   id  String @id @default(dbgenerated("gen_random_uuid()"))
+  model String?
+  instructions String?
   threads Thread[]
   runs Run[]
   runSteps RunStep[]

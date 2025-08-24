@@ -13,25 +13,16 @@ export const threadRunFailed = async ({
 }) => {
   controller.enqueue(event)
 
-  const runRecord = await prisma.run.update({
-    where: {
-      id: event.data.id,
-    },
-    data: {
-      status: RunStatus.FAILED,
-      failedAt: event.data.failed_at,
-      lastError: event.data.last_error,
-    },
-  })
-
-  if (event.data.metadata?.openaiConversationId) {
-    await prisma.thread.update({
-      where: { id: event.data.thread_id },
+    const runRecord = await prisma.run.update({
+      where: {
+        id: event.data.id,
+      },
       data: {
-        openaiConversationId: event.data.metadata.openaiConversationId,
+        status: RunStatus.FAILED,
+        failedAt: event.data.failed_at,
+        lastError: event.data.last_error as any,
       },
     })
-  }
 
-  return runRecord
-}
+    return runRecord
+  }

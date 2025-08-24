@@ -35,27 +35,27 @@ export const threadMessageCompleted = async ({
       throw new Error('No run step found')
     }
 
-    await prisma.runStep.update({
+      await prisma.runStep.update({
+        where: {
+          id: latestRunStep.id,
+        },
+        data: {
+          stepDetails: {
+            type: 'tool_calls',
+            tool_calls: data.tool_calls,
+          } as any,
+        },
+      })
+    }
+
+    return prisma.message.update({
       where: {
-        id: latestRunStep.id,
+        id: event.data.id,
       },
       data: {
-        stepDetails: {
-          type: 'tool_calls',
-          tool_calls: data.tool_calls,
-        },
+        status: MessageStatus.COMPLETED,
+        ...(data.content ? { content: data.content as any } : {}),
+        ...(data.tool_calls ? { toolCalls: data.tool_calls as any } : {}),
       },
     })
   }
-
-  return prisma.message.update({
-    where: {
-      id: event.data.id,
-    },
-    data: {
-      status: MessageStatus.COMPLETED,
-      ...(data.content ? { content: data.content } : {}),
-      ...(data.tool_calls ? { toolCalls: data.tool_calls } : {}),
-    },
-  })
-}
