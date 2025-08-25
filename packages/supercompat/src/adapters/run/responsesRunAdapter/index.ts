@@ -87,6 +87,8 @@ export const responsesRunAdapter =
       })
     } catch (e: any) {
       const msg = `${e?.message ?? ''} ${e?.cause?.message ?? ''}`.trim()
+      // The Responses API reports missing tool outputs as an error, so
+      // synthesize a requires_action run when tools are present.
       if (
         msg.includes('No tool output found for function call') &&
         !isEmpty(mappedTools)
@@ -326,6 +328,8 @@ export const responsesRunAdapter =
           break
         }
         case 'response.error': {
+          // Streamed runs surface missing tool outputs as an error; convert it
+          // into a requires_action response when tool calls were emitted.
           if (
             (event.error?.message || '').includes(
               'No tool output found for function call',

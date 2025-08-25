@@ -166,6 +166,14 @@ test('responsesRunAdapter can stream run with tool via OpenAI', async (t) => {
   })
   assert.equal(runStatus.status, 'requires_action')
 
+  const steps = await client.beta.threads.runs.steps.list(run.id, {
+    thread_id: thread.id,
+  })
+  const toolStep = steps.data.find(
+    (s) => s.step_details?.type === 'tool_calls',
+  )
+  assert.equal(toolStep?.step_details?.tool_calls[0]?.type, 'function')
+
   const toolCall =
     runStatus.required_action?.submit_tool_outputs.tool_calls[0]
   assert.ok(toolCall)
@@ -298,6 +306,14 @@ test('openaiResponsesStorageAdapter streams with tool', async (t) => {
     thread_id: thread.id,
   })
   assert.equal(runStatus.status, 'requires_action')
+
+  const steps = await client.beta.threads.runs.steps.list(run.id, {
+    thread_id: thread.id,
+  })
+  const toolStep = steps.data.find(
+    (s) => s.step_details?.type === 'tool_calls',
+  )
+  assert.equal(toolStep?.step_details?.tool_calls[0]?.type, 'function')
 
   const toolCall =
     runStatus.required_action?.submit_tool_outputs.tool_calls[0]
