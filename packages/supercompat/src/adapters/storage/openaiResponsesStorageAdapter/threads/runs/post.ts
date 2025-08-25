@@ -137,13 +137,22 @@ export const post =
         metadata[`run_${run.id}_tools`] = JSON.stringify(run.tools)
       }
       if (runSteps.length > 0) {
-        const storedSteps = runSteps.map((s) => ({
-          id: s.id,
-          type: s.type,
-          status: s.status,
-          created_at: s.created_at,
-          step_details: s.step_details,
-        }))
+        const storedSteps = runSteps
+          .filter((s) => s.type === 'tool_calls')
+          .map((s) => ({
+            id: s.id,
+            type: s.type,
+            status: s.status,
+            created_at: s.created_at,
+            step_details: {
+              type: 'tool_calls',
+              tool_calls: (s.step_details as any).tool_calls?.map((tc: any) => ({
+                id: tc.id,
+                type: tc.type,
+                function: { name: tc.function.name },
+              })),
+            },
+          }))
         metadata[`run_${run.id}_steps`] = JSON.stringify(storedSteps)
       }
       if ((run as any).required_action) {

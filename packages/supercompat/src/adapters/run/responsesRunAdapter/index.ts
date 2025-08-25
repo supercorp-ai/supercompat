@@ -87,52 +87,6 @@ export const responsesRunAdapter =
       })
     } catch (e: any) {
       const msg = `${e?.message ?? ''} ${e?.cause?.message ?? ''}`.trim()
-      // The Responses API reports missing tool outputs as an error, so
-      // synthesize a requires_action run when tools are present.
-      if (
-        msg.includes('No tool output found for function call') &&
-        !isEmpty(mappedTools)
-      ) {
-        const toolCalls = mappedTools
-          .filter((t) => t.type === 'function')
-          .map((t) => ({
-            id: uid(24),
-            type: 'function' as const,
-            function: { name: (t as any).name, arguments: '', output: '' },
-          }))
-        await onEvent({
-          event: 'thread.run.step.created',
-          data: {
-            id: `run_step_${uid(24)}`,
-            object: 'thread.run.step',
-            run_id: run.id,
-            assistant_id: run.assistant_id,
-            thread_id: run.thread_id,
-            type: 'tool_calls',
-            status: 'completed',
-            completed_at: dayjs().unix(),
-            created_at: dayjs().unix(),
-            expired_at: null,
-            last_error: null,
-            metadata: {},
-            failed_at: null,
-            cancelled_at: null,
-            usage: null,
-            step_details: { type: 'tool_calls', tool_calls: toolCalls },
-          },
-        })
-        return onEvent({
-          event: 'thread.run.requires_action',
-          data: {
-            ...run,
-            status: 'requires_action',
-            required_action: {
-              type: 'submit_tool_outputs',
-              submit_tool_outputs: { tool_calls: toolCalls },
-            },
-          },
-        })
-      }
       console.error(e)
       return onEvent({
         event: 'thread.run.failed',
@@ -328,34 +282,6 @@ export const responsesRunAdapter =
           break
         }
         case 'response.error': {
-          // Streamed runs surface missing tool outputs as an error; convert it
-          // into a requires_action response when tool calls were emitted.
-          if (
-            (event.error?.message || '').includes(
-              'No tool output found for function call',
-            ) &&
-            !isEmpty(currentToolCalls)
-          ) {
-            return onEvent({
-              event: 'thread.run.requires_action',
-              data: {
-                ...run,
-                status: 'requires_action',
-                ...(newConversationId
-                  ? {
-                      metadata: {
-                        ...(run.metadata ?? {}),
-                        openaiConversationId: newConversationId,
-                      },
-                    }
-                  : {}),
-                required_action: {
-                  type: 'submit_tool_outputs',
-                  submit_tool_outputs: { tool_calls: currentToolCalls },
-                },
-              },
-            })
-          }
           await onEvent({
             event: 'thread.run.failed',
             data: {
@@ -383,8 +309,11 @@ export const responsesRunAdapter =
       }
     }
 
-    // finalize the streamed response if supported
-    if (typeof (providerResponse as any).final === 'function') {
+    // finalize the streamed response if supported and no tool calls were emitted
+    if (
+      isEmpty(currentToolCalls) &&
+      typeof (providerResponse as any).final === 'function'
+    ) {
       await (providerResponse as any).final().catch(() => {})
     }
 
