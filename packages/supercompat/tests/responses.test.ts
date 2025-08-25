@@ -187,6 +187,7 @@ test('responsesRunAdapter can stream run with tool via OpenAI', async (t) => {
   }
   assert.equal(completedRun?.status, 'completed')
 
+
   const listAfter = await client.beta.threads.messages.list(thread.id)
   const finalAssistant = listAfter.data
     .filter((m) => m.role === 'assistant')
@@ -316,6 +317,7 @@ test('openaiResponsesStorageAdapter streams with tool', async (t) => {
   })
   assert.equal(runStatus.status, 'completed')
 
+
   const listAfter = await client.beta.threads.messages.list(thread.id)
   const finalAssistant = listAfter.data
     .filter((m) => m.role === 'assistant')
@@ -326,4 +328,64 @@ test('openaiResponsesStorageAdapter streams with tool', async (t) => {
     .trim()
     .toLowerCase()
   assert.ok(finalText.includes('70'))
+})
+
+test('openaiResponsesStorageAdapter exposes run steps with tools', async (t) => {
+  const realOpenAI = new OpenAI({
+    apiKey,
+    ...(process.env.HTTPS_PROXY
+      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+      : {}),
+  })
+
+  const client = supercompat({
+    client: openaiClientAdapter({ openai: realOpenAI }),
+    runAdapter: responsesRunAdapter(),
+    storage: openaiResponsesStorageAdapter({ openai: realOpenAI }),
+  })
+
+  const tools = [
+    {
+      type: 'function',
+      function: {
+        name: 'get_current_weather',
+        description: 'Get the current weather in a given location',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string' },
+          },
+          required: ['location'],
+        },
+      },
+    },
+  ] as OpenAI.Beta.AssistantTool[]
+
+  const assistant = await client.beta.assistants.create({
+    model: 'gpt-4o',
+    instructions: 'Use the get_current_weather and then answer the message.',
+    tools,
+  })
+
+  const thread = await client.beta.threads.create()
+
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: 'What is the weather in SF?',
+  })
+
+  const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+    assistant_id: assistant.id,
+    tools,
+  })
+
+  assert.equal(run.status, 'requires_action')
+
+  const steps = await client.beta.threads.runs.steps.list(run.id, {
+    thread_id: thread.id,
+  })
+  const toolStep = steps.data.find(
+    (s) => s.step_details?.type === 'tool_calls',
+  )
+  assert.equal(toolStep?.step_details?.tool_calls[0]?.type, 'function')
 })

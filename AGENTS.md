@@ -17,7 +17,16 @@
   cp -r examples/prisma-nextjs/node_modules/.prisma packages/supercompat/node_modules/
   cp -r examples/prisma-nextjs/node_modules/@prisma packages/supercompat/node_modules/
   ```
-- Ensure `TEST_OPENAI_API_KEY` is set for live API tests.
+- Ensure the following API environment variables are available for live tests:
+  - `TEST_OPENAI_API_KEY`
+  - `GROQ_API_KEY`
+  - `MISTRAL_API_KEY`
+  - `ANTHROPIC_API_KEY`
+  - `PERPLEXITY_API_KEY`
+  - `AZURE_OPENAI_API_KEY`
+  - `EXAMPLE_AZURE_OPENAI_ENDPOINT`
+  - `GOOGLE_API_KEY`
+  - `HUMIRIS_API_KEY`
 
 ## Testing
 - Run the full quality gate before committing:

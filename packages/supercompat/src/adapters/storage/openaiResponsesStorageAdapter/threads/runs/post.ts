@@ -55,6 +55,8 @@ export const post =
       metadata: body.metadata || {},
     } as unknown as OpenAI.Beta.Threads.Run
 
+    const runSteps: OpenAI.Beta.Threads.Runs.RunStep[] = []
+
     const onEvent = async (event: OpenAI.Beta.AssistantStreamEvent) => {
       if (event.event === 'thread.run.completed') {
         run = { ...run, status: 'completed' }
@@ -70,6 +72,41 @@ export const post =
           status: 'requires_action',
           required_action: event.data.required_action,
         } as any
+      } else if (event.event === 'thread.run.step.created') {
+        const step = {
+          ...event.data,
+          id: `run_step_${uid(24)}`,
+        } as OpenAI.Beta.Threads.Runs.RunStep
+        runSteps.push(step)
+        return step
+      } else if (event.event === 'thread.run.step.delta') {
+        const step = runSteps.find((s) => s.id === event.data.id)
+        if (step) {
+          const delta = event.data.delta
+          if (delta.step_details?.type === 'tool_calls') {
+            step.step_details = step.step_details || { type: 'tool_calls', tool_calls: [] }
+            const calls = delta.step_details.tool_calls || []
+            for (const call of calls) {
+              const existingIndex = (step.step_details as any).tool_calls.findIndex(
+                (c: any) => c.id === call.id,
+              )
+              if (existingIndex === -1) {
+                ;(step.step_details as any).tool_calls.push(call as any)
+              } else {
+                const existing = (step.step_details as any).tool_calls[existingIndex]
+                ;(step.step_details as any).tool_calls[existingIndex] = {
+                  ...existing,
+                  ...(call as any),
+                  function: {
+                    ...existing.function,
+                    ...(call as any).function,
+                  },
+                }
+              }
+            }
+          }
+        }
+        return event.data
       }
       const conv = (event.data as any)?.metadata?.openaiConversationId
       if (conv && conv !== thread.openaiConversationId) {
@@ -98,6 +135,16 @@ export const post =
       metadata[`run_${run.id}`] = JSON.stringify(storedRun)
       if (run.tools && run.tools.length > 0) {
         metadata[`run_${run.id}_tools`] = JSON.stringify(run.tools)
+      }
+      if (runSteps.length > 0) {
+        const storedSteps = runSteps.map((s) => ({
+          id: s.id,
+          type: s.type,
+          status: s.status,
+          created_at: s.created_at,
+          step_details: s.step_details,
+        }))
+        metadata[`run_${run.id}_steps`] = JSON.stringify(storedSteps)
       }
       if ((run as any).required_action) {
         metadata[`run_${run.id}_required_action`] = JSON.stringify(
