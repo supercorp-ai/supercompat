@@ -9,8 +9,17 @@ export const get = ({ openai }: { openai: OpenAI }) => async (
   const conversation = await (openai as any).conversations
     .retrieve(threadId)
     .catch(() => null)
-  const runStr = (conversation?.metadata as Record<string, string> | undefined)?.[`run_${runId}`]
-  const run = runStr ? JSON.parse(runStr) : null
+  const metadata = conversation?.metadata as Record<string, string> | undefined
+  const runStr = metadata?.[`run_${runId}`]
+  const toolsStr = metadata?.[`run_${runId}_tools`]
+  const raStr = metadata?.[`run_${runId}_required_action`]
+  const run = runStr
+    ? {
+        ...JSON.parse(runStr),
+        tools: toolsStr ? JSON.parse(toolsStr) : [],
+        ...(raStr ? { required_action: JSON.parse(raStr) } : {}),
+      }
+    : null
   return new Response(JSON.stringify(run ?? null), {
     status: run ? 200 : 404,
     headers: {

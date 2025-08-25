@@ -1,13 +1,20 @@
-import _ from 'lodash'
 import { uid, isEmpty } from 'radash'
 import dayjs from 'dayjs'
 import OpenAI from 'openai'
+import { AssistantStream } from 'openai/lib/AssistantStream'
 import { MessageWithRun, ThreadWithConversationId } from '@/types'
 import { messages } from './messages'
 import { supercompat } from '@/supercompat'
 
+interface ToolCall {
+  id: string
+  type: 'function'
+  function: { name: string; arguments: string }
+  index: number
+}
+
 interface MessageWithToolCalls extends OpenAI.Beta.Threads.Message {
-  tool_calls?: any[]
+  tool_calls?: ToolCall[]
 }
 
 export const responsesRunAdapter =
@@ -21,7 +28,7 @@ export const responsesRunAdapter =
   }: {
     client: OpenAI
     run: OpenAI.Beta.Threads.Run
-    onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
+    onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<unknown>
     getMessages: () => Promise<MessageWithRun[]>
     getThread: () => Promise<ThreadWithConversationId | null>
   }) => {
@@ -39,12 +46,15 @@ export const responsesRunAdapter =
       },
     })
 
+    const thread = await getThread()
+    const openaiConversationId = thread?.openaiConversationId ?? undefined
+
     const input = await messages({
       run,
       getMessages,
     })
 
-    const mappedTools = (run.tools || []).map((t: any) =>
+    const mappedTools = (run.tools || []).map((t) =>
       t.type === 'function'
         ? {
             type: 'function',
@@ -55,7 +65,7 @@ export const responsesRunAdapter =
         : t,
     )
 
-    const opts: any = {
+    const opts: Record<string, unknown> = {
       model: run.model,
       input,
       ...(run.instructions ? { instructions: run.instructions } : {}),
@@ -67,9 +77,7 @@ export const responsesRunAdapter =
         : {}),
     }
 
-    let providerResponse: any
-    const thread = await getThread()
-    const openaiConversationId = thread?.openaiConversationId ?? undefined
+    let providerResponse: AssistantStream
 
     try {
       providerResponse = await (client as any).responses.create({
@@ -77,8 +85,9 @@ export const responsesRunAdapter =
         ...(openaiConversationId ? { conversation: openaiConversationId } : {}),
         stream: true,
       })
-    } catch (e: any) {
-      console.error(e)
+    } catch (e: unknown) {
+      const err = e as { message?: string; cause?: { message?: string } }
+      console.error(err)
       return onEvent({
         event: 'thread.run.failed',
         data: {
@@ -87,13 +96,13 @@ export const responsesRunAdapter =
           status: 'in_progress',
           last_error: {
             code: 'server_error',
-            message: `${e?.message ?? ''} ${e?.cause?.message ?? ''}`,
+            message: `${err.message ?? ''} ${err.cause?.message ?? ''}`.trim(),
           },
         },
       })
     }
 
-    let message: MessageWithToolCalls = await onEvent({
+    let message = (await onEvent({
       event: 'thread.message.created',
       data: {
         id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
@@ -111,7 +120,7 @@ export const responsesRunAdapter =
         role: 'assistant',
         status: 'in_progress',
       },
-    })
+    })) as MessageWithToolCalls
 
     onEvent({
       event: 'thread.run.step.created',
@@ -140,12 +149,13 @@ export const responsesRunAdapter =
       },
     })
 
-    let toolCallsRunStep: any
+    let toolCallsRunStep: OpenAI.Beta.Threads.Runs.RunStep | undefined
     let currentContent = ''
-    let currentToolCalls: any[] = []
+    let currentToolCalls: ToolCall[] = []
+    const toolCallsByItemId: Record<string, ToolCall> = {}
     let newConversationId: string | undefined
 
-    for await (const event of providerResponse) {
+    for await (const event of providerResponse as any) {
       switch (event.type) {
         case 'response.created': {
           const convId =
@@ -179,7 +189,7 @@ export const responsesRunAdapter =
         case 'response.output_item.added': {
           if (event.item.type === 'function_call') {
             if (!toolCallsRunStep) {
-              toolCallsRunStep = await onEvent({
+              toolCallsRunStep = (await onEvent({
                 event: 'thread.run.step.created',
                 data: {
                   id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
@@ -202,11 +212,13 @@ export const responsesRunAdapter =
                     tool_calls: [],
                   },
                 },
-              })
+              })) as OpenAI.Beta.Threads.Runs.RunStep
             }
 
-            const newToolCall = {
-              id: event.item.id ?? uid(24),
+            const callId =
+              (event.item.call_id ?? event.item.id ?? uid(24)) as string
+            const newToolCall: ToolCall = {
+              id: callId,
               type: 'function',
               function: {
                 name: event.item.name,
@@ -214,14 +226,15 @@ export const responsesRunAdapter =
               },
               index: currentToolCalls.length,
             }
-            currentToolCalls.push(_.cloneDeep(newToolCall))
+            currentToolCalls.push(newToolCall)
+            toolCallsByItemId[event.item.id ?? callId] = newToolCall
 
             onEvent({
               event: 'thread.run.step.delta',
               data: {
                 object: 'thread.run.step.delta',
                 run_id: run.id,
-                id: toolCallsRunStep.id,
+                id: toolCallsRunStep!.id,
                 delta: {
                   step_details: {
                     type: 'tool_calls',
@@ -234,15 +247,17 @@ export const responsesRunAdapter =
           break
         }
         case 'response.function_call_arguments.delta': {
-          const tc = currentToolCalls.find((t) => t.id === event.item_id)
+          const tc =
+            toolCallsByItemId[event.item_id] ||
+            currentToolCalls.find((t) => t.id === event.item_id)
           if (tc) {
             tc.function.arguments = `${tc.function.arguments}${event.delta}`
             onEvent({
               event: 'thread.run.step.delta',
               data: {
                 object: 'thread.run.step.delta',
-                run_id: run.id,
-                id: toolCallsRunStep.id,
+                  run_id: run.id,
+                  id: toolCallsRunStep!.id,
                 delta: {
                   step_details: {
                     type: 'tool_calls',
@@ -295,8 +310,8 @@ export const responsesRunAdapter =
     }
 
     // finalize the streamed response if supported
-    if (typeof providerResponse.final === 'function') {
-      await providerResponse.final().catch(() => {})
+    if (typeof (providerResponse as any).final === 'function') {
+      await (providerResponse as any).final().catch(() => {})
     }
 
     message = (await onEvent({
@@ -308,7 +323,7 @@ export const responsesRunAdapter =
           { text: { value: currentContent, annotations: [] }, type: 'text' },
         ],
         tool_calls: currentToolCalls,
-      } as any,
+      } as MessageWithToolCalls,
     })) as MessageWithToolCalls
 
     if (isEmpty(message.tool_calls)) {

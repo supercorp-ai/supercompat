@@ -159,44 +159,44 @@ test('responsesRunAdapter can stream run with tool via OpenAI', async (t) => {
     assistant_id: assistant.id,
     instructions:
       'Use the get_current_weather tool and then answer the message.',
+  })
+
+  const runStatus = await client.beta.threads.runs.retrieve(run.id, {
+    thread_id: thread.id,
+  })
+  assert.equal(runStatus.status, 'requires_action')
+
+  const toolCall =
+    runStatus.required_action?.submit_tool_outputs.tool_calls[0]
+  assert.ok(toolCall)
+  const toolCallId = toolCall?.id
+
+  const submit = await client.beta.threads.runs.submitToolOutputs(run.id, {
+    thread_id: thread.id,
+    tool_outputs: [
+      { tool_call_id: toolCallId, output: '70 degrees and sunny.' },
+    ],
     stream: true,
   })
 
-  let requiresActionEvent:
-    | OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
-    | undefined
-  for await (const event of run) {
-    if (event.event === 'thread.run.requires_action') {
-      requiresActionEvent =
-        event as OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
+  let completedRun: OpenAI.Beta.Threads.Run | undefined
+  for await (const event of submit) {
+    if (event.event === 'thread.run.completed') {
+      completedRun = event.data as OpenAI.Beta.Threads.Run
     }
   }
+  assert.equal(completedRun?.status, 'completed')
 
-  assert.ok(requiresActionEvent)
-
-  const toolCallId =
-    requiresActionEvent.data.required_action?.submit_tool_outputs.tool_calls[0]
-      .id
-
-  const submit = await client.beta.threads.runs.submitToolOutputs(
-    requiresActionEvent.data.id,
-    {
-      thread_id: thread.id,
-      stream: true,
-      tool_outputs: [
-        {
-          tool_call_id: toolCallId,
-          output: '70 degrees and sunny.',
-        },
-      ],
-    },
-  )
-
-  for await (const _event of submit) {
-  }
-
-  // ensure the stream finished without throwing
-  assert.ok(true)
+  const listAfter = await client.beta.threads.messages.list(thread.id)
+  const finalAssistant = listAfter.data
+    .filter((m) => m.role === 'assistant')
+    .at(-1)
+  const finalText = (
+    finalAssistant?.content[0] as OpenAI.Beta.Threads.MessageContentText
+  ).text.value
+    .trim()
+    .toLowerCase()
+  assert.ok(finalText.includes('70'))
 })
 
 test('openaiResponsesStorageAdapter works with polling', async (t) => {
@@ -275,7 +275,7 @@ test('openaiResponsesStorageAdapter streams with tool', async (t) => {
   ] as OpenAI.Beta.AssistantTool[]
 
   const assistant = await client.beta.assistants.create({
-    model: 'gpt-4o-mini',
+    model: 'gpt-4o',
     instructions: 'You are a helpful assistant.',
     tools,
   })
@@ -291,42 +291,39 @@ test('openaiResponsesStorageAdapter streams with tool', async (t) => {
     assistant_id: assistant.id,
     instructions:
       'Use the get_current_weather tool and then answer the message.',
+  })
+
+  let runStatus = await client.beta.threads.runs.retrieve(run.id, {
+    thread_id: thread.id,
+  })
+  assert.equal(runStatus.status, 'requires_action')
+
+  const toolCall =
+    runStatus.required_action?.submit_tool_outputs.tool_calls[0]
+  assert.ok(toolCall)
+  const toolCallId = toolCall?.id
+
+  await client.beta.threads.runs.submitToolOutputs(run.id, {
+    thread_id: thread.id,
+    tool_outputs: [
+      { tool_call_id: toolCallId, output: '70 degrees and sunny.' },
+    ],
     stream: true,
   })
 
-  let requiresActionEvent:
-    | OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
-    | undefined
-  for await (const event of run) {
-    if (event.event === 'thread.run.requires_action') {
-      requiresActionEvent =
-        event as OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
-    }
-  }
+  runStatus = await client.beta.threads.runs.retrieve(run.id, {
+    thread_id: thread.id,
+  })
+  assert.equal(runStatus.status, 'completed')
 
-  assert.ok(requiresActionEvent)
-
-  const toolCallId =
-    requiresActionEvent.data.required_action?.submit_tool_outputs.tool_calls[0]
-      .id
-
-  const submit = await client.beta.threads.runs.submitToolOutputs(
-    requiresActionEvent.data.id,
-    {
-      thread_id: thread.id,
-      stream: true,
-      tool_outputs: [
-        {
-          tool_call_id: toolCallId,
-          output: '70 degrees and sunny.',
-        },
-      ],
-    },
-  )
-
-  for await (const _event of submit) {
-  }
-
-  // ensure the stream finished without throwing
-  assert.ok(true)
+  const listAfter = await client.beta.threads.messages.list(thread.id)
+  const finalAssistant = listAfter.data
+    .filter((m) => m.role === 'assistant')
+    .at(-1)
+  const finalText = (
+    finalAssistant?.content[0] as OpenAI.Beta.Threads.MessageContentText
+  ).text.value
+    .trim()
+    .toLowerCase()
+  assert.ok(finalText.includes('70'))
 })

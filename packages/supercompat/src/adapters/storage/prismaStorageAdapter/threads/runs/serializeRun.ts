@@ -1,11 +1,30 @@
 import type OpenAI from 'openai'
-import type { Run } from '@prisma/client'
 import dayjs from 'dayjs'
+
+export interface PrismaRun {
+  id: string
+  threadId: string
+  assistantId: string
+  createdAt: Date
+  status: string
+  requiredAction: unknown
+  lastError: unknown
+  expiresAt: number
+  startedAt: number | null
+  cancelledAt: number | null
+  failedAt: number | null
+  completedAt: number | null
+  model: string
+  instructions: string
+  tools: unknown[]
+  metadata: unknown
+  usage: unknown
+}
 
 export const serializeRun = ({
   run,
 }: {
-  run: Run
+  run: PrismaRun
 }): OpenAI.Beta.Threads.Run => ({
   id: run.id,
   object: 'thread.run' as 'thread.run',
@@ -22,8 +41,8 @@ export const serializeRun = ({
   completed_at: run.completedAt ? dayjs(run.completedAt).unix() : null,
   model: run.model,
   instructions: run.instructions,
-  tools: run.tools as any,
-  metadata: run.metadata as any,
+  tools: run.tools as OpenAI.Beta.AssistantTool[],
+  metadata: run.metadata as Record<string, unknown> | null,
   usage: run.usage as OpenAI.Beta.Threads.Run['usage'],
   truncation_strategy: {
     type: 'auto',
