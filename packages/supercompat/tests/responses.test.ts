@@ -107,7 +107,7 @@ test('responsesRunAdapter maintains conversation across runs', async (t) => {
   assert.ok(text.includes('blue'))
 })
 
-test('responsesRunAdapter can stream run with tool via OpenAI', async (t) => {
+test('responsesRunAdapter streams tool calls via OpenAI', async () => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -159,33 +159,49 @@ test('responsesRunAdapter can stream run with tool via OpenAI', async (t) => {
     assistant_id: assistant.id,
     instructions:
       'Use the get_current_weather tool and then answer the message.',
-  })
-
-  const runStatus = await client.beta.threads.runs.retrieve(run.id, {
-    thread_id: thread.id,
-  })
-  assert.equal(runStatus.status, 'requires_action')
-
-  const toolCall =
-    runStatus.required_action?.submit_tool_outputs.tool_calls[0]
-  assert.ok(toolCall)
-  const toolCallId = toolCall?.id
-
-  const submit = await client.beta.threads.runs.submitToolOutputs(run.id, {
-    thread_id: thread.id,
-    tool_outputs: [
-      { tool_call_id: toolCallId, output: '70 degrees and sunny.' },
-    ],
     stream: true,
   })
 
-  let completedRun: OpenAI.Beta.Threads.Run | undefined
-  for await (const event of submit) {
-    if (event.event === 'thread.run.completed') {
-      completedRun = event.data as OpenAI.Beta.Threads.Run
+  let requiresActionEvent:
+    | OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
+    | undefined
+  for await (const event of run) {
+    if (event.event === 'thread.run.requires_action') {
+      requiresActionEvent = event as OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
     }
   }
-  assert.equal(completedRun?.status, 'completed')
+
+  assert.ok(requiresActionEvent)
+
+  const runSteps = await client.beta.threads.runs.steps.list(
+    requiresActionEvent!.data.id,
+    { thread_id: thread.id },
+  )
+  const toolStep = runSteps.data.find(
+    (s) => s.step_details?.type === 'tool_calls',
+  )
+  assert.equal(toolStep?.step_details?.tool_calls[0]?.type, 'function')
+
+  const toolCallId =
+    requiresActionEvent!.data.required_action?.submit_tool_outputs
+      .tool_calls[0].id
+
+  const submit = await client.beta.threads.runs.submitToolOutputs(
+    requiresActionEvent!.data.id,
+    {
+      thread_id: thread.id,
+      stream: true,
+      tool_outputs: [
+        {
+          tool_call_id: toolCallId,
+          output: '70 degrees and sunny.',
+        },
+      ],
+    },
+  )
+
+  for await (const _event of submit) {
+  }
 
   const listAfter = await client.beta.threads.messages.list(thread.id)
   const finalAssistant = listAfter.data
@@ -194,9 +210,8 @@ test('responsesRunAdapter can stream run with tool via OpenAI', async (t) => {
   const finalText = (
     finalAssistant?.content[0] as OpenAI.Beta.Threads.MessageContentText
   ).text.value
-    .trim()
     .toLowerCase()
-  assert.ok(finalText.includes('70'))
+  assert.ok(finalText.includes('70 degrees'))
 })
 
 test('openaiResponsesStorageAdapter works with polling', async (t) => {
@@ -298,6 +313,14 @@ test('openaiResponsesStorageAdapter streams with tool', async (t) => {
   })
   assert.equal(runStatus.status, 'requires_action')
 
+  const steps = await client.beta.threads.runs.steps.list(run.id, {
+    thread_id: thread.id,
+  })
+  const toolStep = steps.data.find(
+    (s) => s.step_details?.type === 'tool_calls',
+  )
+  assert.equal(toolStep?.step_details?.tool_calls[0]?.type, 'function')
+
   const toolCall =
     runStatus.required_action?.submit_tool_outputs.tool_calls[0]
   assert.ok(toolCall)
@@ -316,6 +339,7 @@ test('openaiResponsesStorageAdapter streams with tool', async (t) => {
   })
   assert.equal(runStatus.status, 'completed')
 
+
   const listAfter = await client.beta.threads.messages.list(thread.id)
   const finalAssistant = listAfter.data
     .filter((m) => m.role === 'assistant')
@@ -326,4 +350,64 @@ test('openaiResponsesStorageAdapter streams with tool', async (t) => {
     .trim()
     .toLowerCase()
   assert.ok(finalText.includes('70'))
+})
+
+test('openaiResponsesStorageAdapter exposes run steps with tools', async (t) => {
+  const realOpenAI = new OpenAI({
+    apiKey,
+    ...(process.env.HTTPS_PROXY
+      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+      : {}),
+  })
+
+  const client = supercompat({
+    client: openaiClientAdapter({ openai: realOpenAI }),
+    runAdapter: responsesRunAdapter(),
+    storage: openaiResponsesStorageAdapter({ openai: realOpenAI }),
+  })
+
+  const tools = [
+    {
+      type: 'function',
+      function: {
+        name: 'get_current_weather',
+        description: 'Get the current weather in a given location',
+        parameters: {
+          type: 'object',
+          properties: {
+            location: { type: 'string' },
+          },
+          required: ['location'],
+        },
+      },
+    },
+  ] as OpenAI.Beta.AssistantTool[]
+
+  const assistant = await client.beta.assistants.create({
+    model: 'gpt-4o',
+    instructions: 'Use the get_current_weather and then answer the message.',
+    tools,
+  })
+
+  const thread = await client.beta.threads.create()
+
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: 'What is the weather in SF?',
+  })
+
+  const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+    assistant_id: assistant.id,
+    tools,
+  })
+
+  assert.equal(run.status, 'requires_action')
+
+  const steps = await client.beta.threads.runs.steps.list(run.id, {
+    thread_id: thread.id,
+  })
+  const toolStep = steps.data.find(
+    (s) => s.step_details?.type === 'tool_calls',
+  )
+  assert.equal(toolStep?.step_details?.tool_calls[0]?.type, 'function')
 })

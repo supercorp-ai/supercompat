@@ -85,9 +85,9 @@ export const responsesRunAdapter =
         ...(openaiConversationId ? { conversation: openaiConversationId } : {}),
         stream: true,
       })
-    } catch (e: unknown) {
-      const err = e as { message?: string; cause?: { message?: string } }
-      console.error(err)
+    } catch (e: any) {
+      const msg = `${e?.message ?? ''} ${e?.cause?.message ?? ''}`.trim()
+      console.error(e)
       return onEvent({
         event: 'thread.run.failed',
         data: {
@@ -96,7 +96,7 @@ export const responsesRunAdapter =
           status: 'in_progress',
           last_error: {
             code: 'server_error',
-            message: `${err.message ?? ''} ${err.cause?.message ?? ''}`.trim(),
+            message: msg,
           },
         },
       })
@@ -309,8 +309,11 @@ export const responsesRunAdapter =
       }
     }
 
-    // finalize the streamed response if supported
-    if (typeof (providerResponse as any).final === 'function') {
+    // finalize the streamed response if supported and no tool calls were emitted
+    if (
+      isEmpty(currentToolCalls) &&
+      typeof (providerResponse as any).final === 'function'
+    ) {
       await (providerResponse as any).final().catch(() => {})
     }
 
