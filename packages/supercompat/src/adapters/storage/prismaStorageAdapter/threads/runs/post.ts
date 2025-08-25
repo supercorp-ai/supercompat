@@ -6,7 +6,7 @@ import { runsRegexp } from '@/lib/runs/runsRegexp'
 import { serializeRun } from './serializeRun'
 import { RunAdapterPartobClient } from '@/types'
 import { onEvent } from './onEvent'
-import { getMessages } from './getMessages'
+import { getMessages, RunForMessages } from './getMessages'
 import { getThread } from './getThread'
 
 type RunCreateResponse = Response & {
@@ -94,7 +94,7 @@ export const post = ({
           }),
           getMessages: getMessages({
             prisma,
-            run,
+            run: run as unknown as RunForMessages,
           }),
           getThread: getThread({ prisma, threadId }),
         })

@@ -16,10 +16,6 @@ export const serializeMessage = ({
 }: {
   message: MessageForSerialization
 }): ResponseInputItem[] => {
-  const contentBlocks =
-    message.content as OpenAI.Beta.Threads.Messages.TextContentBlock[]
-  const text = contentBlocks.map((c) => c.text.value).join('\n')
-
   if (message.role === 'tool') {
     const toolMessage = message as ToolMessage
     const output =
@@ -34,6 +30,27 @@ export const serializeMessage = ({
       },
     ] as ResponseInputItem[]
   }
+
+  if (
+    message.role === 'assistant' &&
+    (message as any).tool_calls &&
+    (message as any).tool_calls.length > 0
+  ) {
+    return (message as any).tool_calls.map(
+      (tc: any) =>
+        ({
+          type: 'function_call',
+          id: tc.id,
+          call_id: tc.id,
+          name: tc.function.name,
+          arguments: tc.function.arguments,
+        }) as ResponseInputItem,
+    )
+  }
+
+  const contentBlocks =
+    message.content as OpenAI.Beta.Threads.Messages.TextContentBlock[]
+  const text = contentBlocks.map((c) => c.text.value).join('\n')
 
   if (message.role === 'assistant') {
     return [

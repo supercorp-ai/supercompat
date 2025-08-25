@@ -28,13 +28,15 @@ export const post =
       .catch(() => null)
     if (!conversation) return new Response('Thread not found', { status: 404 })
 
+    const metadata = (conversation.metadata ?? {}) as Record<string, string>
+    const openaiConversationId = metadata.openaiConversationId || threadId
     const thread: ThreadWithConversationId = {
       id: threadId,
       object: 'thread',
       created_at: conversation.created_at ?? dayjs().unix(),
-      metadata: (conversation.metadata ?? {}) as Record<string, string>,
+      metadata,
       tool_resources: null,
-      openaiConversationId: threadId,
+      openaiConversationId,
     }
 
     const assistant = await openai.beta.assistants.retrieve(assistant_id)
@@ -48,10 +50,10 @@ export const post =
       model: body.model || assistant.model,
       instructions: body.instructions || '',
       status: 'queued',
-      tools: body.tools || (assistant.tools as any) || [],
+      tools: body.tools || (assistant.tools as unknown as OpenAI.Beta.AssistantTool[]) || [],
       response_format: body.response_format || { type: 'text' },
       metadata: body.metadata || {},
-    } as any
+    } as unknown as OpenAI.Beta.Threads.Run
 
     const onEvent = async (event: OpenAI.Beta.AssistantStreamEvent) => {
       if (event.event === 'thread.run.completed') {
@@ -77,42 +79,35 @@ export const post =
     }
 
     const getThread = async () => thread
-    const getMessages = async (): Promise<MessageWithRun[]> => {
-      const items = await oai.conversations.items.list(
-        thread.openaiConversationId as string,
-      )
-      return (items.data || [])
-        .filter((i: any) => i.type === 'message')
-        .map((item: any) => ({
-          id: item.id,
-          object: 'thread.message',
-          created_at: item.created_at ?? dayjs().unix(),
-          thread_id: threadId,
-          role: item.role,
-          content: (item.content || []).map((c: any) => ({
-            type: 'text',
-            text: { value: c.text, annotations: [] },
-          })),
-          metadata: null,
-          assistant_id: null,
-          run_id: null,
-          attachments: [],
-          status: 'completed',
-          completed_at: item.completed_at ?? dayjs().unix(),
-          incomplete_at: null,
-          incomplete_details: null,
-          run: null,
-        })) as MessageWithRun[]
-    }
+    const getMessages = async (): Promise<MessageWithRun[]> => []
 
     const saveRun = async () => {
-      const minimalRun = { id: run.id, status: run.status }
-      thread.metadata = {
-        ...(thread.metadata as Record<string, string>),
-        [`run_${run.id}`]: JSON.stringify(minimalRun),
+      if (run.status !== 'requires_action') {
+        delete (run as any).required_action
       }
+      const storedRun = {
+        id: run.id,
+        assistant_id: run.assistant_id,
+        thread_id: run.thread_id,
+        model: run.model,
+        instructions: run.instructions,
+        response_format: run.response_format,
+        status: run.status,
+      }
+      const metadata = thread.metadata as Record<string, string>
+      metadata[`run_${run.id}`] = JSON.stringify(storedRun)
+      if (run.tools && run.tools.length > 0) {
+        metadata[`run_${run.id}_tools`] = JSON.stringify(run.tools)
+      }
+      if ((run as any).required_action) {
+        metadata[`run_${run.id}_required_action`] = JSON.stringify(
+          (run as any).required_action,
+        )
+      }
+      metadata.openaiConversationId = thread.openaiConversationId as string
+      thread.metadata = metadata
       await oai.conversations.update(thread.openaiConversationId as string, {
-        metadata: thread.metadata,
+        metadata,
       })
     }
 
