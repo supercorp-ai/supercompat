@@ -2,7 +2,7 @@ import type OpenAI from 'openai'
 import { RunStatus } from '@/types/prisma'
 import type { PrismaClient } from '@prisma/client'
 
-export const threadRunFailed = ({
+export const threadRunFailed = async ({
   prisma,
   event,
   controller,
@@ -13,14 +13,16 @@ export const threadRunFailed = ({
 }) => {
   controller.enqueue(event)
 
-  return prisma.run.update({
-    where: {
-      id: event.data.id,
-    },
-    data: {
-      status: RunStatus.FAILED,
-      failedAt: event.data.failed_at,
-      lastError: event.data.last_error,
-    },
-  })
-}
+    const runRecord = await prisma.run.update({
+      where: {
+        id: event.data.id,
+      },
+      data: {
+        status: RunStatus.FAILED,
+        failedAt: event.data.failed_at,
+        lastError: event.data.last_error as any,
+      },
+    })
+
+    return runRecord
+  }

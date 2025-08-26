@@ -3,9 +3,10 @@ import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
 import { RunAdapterPartobClient } from '@/types'
 import { serializeRun } from '../../serializeRun'
 import { onEvent } from '../../onEvent'
-import { getMessages } from '../../getMessages'
+import { getMessages, RunForMessages } from '../../getMessages'
 import { serializeRunStep } from '../../steps/serializeRunStep'
 import { updateRun } from './updateRun'
+import { getThread } from '../../getThread'
 
 export const post = ({
   prisma,
@@ -51,7 +52,11 @@ export const post = ({
             },
             prisma,
           }),
-          getMessages: getMessages({ prisma, run }),
+          getMessages: getMessages({
+            prisma,
+            run: run as unknown as RunForMessages,
+          }),
+          getThread: getThread({ prisma, threadId }),
         })
 
         controller.close()
@@ -85,7 +90,11 @@ export const post = ({
               },
               prisma,
             }),
-            getMessages: getMessages({ prisma, run }),
+            getMessages: getMessages({
+              prisma,
+              run: run as unknown as RunForMessages,
+            }),
+            getThread: getThread({ prisma, threadId }),
           })
 
           controller.close()

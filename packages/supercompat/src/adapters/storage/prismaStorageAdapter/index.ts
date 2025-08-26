@@ -11,20 +11,21 @@ import { runs } from './threads/runs'
 import { run } from './threads/run'
 import { steps } from './threads/runs/steps'
 import { submitToolOutputs } from './threads/runs/submitToolOutputs'
+import { assistants } from './assistants'
 
 export const prismaStorageAdapter = ({
   prisma,
 }: {
   prisma: PrismaClient
-}) => ({
-  runAdapter,
-}: StorageAdapterArgs) => ({
-  requestHandlers: {
-    '^/(?:v1|/?openai)/threads$': threads({ prisma }),
-    [messagesRegexp]: messages({ prisma }),
-    [runsRegexp]: runs({ prisma, runAdapter }),
-    [runRegexp]: run({ prisma, runAdapter }),
-    [stepsRegexp]: steps({ prisma }),
-    [submitToolOutputsRegexp]: submitToolOutputs({ prisma, runAdapter }),
-  },
-})
+}) =>
+  ({ runAdapter }: StorageAdapterArgs) => ({
+    requestHandlers: {
+      '^/(?:v1/|openai/)?assistants$': assistants({ prisma }),
+      '^/(?:v1/|openai/)?threads$': threads({ prisma }),
+      [messagesRegexp]: messages({ prisma }),
+      [runsRegexp]: runs({ prisma, runAdapter }),
+      [runRegexp]: run({ prisma, runAdapter }),
+      [stepsRegexp]: steps({ prisma }),
+      [submitToolOutputsRegexp]: submitToolOutputs({ prisma, runAdapter }),
+    },
+  }) as { requestHandlers: Record<string, any> }

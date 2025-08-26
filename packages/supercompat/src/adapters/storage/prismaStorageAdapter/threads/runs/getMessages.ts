@@ -1,32 +1,33 @@
 import type { PrismaClient } from '@prisma/client'
-import { serializeMessage } from '../messages/serializeMessage'
-import { serializeRunStep } from './steps/serializeRunStep'
-import { serializeRun } from './serializeRun'
-import type { Run, MessageWithRun, RunStep } from '@/types/prisma'
+import { serializeMessage, PrismaMessage } from '../messages/serializeMessage'
+import { serializeRunStep, PrismaRunStep } from './steps/serializeRunStep'
+import { serializeRun, PrismaRun } from './serializeRun'
+import type { MessageWithRun as OpenAIMessageWithRun } from '@/types'
 
-const getTake = ({
-  run,
-}: {
-  run: Run
-}) => {
-  // @ts-ignore-next-line
+export interface RunForMessages {
+  threadId: string
+  truncationStrategy: {
+    type: string
+    last_messages?: number
+  }
+}
+
+const getTake = ({ run }: { run: RunForMessages }) => {
   if (run.truncationStrategy.type === 'auto') {
     return null
   }
 
-  // @ts-ignore-next-line
   if (run.truncationStrategy.type === 'last_messages') {
-    // @ts-ignore-next-line
     if (!run.truncationStrategy.last_messages) {
       throw new Error('Truncation strategy last_messages is required')
     }
 
-    // @ts-ignore-next-line
     return -run.truncationStrategy.last_messages
   }
 
-  // @ts-ignore-next-line
-  throw new Error(`Unsupported truncation strategy type: ${run.truncationStrategy.type}`)
+  throw new Error(
+    `Unsupported truncation strategy type: ${run.truncationStrategy.type}`,
+  )
 }
 
 export const getMessages = ({
@@ -34,13 +35,13 @@ export const getMessages = ({
   run,
 }: {
   prisma: PrismaClient
-  run: Run
+  run: RunForMessages
 }) => async () => {
   const take = getTake({
     run,
   })
 
-  const messages = await prisma.message.findMany({
+  const messages = (await prisma.message.findMany({
     where: {
       threadId: run.threadId,
     },
@@ -55,15 +56,19 @@ export const getMessages = ({
       createdAt: 'asc',
     },
     ...(take ? { take } : {}),
-  })
+  })) as Array<
+    PrismaMessage & { run: (PrismaRun & { runSteps: PrismaRunStep[] }) | null }
+  >
 
-  return messages.map((message: MessageWithRun) => ({
+  return messages.map((message) => ({
     ...serializeMessage({ message }),
-    run: message.run ? ({
-      ...serializeRun({ run: message.run }),
-      runSteps: message.run.runSteps.map((runStep: RunStep) => (
-        serializeRunStep({ runStep })
-      )),
-    }) : null,
-  }))
+    run: message.run
+      ? {
+          ...serializeRun({ run: message.run }),
+          runSteps: message.run.runSteps.map((runStep: PrismaRunStep) =>
+            serializeRunStep({ runStep }),
+          ),
+        }
+      : null,
+  })) as OpenAIMessageWithRun[]
 }

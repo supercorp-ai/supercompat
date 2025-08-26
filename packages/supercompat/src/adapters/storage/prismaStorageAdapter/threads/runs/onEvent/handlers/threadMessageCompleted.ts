@@ -1,6 +1,11 @@
 import type OpenAI from 'openai'
+import type { ChatCompletionMessageToolCall } from 'openai/resources/chat/completions'
 import { MessageStatus, RunStepType } from '@/types/prisma'
 import type { PrismaClient } from '@prisma/client'
+
+type MessageWithToolCalls = OpenAI.Beta.Threads.Messages.Message & {
+  tool_calls?: ChatCompletionMessageToolCall[]
+}
 
 export const threadMessageCompleted = async ({
   prisma,
@@ -13,7 +18,9 @@ export const threadMessageCompleted = async ({
 }) => {
   controller.enqueue(event)
 
-  if (event.data.tool_calls) {
+  const data = event.data as MessageWithToolCalls
+
+  if (data.tool_calls) {
     const latestRunStep = await prisma.runStep.findFirst({
       where: {
         threadId: event.data.thread_id,
@@ -28,27 +35,27 @@ export const threadMessageCompleted = async ({
       throw new Error('No run step found')
     }
 
-    await prisma.runStep.update({
+      await prisma.runStep.update({
+        where: {
+          id: latestRunStep.id,
+        },
+        data: {
+          stepDetails: {
+            type: 'tool_calls',
+            tool_calls: data.tool_calls,
+          } as any,
+        },
+      })
+    }
+
+    return prisma.message.update({
       where: {
-        id: latestRunStep.id,
+        id: event.data.id,
       },
       data: {
-        stepDetails: {
-          type: 'tool_calls',
-          tool_calls: event.data.tool_calls,
-        },
+        status: MessageStatus.COMPLETED,
+        ...(data.content ? { content: data.content as any } : {}),
+        ...(data.tool_calls ? { toolCalls: data.tool_calls as any } : {}),
       },
     })
   }
-
-  return prisma.message.update({
-    where: {
-      id: event.data.id,
-    },
-    data: {
-      status: MessageStatus.COMPLETED,
-      ...(event.data.content ? { content: event.data.content } : {}),
-      ...(event.data.tool_calls ? { toolCalls: event.data.tool_calls } : {}),
-    },
-  })
-}

@@ -14,24 +14,33 @@ npm i supercompat
 import {
   supercompat,
   groqClientAdapter,
+  openaiClientAdapter,
   prismaStorageAdapter,
+  openaiResponsesStorageAdapter,
   completionsRunAdapter,
+  responsesRunAdapter,
 } from 'supercompat'
 import Groq from 'groq-sdk'
+import OpenAI from 'openai'
 
+// Groq with Prisma storage and the Completions adapter
 const client = supercompat({
-  client: groqClientAdapter({
-    groq: new Groq(),
-  }),
-  storage: prismaStorageAdapter({
-    prisma,
-  }),
+  client: groqClientAdapter({ groq: new Groq() }),
+  storage: prismaStorageAdapter({ prisma }),
   runAdapter: completionsRunAdapter(),
 })
 
-const message = await client.beta.threads.messages.create(thread.id, {
+// OpenAI Responses API storage and run adapter
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+const responsesClient = supercompat({
+  client: openaiClientAdapter({ openai }),
+  storage: openaiResponsesStorageAdapter({ openai }),
+  runAdapter: responsesRunAdapter(),
+})
+
+const message = await responsesClient.beta.threads.messages.create(thread.id, {
   role: 'user',
-  content: 'Who won the world series in 2020?'
+  content: 'Who won the world series in 2020?',
 })
 ```
 

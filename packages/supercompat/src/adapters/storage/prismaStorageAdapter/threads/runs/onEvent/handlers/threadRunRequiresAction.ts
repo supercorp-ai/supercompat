@@ -2,7 +2,7 @@ import type OpenAI from 'openai'
 import type { PrismaClient } from '@prisma/client'
 import { RunStatus } from '@/types/prisma'
 
-export const threadRunRequiresAction = ({
+export const threadRunRequiresAction = async ({
   prisma,
   event,
   controller,
@@ -13,13 +13,15 @@ export const threadRunRequiresAction = ({
 }) => {
   controller.enqueue(event)
 
-  return prisma.run.update({
-    where: {
-      id: event.data.id,
-    },
-    data: {
-      status: RunStatus.REQUIRES_ACTION,
-      requiredAction: event.data.required_action,
-    },
-  })
-}
+    const runRecord = await prisma.run.update({
+      where: {
+        id: event.data.id,
+      },
+      data: {
+        status: RunStatus.REQUIRES_ACTION,
+        requiredAction: event.data.required_action as any,
+      },
+    })
+
+    return runRecord
+  }

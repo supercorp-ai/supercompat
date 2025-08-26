@@ -2,7 +2,7 @@ import _ from 'lodash'
 import { uid, omit, isEmpty } from 'radash'
 import dayjs from 'dayjs'
 import OpenAI from 'openai'
-import { MessageWithRun } from '@/types'
+import { MessageWithRun, ThreadWithConversationId } from '@/types'
 import { messages } from './messages'
 import { supercompat } from '@/supercompat'
 
@@ -58,11 +58,13 @@ export const completionsRunAdapter = () => async ({
   run,
   onEvent,
   getMessages,
+  getThread,
 }: {
   client: OpenAI
   run: OpenAI.Beta.Threads.Run
   onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
   getMessages: () => Promise<MessageWithRun[]>
+  getThread: () => Promise<ThreadWithConversationId | null>
 }) => {
   if (run.status !== 'queued') return
 
@@ -253,7 +255,7 @@ export const completionsRunAdapter = () => async ({
     },
   })
 
-  if (isEmpty(message.toolCalls)) {
+  if (isEmpty(currentToolCalls)) {
     return onEvent({
       event: 'thread.run.completed',
       data: {
@@ -272,7 +274,7 @@ export const completionsRunAdapter = () => async ({
       required_action: {
         type: 'submit_tool_outputs',
         submit_tool_outputs: {
-          tool_calls: message.toolCalls,
+          tool_calls: currentToolCalls,
         },
       },
     },

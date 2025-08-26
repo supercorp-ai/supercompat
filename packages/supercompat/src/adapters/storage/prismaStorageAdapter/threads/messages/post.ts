@@ -55,9 +55,9 @@ export const post = ({
   const message = await prisma.message.create({
     data: {
       threadId,
-      content: messageContentBlocks({ content }),
+      content: messageContentBlocks({ content }) as any,
       role: role === 'user' ? 'USER' : 'ASSISTANT',
-      metadata: metadata || {},
+      metadata: (metadata || {}) as any,
     },
   })
 

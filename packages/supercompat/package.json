@@ -16,14 +16,15 @@
   "keywords": [],
   "license": "ISC",
   "scripts": {
-    "build": "tsup"
+    "build": "tsup",
+    "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@paralleldrive/cuid2": "^2.2.2",
     "dayjs": "^1.11.13",
     "deepmerge-ts": "^7.1.5",
     "lodash": "^4.17.21",
-    "openai": "^4.97.0",
+    "openai": "^5.15.0",
     "radash": "^12.1.0",
     "ts-deepmerge": "^7.0.3"
   },
@@ -34,6 +35,7 @@
     "@types/lodash": "^4.17.16",
     "groq-sdk": "^0.21.0",
     "humiris-ai": "^1.11.0",
-    "tsup": "^8.4.0"
+    "tsup": "^8.4.0",
+    "undici": "^7.15.0"
   }
 }
