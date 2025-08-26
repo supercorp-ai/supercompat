@@ -34,7 +34,7 @@ async (
   const metadata = (conversation.metadata ?? {}) as Record<string, string>
   const openaiConversationId = metadata.openaiConversationId || threadId
   const thread: ThreadWithConversationId = {
-    id: threadId,
+    id: openaiConversationId,
     object: 'thread',
     created_at: conversation.created_at ?? dayjs().unix(),
     metadata,

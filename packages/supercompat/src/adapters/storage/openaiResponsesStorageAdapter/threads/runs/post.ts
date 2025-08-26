@@ -31,7 +31,7 @@ export const post =
     const metadata = (conversation.metadata ?? {}) as Record<string, string>
     const openaiConversationId = metadata.openaiConversationId || threadId
     const thread: ThreadWithConversationId = {
-      id: threadId,
+      id: openaiConversationId,
       object: 'thread',
       created_at: conversation.created_at ?? dayjs().unix(),
       metadata,
@@ -45,7 +45,7 @@ export const post =
       id: `run_${uid(24)}`,
       object: 'thread.run',
       created_at: dayjs().unix(),
-      thread_id: threadId,
+      thread_id: openaiConversationId,
       assistant_id,
       model: body.model || assistant.model,
       instructions: body.instructions || '',
@@ -170,6 +170,7 @@ export const post =
     if (stream) {
       const readableStream = new ReadableStream({
         async start(controller) {
+          await saveRun()
           await runAdapter({
             run,
             onEvent: (event) => {

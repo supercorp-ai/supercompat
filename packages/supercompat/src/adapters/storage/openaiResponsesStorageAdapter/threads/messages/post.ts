@@ -11,7 +11,16 @@ export const post = ({ openai }: { openai: OpenAI }) => async (
   const body = JSON.parse(options.body)
   const content = typeof body.content === 'string' ? body.content : ''
   const oai = openai as any
-  await oai.conversations.items.create(threadId, {
+
+  const conversation = await oai.conversations
+    .retrieve(threadId)
+    .catch(() => null)
+  if (!conversation) return new Response('Thread not found', { status: 404 })
+
+  const openaiConversationId =
+    (conversation.metadata?.openaiConversationId as string) || threadId
+
+  await oai.conversations.items.create(openaiConversationId, {
     items: [
       {
         type: 'message',
@@ -26,7 +35,7 @@ export const post = ({ openai }: { openai: OpenAI }) => async (
       id: `msg_${Date.now()}`,
       object: 'thread.message',
       created_at: dayjs().unix(),
-      thread_id: threadId,
+      thread_id: openaiConversationId,
       role: body.role,
       content: [
         {
