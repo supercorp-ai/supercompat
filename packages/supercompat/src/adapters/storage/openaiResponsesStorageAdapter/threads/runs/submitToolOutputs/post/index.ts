@@ -1,6 +1,5 @@
 import OpenAI from 'openai'
 import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
-import { submitToolOutputsWithoutThreadRegexp } from '@/lib/runs/submitToolOutputsWithoutThreadRegexp'
 import { RunAdapterPartobClient, ThreadWithConversationId } from '@/types'
 import dayjs from 'dayjs'
 
@@ -25,16 +24,8 @@ async (
     thread_id?: string
   }
   const match = url.pathname.match(new RegExp(submitToolOutputsRegexp))
-  if (match) {
-    ;[, threadId, runId] = match
-    body = JSON.parse(options.body)
-  } else {
-    ;[, runId] = url.pathname.match(
-      new RegExp(submitToolOutputsWithoutThreadRegexp),
-    )!
-    body = JSON.parse(options.body)
-    threadId = body.thread_id as string
-  }
+  ;[, threadId, runId] = match!
+  body = JSON.parse(options.body)
   const { tool_outputs, stream } = body
 
   const oai = openai as any
