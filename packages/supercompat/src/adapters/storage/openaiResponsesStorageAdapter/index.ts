@@ -4,6 +4,7 @@ import { messagesRegexp } from '@/lib/messages/messagesRegexp'
 import { runsRegexp } from '@/lib/runs/runsRegexp'
 import { runRegexp } from '@/lib/runs/runRegexp'
 import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
+import { submitToolOutputsWithoutThreadRegexp } from '@/lib/runs/submitToolOutputsWithoutThreadRegexp'
 import { stepsRegexp } from '@/lib/steps/stepsRegexp'
 import { threads } from './threads'
 import { messages } from './threads/messages'
@@ -23,6 +24,10 @@ export const openaiResponsesStorageAdapter = ({
     [runsRegexp]: runs({ openai, runAdapter }),
     [runRegexp]: run({ openai }),
     [submitToolOutputsRegexp]: submitToolOutputs({ openai, runAdapter }),
+    [submitToolOutputsWithoutThreadRegexp]: submitToolOutputs({
+      openai,
+      runAdapter,
+    }),
     [stepsRegexp]: steps({ openai }),
   },
 })
