@@ -70,24 +70,34 @@ test('completions run adapter surfaces anthropic tool calls', async () => {
 
   const run = await client.beta.threads.runs.create(thread.id, {
     assistant_id: assistant.id,
-    model: 'claude-sonnet-4-20250514',
     instructions: 'Use the get_current_weather and then answer the message.',
-    stream: true,
+    model: 'claude-3-5-sonnet-20240620',
     tools,
+    stream: true,
+    truncation_strategy: {
+      type: 'last_messages',
+      last_messages: 10,
+    },
   })
 
-  let requiresActionEvent: any
+  let requiresActionEvent:
+    | OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
+    | undefined
 
   for await (const event of run) {
     if (event.event === 'thread.run.requires_action') {
-      requiresActionEvent = event
+      requiresActionEvent =
+        event as OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
     }
   }
 
   assert.ok(requiresActionEvent)
-  const toolCallId = requiresActionEvent.data.required_action.submit_tool_outputs.tool_calls[0].id
 
-  const submitRun = await client.beta.threads.runs.submitToolOutputs(
+  const toolCallId =
+    requiresActionEvent.data.required_action?.submit_tool_outputs.tool_calls[0]
+      .id
+
+  const submit = await client.beta.threads.runs.submitToolOutputs(
     requiresActionEvent.data.id,
     {
       thread_id: thread.id,
@@ -101,7 +111,7 @@ test('completions run adapter surfaces anthropic tool calls', async () => {
     }
   )
 
-  for await (const _event of submitRun) {
+  for await (const _event of submit) {
   }
 
   const list = await client.beta.threads.messages.list(thread.id)

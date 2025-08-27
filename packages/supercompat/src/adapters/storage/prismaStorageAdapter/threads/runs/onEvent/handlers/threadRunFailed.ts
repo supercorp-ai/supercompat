@@ -9,9 +9,9 @@ export const threadRunFailed = async ({
 }: {
   prisma: PrismaClient
   event: OpenAI.Beta.AssistantStreamEvent.ThreadRunFailed
-  controller: ReadableStreamDefaultController<OpenAI.Beta.AssistantStreamEvent.ThreadRunFailed>
+  controller: ReadableStreamDefaultController<string>
 }) => {
-  controller.enqueue(event)
+  controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
 
     const runRecord = await prisma.run.update({
       where: {

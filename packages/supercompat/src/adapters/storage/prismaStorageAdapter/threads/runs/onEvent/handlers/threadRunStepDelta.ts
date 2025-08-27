@@ -5,7 +5,7 @@ export const threadRunStepDelta = ({
   controller,
 }: {
   event: OpenAI.Beta.AssistantStreamEvent.ThreadRunStepDelta
-  controller: ReadableStreamDefaultController<OpenAI.Beta.AssistantStreamEvent.ThreadRunStepDelta>
+  controller: ReadableStreamDefaultController<string>
 }) => (
-  controller.enqueue(event)
+  controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
 )
