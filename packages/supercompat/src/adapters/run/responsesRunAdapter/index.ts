@@ -348,10 +348,14 @@ export const responsesRunAdapter =
       })
     }
 
+    const threadForEvent = await getThread()
+
     return onEvent({
       event: 'thread.run.requires_action',
       data: {
         ...run,
+        id: run.id,
+        thread_id: threadForEvent?.openaiConversationId || threadForEvent?.id || run.thread_id,
         status: 'requires_action',
         ...(newConversationId
           ? {
