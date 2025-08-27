@@ -87,7 +87,9 @@ export const post = ({
             controller: {
               ...controller,
               enqueue: (data) => {
-                controller.enqueue(`data: ${JSON.stringify(data)}\n\n`)
+                try {
+                  controller.enqueue(`data: ${JSON.stringify(data)}\n\n`)
+                } catch {}
               },
             },
             prisma,
@@ -105,7 +107,9 @@ export const post = ({
           controller: {
             ...controller,
             enqueue: (data) => {
-              controller.enqueue(`data: ${JSON.stringify(data)}\n\n`)
+              try {
+                controller.enqueue(`data: ${JSON.stringify(data)}\n\n`)
+              } catch {}
             },
           },
           prisma,
