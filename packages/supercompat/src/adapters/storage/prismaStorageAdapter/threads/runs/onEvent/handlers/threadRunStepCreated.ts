@@ -27,7 +27,7 @@ export const threadRunStepCreated = async ({
 }: {
   prisma: PrismaClient
   event: OpenAI.Beta.AssistantStreamEvent.ThreadRunStepCreated
-  controller: ReadableStreamDefaultController<OpenAI.Beta.AssistantStreamEvent.ThreadRunStepCreated>
+  controller: ReadableStreamDefaultController<string>
 }) => {
     const runStep = await prisma.runStep.create({
       data: {
@@ -43,10 +43,10 @@ export const threadRunStepCreated = async ({
 
     const serializedRunStep = serializeRunStep({ runStep })
 
-    controller.enqueue({
+    controller.enqueue(`data: ${JSON.stringify({
       ...event,
       data: serializedRunStep as any,
-    })
+    })}\n\n`)
 
     return serializedRunStep as any
   }
