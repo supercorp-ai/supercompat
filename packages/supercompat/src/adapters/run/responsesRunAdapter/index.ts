@@ -79,28 +79,11 @@ export const responsesRunAdapter =
 
     let providerResponse: AssistantStream
 
-    try {
-      providerResponse = await (client as any).responses.create({
-        ...opts,
-        ...(openaiConversationId ? { conversation: openaiConversationId } : {}),
-        stream: true,
-      })
-    } catch (e: any) {
-      const msg = `${e?.message ?? ''} ${e?.cause?.message ?? ''}`.trim()
-      console.error(e)
-      return onEvent({
-        event: 'thread.run.failed',
-        data: {
-          ...run,
-          failed_at: dayjs().unix(),
-          status: 'in_progress',
-          last_error: {
-            code: 'server_error',
-            message: msg,
-          },
-        },
-      })
-    }
+    providerResponse = await (client as any).responses.create({
+      ...opts,
+      ...(openaiConversationId ? { conversation: openaiConversationId } : {}),
+      stream: true,
+    })
 
     let message = (await onEvent({
       event: 'thread.message.created',
@@ -314,7 +297,7 @@ export const responsesRunAdapter =
       isEmpty(currentToolCalls) &&
       typeof (providerResponse as any).final === 'function'
     ) {
-      await (providerResponse as any).final().catch(() => {})
+      await (providerResponse as any).final()
     }
 
     message = (await onEvent({

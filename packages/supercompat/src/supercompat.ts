@@ -1,7 +1,6 @@
 import OpenAI, { AzureOpenAI } from 'openai'
 import { supercompatFetch, type Args } from './supercompatFetch'
 import { endpointFromBaseUrl } from '@/lib/azureOpenai/endpointFromBaseUrl'
-import { patchRunMethods } from '@/lib/patchRunMethods'
 
 export const supercompat = ({
   client,
@@ -20,7 +19,7 @@ export const supercompat = ({
         runAdapter,
       }),
     })
-    return patchRunMethods(oai)
+    return oai
   }
 
   const oai = new OpenAI({
@@ -31,5 +30,5 @@ export const supercompat = ({
       runAdapter,
     }),
   })
-  return patchRunMethods(oai)
+  return oai
 }
