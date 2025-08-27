@@ -14,7 +14,6 @@ import {
 } from '../src/index'
 
 const anthropicKey = process.env.ANTHROPIC_API_KEY!
-console.log({ anthropicKey })
 
 dns.setDefaultResultOrder('ipv4first')
 

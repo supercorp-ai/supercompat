@@ -9,7 +9,7 @@ import { onEvent } from './onEvent'
 import { getMessages } from './getMessages'
 
 type RunCreateResponse = Response & {
-  json: () => Promise<ReturnType<OpenAI.Beta.Threads.Runs['create']>>
+  json: () => Promise<OpenAI.Beta.Threads.Run>
 }
 
 export const post = ({
@@ -18,7 +18,7 @@ export const post = ({
 }: {
   prisma: PrismaClient
   runAdapter: RunAdapterPartobClient
-}) => async (urlString: string, options: any): Promise<RunCreateResponse> => {
+}) => async (urlString: string, options: RequestInit & { body: string }): Promise<RunCreateResponse> => {
   const url = new URL(urlString)
   const [, threadId] = url.pathname.match(new RegExp(runsRegexp))!
 

@@ -23,3 +23,8 @@ export type RunAdapterPartobClient = (args: Omit<Parameters<RunAdapter>[0], 'cli
 export type StorageAdapterArgs = {
   runAdapter: RunAdapter
 }
+
+export type RequestHandler = (
+  url: string,
+  init: RequestInit & { body?: string },
+) => Promise<Response>
