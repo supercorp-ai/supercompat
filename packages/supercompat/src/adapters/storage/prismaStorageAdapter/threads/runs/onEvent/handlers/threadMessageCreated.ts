@@ -18,7 +18,7 @@ export const threadMessageCreated = async ({
 }: {
   prisma: PrismaClient
   event: OpenAI.Beta.AssistantStreamEvent.ThreadMessageCreated
-  controller: ReadableStreamDefaultController<OpenAI.Beta.AssistantStreamEvent.ThreadMessageCreated>
+  controller: ReadableStreamDefaultController<string>
 }) => {
   const message = await prisma.message.create({
     data: {
@@ -33,10 +33,10 @@ export const threadMessageCreated = async ({
 
   const serializedMessage = serializeMessage({ message })
 
-  controller.enqueue({
+  controller.enqueue(`data: ${JSON.stringify({
     ...event,
     data: serializedMessage,
-  })
+  })}\n\n`)
 
   return serializedMessage
 }

@@ -9,9 +9,9 @@ export const threadRunCompleted = async ({
 }: {
   prisma: PrismaClient
   event: OpenAI.Beta.AssistantStreamEvent.ThreadRunCompleted
-  controller: ReadableStreamDefaultController<OpenAI.Beta.AssistantStreamEvent.ThreadRunCompleted>
+  controller: ReadableStreamDefaultController<string>
 }) => {
-  controller.enqueue(event)
+  controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
 
   const runRecord = await prisma.run.update({
     where: {

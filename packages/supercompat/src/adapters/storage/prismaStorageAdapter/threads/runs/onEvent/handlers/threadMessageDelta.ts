@@ -5,7 +5,7 @@ export const threadMessageDelta = ({
   controller,
 }: {
   event: OpenAI.Beta.AssistantStreamEvent.ThreadMessageDelta
-  controller: ReadableStreamDefaultController<OpenAI.Beta.AssistantStreamEvent.ThreadMessageDelta>
+  controller: ReadableStreamDefaultController<string>
 }) => (
-  controller.enqueue(event)
+  controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
 )

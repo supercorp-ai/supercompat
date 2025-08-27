@@ -14,9 +14,9 @@ export const threadMessageCompleted = async ({
 }: {
   prisma: PrismaClient
   event: OpenAI.Beta.AssistantStreamEvent.ThreadMessageCompleted
-  controller: ReadableStreamDefaultController<OpenAI.Beta.AssistantStreamEvent.ThreadMessageCompleted>
+  controller: ReadableStreamDefaultController<string>
 }) => {
-  controller.enqueue(event)
+  controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
 
   const data = event.data as MessageWithToolCalls
 

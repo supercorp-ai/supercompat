@@ -83,15 +83,7 @@ export const post = ({
       try {
         await runAdapter({
           run: data,
-          onEvent: onEvent({
-            controller: {
-              ...controller,
-              enqueue: (data) => {
-                controller.enqueue(`data: ${JSON.stringify(data)}\n\n`)
-              },
-            },
-            prisma,
-          }),
+          onEvent: onEvent({ controller, prisma }),
           getMessages: getMessages({
             prisma,
             run: run as unknown as RunForMessages,
@@ -120,7 +112,7 @@ export const post = ({
             },
           },
         } as OpenAI.Beta.AssistantStreamEvent.ThreadRunFailed)
-      }
+       }
 
       controller.close()
     },

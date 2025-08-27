@@ -16,13 +16,9 @@ async (
   options: RequestInit & { body: string },
 ): Promise<Response> => {
   const url = new URL(urlString)
-  const [, threadId, runId] = url.pathname.match(
-    new RegExp(submitToolOutputsRegexp),
-  )!
-  const body = JSON.parse(options.body) as {
-    tool_outputs?: OpenAI.Beta.Threads.RunSubmitToolOutputsParams.ToolOutput[]
-    stream?: boolean
-  }
+  const [, threadId, runId] = url.pathname.match(new RegExp(submitToolOutputsRegexp))!
+
+  const body = JSON.parse(options.body)
   const { tool_outputs, stream } = body
 
   const oai = openai as any
@@ -34,7 +30,7 @@ async (
   const metadata = (conversation.metadata ?? {}) as Record<string, string>
   const openaiConversationId = metadata.openaiConversationId || threadId
   const thread: ThreadWithConversationId = {
-    id: threadId,
+    id: openaiConversationId,
     object: 'thread',
     created_at: conversation.created_at ?? dayjs().unix(),
     metadata,

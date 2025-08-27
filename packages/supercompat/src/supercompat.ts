@@ -7,6 +7,7 @@ export const supercompat = ({
   storage,
   runAdapter,
 }: Args) => {
+
   if (client.type === 'AZURE_OPENAI') {
     return new AzureOpenAI({
       apiKey: client.client.apiKey,

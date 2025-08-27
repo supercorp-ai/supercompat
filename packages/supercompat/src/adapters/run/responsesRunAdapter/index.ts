@@ -314,7 +314,7 @@ export const responsesRunAdapter =
       isEmpty(currentToolCalls) &&
       typeof (providerResponse as any).final === 'function'
     ) {
-      await (providerResponse as any).final().catch(() => {})
+      await (providerResponse as any).final()
     }
 
     message = (await onEvent({
@@ -348,10 +348,14 @@ export const responsesRunAdapter =
       })
     }
 
+    const threadForEvent = await getThread()
+
     return onEvent({
       event: 'thread.run.requires_action',
       data: {
         ...run,
+        id: run.id,
+        thread_id: threadForEvent?.openaiConversationId || threadForEvent?.id || run.thread_id,
         status: 'requires_action',
         ...(newConversationId
           ? {
