@@ -16,12 +16,9 @@ export const post = ({
   runAdapter: RunAdapterPartobClient
 }) => async (urlString: string, options: any) => {
   const url = new URL(urlString)
-  let threadId: string
-  let runId: string
-  let body: any
-  const match = url.pathname.match(new RegExp(submitToolOutputsRegexp))
-  ;[, threadId, runId] = match!
-  body = JSON.parse(options.body)
+  const [, threadId, runId] = url.pathname.match(new RegExp(submitToolOutputsRegexp))!
+
+  const body = JSON.parse(options.body)
 
   const {
     tool_outputs,

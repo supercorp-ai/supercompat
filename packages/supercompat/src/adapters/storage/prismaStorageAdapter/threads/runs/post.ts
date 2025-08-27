@@ -80,15 +80,39 @@ export const post = ({
 
   const readableStream = new ReadableStream({
     async start(controller) {
-      await runAdapter({
-        run: data,
-        onEvent: onEvent({ controller, prisma }),
-        getMessages: getMessages({
+      try {
+        await runAdapter({
+          run: data,
+          onEvent: onEvent({ controller, prisma }),
+          getMessages: getMessages({
+            prisma,
+            run: run as unknown as RunForMessages,
+          }),
+          getThread: getThread({ prisma, threadId }),
+        })
+      } catch (error: any) {
+        console.error(error)
+
+        onEvent({
+          controller: {
+            ...controller,
+            enqueue: (data) => {
+              controller.enqueue(`data: ${JSON.stringify(data)}\n\n`)
+            },
+          },
           prisma,
-          run: run as unknown as RunForMessages,
-        }),
-        getThread: getThread({ prisma, threadId }),
-      })
+        })({
+          event: 'thread.run.failed',
+          data: {
+            id: run.id,
+            failed_at: dayjs().unix(),
+            last_error: {
+              code: 'server_error',
+              message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
+            },
+          },
+        } as OpenAI.Beta.AssistantStreamEvent.ThreadRunFailed)
+       }
 
       controller.close()
     },

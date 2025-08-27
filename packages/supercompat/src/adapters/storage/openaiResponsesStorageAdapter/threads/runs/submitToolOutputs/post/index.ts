@@ -16,16 +16,9 @@ async (
   options: RequestInit & { body: string },
 ): Promise<Response> => {
   const url = new URL(urlString)
-  let threadId: string
-  let runId: string
-  let body: {
-    tool_outputs?: OpenAI.Beta.Threads.RunSubmitToolOutputsParams.ToolOutput[]
-    stream?: boolean
-    thread_id?: string
-  }
-  const match = url.pathname.match(new RegExp(submitToolOutputsRegexp))
-  ;[, threadId, runId] = match!
-  body = JSON.parse(options.body)
+  const [, threadId, runId] = url.pathname.match(new RegExp(submitToolOutputsRegexp))!
+
+  const body = JSON.parse(options.body)
   const { tool_outputs, stream } = body
 
   const oai = openai as any

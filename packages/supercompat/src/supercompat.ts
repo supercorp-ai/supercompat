@@ -9,7 +9,7 @@ export const supercompat = ({
 }: Args) => {
 
   if (client.type === 'AZURE_OPENAI') {
-    const oai = new AzureOpenAI({
+    return new AzureOpenAI({
       apiKey: client.client.apiKey,
       apiVersion: client.client.apiVersion,
       endpoint: endpointFromBaseUrl({ baseURL: client.client.baseURL }),
@@ -19,10 +19,9 @@ export const supercompat = ({
         runAdapter,
       }),
     })
-    return oai
   }
 
-  const oai = new OpenAI({
+  return new OpenAI({
     apiKey: 'SUPERCOMPAT_PLACEHOLDER_OPENAI_KEY',
     fetch: supercompatFetch({
       client,
@@ -30,5 +29,4 @@ export const supercompat = ({
       runAdapter,
     }),
   })
-  return oai
 }
