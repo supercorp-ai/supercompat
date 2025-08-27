@@ -37,6 +37,6 @@
     "humiris-ai": "^1.11.0",
     "tsup": "^8.4.0",
     "undici": "^7.15.0",
-    "@superinterface/react": "^4.3.0"
+    "@superinterface/react": "5.0.0-beta.0"
   }
 }

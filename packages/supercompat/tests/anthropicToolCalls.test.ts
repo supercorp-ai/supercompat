@@ -70,7 +70,7 @@ test('completions run adapter surfaces anthropic tool calls', async () => {
 
   const run = await client.beta.threads.runs.create(thread.id, {
     assistant_id: assistant.id,
-    model: 'claude-3-5-sonnet-20240620',
+    model: 'claude-sonnet-4-20250514',
     instructions: 'Use the get_current_weather and then answer the message.',
     stream: true,
     tools,
