@@ -11,6 +11,8 @@ import {
   openaiResponsesStorageAdapter,
 } from '../src/index'
 
+// Regression test: validates tool-call flows retain messages in storage
+
 const apiKey = process.env.TEST_OPENAI_API_KEY
 
 if (process.env.HTTPS_PROXY) {
