@@ -28,3 +28,7 @@ export type RequestHandler = (
   url: string,
   init: RequestInit & { body?: string },
 ) => Promise<Response>
+
+export type ThreadWithConversationId = OpenAI.Beta.Threads.Thread & {
+  openaiConversationId: string | null
+}
