@@ -1,6 +1,7 @@
 import OpenAI from 'openai'
 import { messagesRegexp } from '@/lib/messages/messagesRegexp'
 import dayjs from 'dayjs'
+import { uid } from 'radash'
 
 export const post = ({ openai }: { openai: OpenAI }) => async (
   urlString: string,
@@ -32,7 +33,7 @@ export const post = ({ openai }: { openai: OpenAI }) => async (
 
   return new Response(
     JSON.stringify({
-      id: `msg_${Date.now()}`,
+      id: uid(24),
       object: 'thread.message',
       created_at: dayjs().unix(),
       thread_id: openaiConversationId,

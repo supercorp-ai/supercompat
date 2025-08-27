@@ -75,7 +75,7 @@ export const post =
       } else if (event.event === 'thread.run.step.created') {
         const step = {
           ...event.data,
-          id: `run_step_${uid(24)}`,
+          id: uid(24),
         } as OpenAI.Beta.Threads.Runs.RunStep
         runSteps.push(step)
         return step

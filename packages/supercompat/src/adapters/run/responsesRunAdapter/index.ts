@@ -102,10 +102,11 @@ export const responsesRunAdapter =
       })
     }
 
+    const messageId = uid(24)
     let message = (await onEvent({
       event: 'thread.message.created',
       data: {
-        id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
+        id: messageId,
         object: 'thread.message',
         completed_at: null,
         run_id: run.id,
@@ -122,10 +123,11 @@ export const responsesRunAdapter =
       },
     })) as MessageWithToolCalls
 
+    const messageRunStepId = uid(24)
     onEvent({
       event: 'thread.run.step.created',
       data: {
-        id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
+        id: messageRunStepId,
         object: 'thread.run.step',
         run_id: run.id,
         assistant_id: run.assistant_id,
@@ -189,10 +191,11 @@ export const responsesRunAdapter =
         case 'response.output_item.added': {
           if (event.item.type === 'function_call') {
             if (!toolCallsRunStep) {
+              const toolRunStepId = uid(24)
               toolCallsRunStep = (await onEvent({
                 event: 'thread.run.step.created',
                 data: {
-                  id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
+                  id: toolRunStepId,
                   object: 'thread.run.step',
                   run_id: run.id,
                   assistant_id: run.assistant_id,
