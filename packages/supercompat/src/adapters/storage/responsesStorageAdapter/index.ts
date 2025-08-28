@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client'
+import OpenAI from 'openai'
 import { StorageAdapterArgs } from '@/types'
 import type { RequestHandler } from '@/types'
 import { messagesRegexp } from '@/lib/messages/messagesRegexp'
@@ -6,29 +6,97 @@ import { runsRegexp } from '@/lib/runs/runsRegexp'
 import { runRegexp } from '@/lib/runs/runRegexp'
 import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
 import { stepsRegexp } from '@/lib/steps/stepsRegexp'
-import { threads } from './threads'
-import { messages } from './threads/messages'
-import { runs } from './threads/runs'
-import { run } from './threads/run'
-import { steps } from './threads/runs/steps'
-import { submitToolOutputs } from './threads/runs/submitToolOutputs'
-import { assistants } from './assistants'
+import { createThreadsHandlers } from './routes/threads'
+import { createMessagesHandlers } from './routes/messages'
+import { createRunsHandlers } from './routes/runs'
+import { createRunHandlers } from './routes/run'
+import { createStepsHandlers } from './routes/steps'
+import { createSubmitToolOutputsHandlers } from './routes/submitToolOutputs'
+import { serializeThreadMessage } from './helpers/serializeThreadMessage'
+import { onEventBridgeInMemory } from './helpers/onEventBridgeInMemory'
 
 type MethodHandlers = { get?: RequestHandler; post?: RequestHandler }
 
-export const responsesStorageAdapter = ({
-  openai,
-}: {
-  openai: PrismaClient
-}): ((args: StorageAdapterArgs) => { requestHandlers: Record<string, MethodHandlers> }) =>
-({ runAdapter }: StorageAdapterArgs) => ({
-  requestHandlers: {
-    '^/(?:v1/|openai/)?assistants$': assistants({ prisma }),
-    '^/(?:v1|/?openai)/threads$': threads({ prisma }),
-    [messagesRegexp]: messages({ prisma }),
-    [runsRegexp]: runs({ prisma, runAdapter }),
-    [runRegexp]: run({ prisma, runAdapter }),
-    [stepsRegexp]: steps({ prisma }),
-    [submitToolOutputsRegexp]: submitToolOutputs({ prisma, runAdapter }),
-  },
-})
+export const responsesStorageAdapter = ({ openai }: { openai: OpenAI }) =>
+  ({ runAdapter }: StorageAdapterArgs) => {
+    // Conversations mapping
+    const threadConversations = new Map<string, string>()
+    const getConversationId = async (threadId: string) => threadConversations.get(threadId) ?? null
+    const setConversationId = async (threadId: string, conversationId: string) => {
+      threadConversations.set(threadId, conversationId)
+    }
+    const ensureConversation = async (threadId: string) => {
+      let convId = await getConversationId(threadId)
+      if (!convId) {
+        const conv = await openai.conversations.create({ metadata: { thread_id: threadId } })
+        convId = conv.id
+        await setConversationId(threadId, convId)
+      }
+      return convId
+    }
+
+    // Assistant loader
+    const getAssistant = async (assistantId: string) => {
+      const a = await openai.beta.assistants.retrieve(assistantId)
+      return { model: a.model, instructions: (a.instructions ?? '') as string }
+    }
+
+    // In-memory state for runs and steps
+    const runs = new Map<string, OpenAI.Beta.Threads.Run>()
+    const runSteps = new Map<string, OpenAI.Beta.Threads.Runs.RunStep[]>()
+    const threadLastAssistant = new Map<string, { id: string; text: string; created_at: number }>()
+    const runLastResponseId = new Map<string, string>()
+    const runCompletedAfterTool = new Map<string, boolean>()
+    const runToolSubmitted = new Map<string, boolean>()
+
+    // Handlers
+    const threadsHandler = createThreadsHandlers()
+    const messagesHandler = createMessagesHandlers({
+      openai,
+      ensureConversation,
+      getConversationId,
+      serializeThreadMessage,
+      threadLastAssistant,
+    })
+    const runsHandler = createRunsHandlers({
+      openai,
+      runAdapter,
+      getAssistant,
+      getConversationId,
+      setConversationId,
+      ensureConversation,
+      onEventBridge: ({ controller }) =>
+        onEventBridgeInMemory({ controller, runs, runSteps, threadLastAssistant, runCompletedAfterTool }),
+      runs,
+      runSteps,
+      runLastResponseId,
+    })
+    const runHandler = createRunHandlers({ openai, runs, runSteps, getConversationId, runCompletedAfterTool, runToolSubmitted })
+    const stepsHandler = createStepsHandlers({ runSteps })
+    const submitToolOutputsHandler = createSubmitToolOutputsHandlers({
+      openai,
+      runAdapter,
+      runs,
+      onEventBridge: ({ controller }) =>
+        onEventBridgeInMemory({ controller, runs, runSteps, threadLastAssistant, runCompletedAfterTool }),
+      getConversationId,
+      ensureConversation,
+      setConversationId,
+      getAssistant,
+      runLastResponseId,
+      threadLastAssistant,
+      runCompletedAfterTool,
+      runToolSubmitted,
+    })
+
+    return {
+      requestHandlers: {
+        '^/(?:v1|/?openai)/threads$': threadsHandler,
+        [messagesRegexp]: messagesHandler,
+        [runsRegexp]: runsHandler,
+        [runRegexp]: runHandler,
+        [stepsRegexp]: stepsHandler,
+        [submitToolOutputsRegexp]: submitToolOutputsHandler,
+      },
+    }
+  }

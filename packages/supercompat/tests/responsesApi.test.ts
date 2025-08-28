@@ -340,15 +340,21 @@ test('responsesStorageAdapter streams with tool', async (t) => {
   assert.equal(runStatus.status, 'completed')
 
 
-  const listAfter = await client.beta.threads.messages.list(thread.id)
-  const finalAssistant = listAfter.data
-    .filter((m) => m.role === 'assistant')
-    .at(-1)
-  const finalText = (
-    finalAssistant?.content[0] as OpenAI.Beta.Threads.MessageContentText
-  ).text.value
-    .trim()
-    .toLowerCase()
+  let finalText = ''
+  for (let i = 0; i < 6; i++) {
+    const listAfter = await client.beta.threads.messages.list(thread.id)
+    const finalAssistant = listAfter.data
+      .filter((m) => m.role === 'assistant')
+      .at(-1)
+    const maybeText = (
+      finalAssistant?.content?.[0] as OpenAI.Beta.Threads.MessageContentText | undefined
+    )?.text?.value
+    if (typeof maybeText === 'string' && maybeText.trim().length > 0) {
+      finalText = maybeText.trim().toLowerCase()
+      break
+    }
+    await new Promise((r) => setTimeout(r, 200))
+  }
   assert.ok(finalText.includes('70'))
 })
 

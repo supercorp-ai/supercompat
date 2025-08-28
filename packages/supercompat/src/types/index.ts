@@ -10,12 +10,22 @@ export type RunAdapter = ({
   client,
   run,
   onEvent,
-  getMessages,
+  getAssistant,
+  getConversationId,
+  setConversationId,
+  inputItems,
+  previousResponseId,
+  setLastResponseId,
 }: {
   client: OpenAI
   run: OpenAI.Beta.Threads.Run
   onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
-  getMessages: () => Promise<MessageWithRun[]>
+  getAssistant: (assistantId: string) => Promise<{ model: string; instructions?: string | null }>
+  getConversationId: () => Promise<string | null>
+  setConversationId: (conversationId: string) => Promise<void>
+  inputItems?: OpenAI.Responses.ResponseInput
+  previousResponseId?: string | null
+  setLastResponseId?: (responseId: string) => Promise<void> | void
 }) => Promise<void>
 
 export type RunAdapterPartobClient = (args: Omit<Parameters<RunAdapter>[0], 'client'>) => ReturnType<RunAdapter>
