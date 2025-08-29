@@ -17,14 +17,16 @@ import { onEventBridgeInMemory } from './helpers/onEventBridgeInMemory'
 
 type MethodHandlers = { get?: RequestHandler; post?: RequestHandler }
 
-export const responsesStorageAdapter = ({ openai }: { openai: OpenAI }) =>
+export const responsesStorageAdapter = ({
+  openai,
+  getConversationId,
+  setConversationId,
+}: {
+  openai: OpenAI
+  getConversationId: (threadId: string) => Promise<string | null>
+  setConversationId: (threadId: string, conversationId: string) => Promise<void>
+}) =>
   ({ runAdapter }: StorageAdapterArgs) => {
-    // Conversations mapping
-    const threadConversations = new Map<string, string>()
-    const getConversationId = async (threadId: string) => threadConversations.get(threadId) ?? null
-    const setConversationId = async (threadId: string, conversationId: string) => {
-      threadConversations.set(threadId, conversationId)
-    }
     const ensureConversation = async (threadId: string) => {
       let convId = await getConversationId(threadId)
       if (!convId) {
@@ -44,7 +46,7 @@ export const responsesStorageAdapter = ({ openai }: { openai: OpenAI }) =>
     // In-memory state for runs and steps
     const runs = new Map<string, OpenAI.Beta.Threads.Run>()
     const runSteps = new Map<string, OpenAI.Beta.Threads.Runs.RunStep[]>()
-    const threadLastAssistant = new Map<string, { id: string; text: string; created_at: number }>()
+    const convLastAssistant = new Map<string, { id: string; text: string; created_at: number }>()
     const runLastResponseId = new Map<string, string>()
     const runCompletedAfterTool = new Map<string, boolean>()
     const runToolSubmitted = new Map<string, boolean>()
@@ -56,7 +58,7 @@ export const responsesStorageAdapter = ({ openai }: { openai: OpenAI }) =>
       ensureConversation,
       getConversationId,
       serializeThreadMessage,
-      threadLastAssistant,
+      convLastAssistant,
     })
     const runsHandler = createRunsHandlers({
       openai,
@@ -66,7 +68,7 @@ export const responsesStorageAdapter = ({ openai }: { openai: OpenAI }) =>
       setConversationId,
       ensureConversation,
       onEventBridge: ({ controller }) =>
-        onEventBridgeInMemory({ controller, runs, runSteps, threadLastAssistant, runCompletedAfterTool }),
+        onEventBridgeInMemory({ controller, runs, runSteps, convLastAssistant, runCompletedAfterTool, getConversationId }),
       runs,
       runSteps,
       runLastResponseId,
@@ -78,13 +80,13 @@ export const responsesStorageAdapter = ({ openai }: { openai: OpenAI }) =>
       runAdapter,
       runs,
       onEventBridge: ({ controller }) =>
-        onEventBridgeInMemory({ controller, runs, runSteps, threadLastAssistant, runCompletedAfterTool }),
+        onEventBridgeInMemory({ controller, runs, runSteps, convLastAssistant, runCompletedAfterTool, getConversationId }),
       getConversationId,
       ensureConversation,
       setConversationId,
       getAssistant,
       runLastResponseId,
-      threadLastAssistant,
+      convLastAssistant,
       runCompletedAfterTool,
       runToolSubmitted,
     })

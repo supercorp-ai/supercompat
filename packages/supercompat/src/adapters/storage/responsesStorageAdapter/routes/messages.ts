@@ -6,13 +6,13 @@ export const createMessagesHandlers = ({
   ensureConversation,
   getConversationId,
   serializeThreadMessage,
-  threadLastAssistant,
+  convLastAssistant,
 }: {
   openai: OpenAI
   ensureConversation: (threadId: string) => Promise<string>
   getConversationId: (threadId: string) => Promise<string | null>
   serializeThreadMessage: ({ item, threadId }: { item: any; threadId: string }) => any
-  threadLastAssistant: Map<string, { id: string; text: string; created_at: number }>
+  convLastAssistant: Map<string, { id: string; text: string; created_at: number }>
 }): { get: RequestHandler; post: RequestHandler } => {
   const get: RequestHandler = async (url) => {
     const pathname = new URL(url).pathname
@@ -74,8 +74,9 @@ export const createMessagesHandlers = ({
         }
       }
     }
-    // Fallback: cached last assistant
-    const last = threadLastAssistant.get(threadId)
+    // Fallback: cached last assistant (prefer conversation-scoped cache)
+    const convForCache = await getConversationId(threadId)
+    const last = (convForCache ? convLastAssistant.get(convForCache) : undefined)
     const hasAnyAssistant = combined.some((m: any) => m.role === 'assistant')
     if (last && !hasAnyAssistant) {
       combined.push({
@@ -104,7 +105,8 @@ export const createMessagesHandlers = ({
         txt = String(m?.content?.[0]?.text?.value ?? '')
       } catch {}
       if (!txt) {
-        const cached = threadLastAssistant.get(threadId)?.text ?? ''
+        const convForCache2 = await getConversationId(threadId)
+        const cached = (convForCache2 ? convLastAssistant.get(convForCache2)?.text : '') ?? ''
         combined[i] = {
           ...m,
           content: [{ type: 'text', text: { value: cached, annotations: [] } }],

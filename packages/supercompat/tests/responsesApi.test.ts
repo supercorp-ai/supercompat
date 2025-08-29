@@ -9,6 +9,7 @@ import {
   supercompat,
   responsesStorageAdapter,
 } from '../src/index'
+import { PrismaClient } from '@prisma/client'
 
 const apiKey = process.env.TEST_OPENAI_API_KEY
 
@@ -24,10 +25,20 @@ test('responsesRunAdapter can create thread message and run via OpenAI', async (
       : {}),
   })
 
+  const prisma = new PrismaClient()
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: responsesRunAdapter(),
-    storage: responsesStorageAdapter({ openai: realOpenAI }),
+    storage: responsesStorageAdapter({
+      openai: realOpenAI,
+      getConversationId: async (threadId) => {
+        const row = await prisma.thread.findUnique({ where: { id: threadId } })
+        return (row as any)?.openaiConversationId ?? null
+      },
+      setConversationId: async (threadId, conversationId) => {
+        await prisma.thread.update({ where: { id: threadId }, data: { openaiConversationId: conversationId } })
+      },
+    }),
   })
 
   const assistant = await client.beta.assistants.create({
@@ -36,6 +47,8 @@ test('responsesRunAdapter can create thread message and run via OpenAI', async (
   })
 
   const thread = await client.beta.threads.create()
+  const assistantRow = await prisma.assistant.upsert({ where: { id: assistant.id }, create: { id: assistant.id }, update: {} })
+  await prisma.thread.create({ data: { id: thread.id, assistantId: assistantRow.id } })
 
   await client.beta.threads.messages.create(thread.id, {
     role: 'user',
@@ -64,10 +77,20 @@ test('responsesRunAdapter maintains conversation across runs', async (t) => {
       : {}),
   })
 
+  const prisma = new PrismaClient()
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: responsesRunAdapter(),
-    storage: responsesStorageAdapter({ openai: realOpenAI }),
+    storage: responsesStorageAdapter({
+      openai: realOpenAI,
+      getConversationId: async (threadId) => {
+        const row = await prisma.thread.findUnique({ where: { id: threadId } })
+        return (row as any)?.openaiConversationId ?? null
+      },
+      setConversationId: async (threadId, conversationId) => {
+        await prisma.thread.update({ where: { id: threadId }, data: { openaiConversationId: conversationId } })
+      },
+    }),
   })
 
   const assistant = await client.beta.assistants.create({
@@ -76,6 +99,8 @@ test('responsesRunAdapter maintains conversation across runs', async (t) => {
   })
 
   const thread = await client.beta.threads.create()
+  const assistantRow = await prisma.assistant.upsert({ where: { id: assistant.id }, create: { id: assistant.id }, update: {} })
+  await prisma.thread.create({ data: { id: thread.id, assistantId: assistantRow.id } })
 
   await client.beta.threads.messages.create(thread.id, {
     role: 'user',
@@ -115,10 +140,20 @@ test('responsesRunAdapter streams tool calls via OpenAI', async () => {
       : {}),
   })
 
+  const prisma = new PrismaClient()
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: responsesRunAdapter(),
-    storage: responsesStorageAdapter({ openai: realOpenAI }),
+    storage: responsesStorageAdapter({
+      openai: realOpenAI,
+      getConversationId: async (threadId) => {
+        const row = await prisma.thread.findUnique({ where: { id: threadId } })
+        return (row as any)?.openaiConversationId ?? null
+      },
+      setConversationId: async (threadId, conversationId) => {
+        await prisma.thread.update({ where: { id: threadId }, data: { openaiConversationId: conversationId } })
+      },
+    }),
   })
 
   const tools = [
@@ -148,6 +183,9 @@ test('responsesRunAdapter streams tool calls via OpenAI', async () => {
   })
 
   const thread = await client.beta.threads.create()
+  const assistantRow = await client.beta.assistants.retrieve(assistant.id)
+  await prisma.assistant.upsert({ where: { id: assistant.id }, create: { id: assistant.id, modelSlug: assistantRow.model as any, instructions: assistantRow.instructions as any }, update: {} })
+  await prisma.thread.create({ data: { id: thread.id, assistantId: assistant.id } })
 
   await client.beta.threads.messages.create(thread.id, {
     role: 'user',
@@ -222,10 +260,20 @@ test('responsesStorageAdapter works with polling', async (t) => {
       : {}),
   })
 
+  const prisma = new PrismaClient()
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: responsesRunAdapter(),
-    storage: responsesStorageAdapter({ openai: realOpenAI }),
+    storage: responsesStorageAdapter({
+      openai: realOpenAI,
+      getConversationId: async (threadId) => {
+        const row = await prisma.thread.findUnique({ where: { id: threadId } })
+        return (row as any)?.openaiConversationId ?? null
+      },
+      setConversationId: async (threadId, conversationId) => {
+        await prisma.thread.update({ where: { id: threadId }, data: { openaiConversationId: conversationId } })
+      },
+    }),
   })
 
   const assistant = await client.beta.assistants.create({
@@ -234,6 +282,8 @@ test('responsesStorageAdapter works with polling', async (t) => {
   })
 
   const thread = await client.beta.threads.create()
+  await prisma.assistant.upsert({ where: { id: assistant.id }, create: { id: assistant.id }, update: {} })
+  await prisma.thread.create({ data: { id: thread.id, assistantId: assistant.id } })
 
   await client.beta.threads.messages.create(thread.id, {
     role: 'user',
@@ -262,10 +312,20 @@ test('responsesStorageAdapter streams with tool', async (t) => {
       : {}),
   })
 
+  const prisma = new PrismaClient()
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: responsesRunAdapter(),
-    storage: responsesStorageAdapter({ openai: realOpenAI }),
+    storage: responsesStorageAdapter({
+      openai: realOpenAI,
+      getConversationId: async (threadId) => {
+        const row = await prisma.thread.findUnique({ where: { id: threadId } })
+        return (row as any)?.openaiConversationId ?? null
+      },
+      setConversationId: async (threadId, conversationId) => {
+        await prisma.thread.update({ where: { id: threadId }, data: { openaiConversationId: conversationId } })
+      },
+    }),
   })
 
   const tools = [
@@ -295,6 +355,8 @@ test('responsesStorageAdapter streams with tool', async (t) => {
   })
 
   const thread = await client.beta.threads.create()
+  await prisma.assistant.upsert({ where: { id: assistant.id }, create: { id: assistant.id }, update: {} })
+  await prisma.thread.create({ data: { id: thread.id, assistantId: assistant.id } })
 
   await client.beta.threads.messages.create(thread.id, {
     role: 'user',
@@ -366,10 +428,20 @@ test('responsesStorageAdapter exposes run steps with tools', async (t) => {
       : {}),
   })
 
+  const prisma = new PrismaClient()
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: responsesRunAdapter(),
-    storage: responsesStorageAdapter({ openai: realOpenAI }),
+    storage: responsesStorageAdapter({
+      openai: realOpenAI,
+      getConversationId: async (threadId) => {
+        const row = await prisma.thread.findUnique({ where: { id: threadId } })
+        return (row as any)?.openaiConversationId ?? null
+      },
+      setConversationId: async (threadId, conversationId) => {
+        await prisma.thread.update({ where: { id: threadId }, data: { openaiConversationId: conversationId } })
+      },
+    }),
   })
 
   const tools = [
@@ -395,6 +467,8 @@ test('responsesStorageAdapter exposes run steps with tools', async (t) => {
   })
 
   const thread = await client.beta.threads.create()
+  await prisma.assistant.upsert({ where: { id: assistant.id }, create: { id: assistant.id }, update: {} })
+  await prisma.thread.create({ data: { id: thread.id, assistantId: assistant.id } })
 
   await client.beta.threads.messages.create(thread.id, {
     role: 'user',

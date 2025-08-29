@@ -31,7 +31,7 @@ export const createRunHandlers = ({
     if (run.status !== 'requires_action' && run.status !== 'completed') {
       const start = Date.now()
       if (run.status === 'in_progress') {
-        while (Date.now() - start < 1500) {
+        while (Date.now() - start < 2500) {
           const stepsNow = runSteps.get(runId) ?? []
           const hasToolNow = stepsNow.some((s: any) => s.step_details?.type === 'tool_calls' && s.step_details.tool_calls?.length)
           if (hasToolNow) break

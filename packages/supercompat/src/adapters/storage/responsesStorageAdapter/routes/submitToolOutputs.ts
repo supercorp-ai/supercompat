@@ -11,7 +11,7 @@ export const createSubmitToolOutputsHandlers = ({
   setConversationId,
   getAssistant,
   runLastResponseId,
-  threadLastAssistant,
+  convLastAssistant,
   runCompletedAfterTool,
   runToolSubmitted,
 }: {
@@ -24,7 +24,7 @@ export const createSubmitToolOutputsHandlers = ({
   setConversationId: (threadId: string, convId: string) => Promise<void>
   getAssistant: (assistantId: string) => Promise<{ model: string; instructions: string }>
   runLastResponseId: Map<string, string>
-  threadLastAssistant: Map<string, { id: string; text: string; created_at: number }>
+  convLastAssistant: Map<string, { id: string; text: string; created_at: number }>
   runCompletedAfterTool: Map<string, boolean>
   runToolSubmitted: Map<string, boolean>
 }): { post: RequestHandler } => {
@@ -91,14 +91,14 @@ export const createSubmitToolOutputsHandlers = ({
         let lastMsg: any = null
         for await (const it of list) { if ((it as any).type === 'message' && (it as any).role === 'assistant') lastMsg = it }
         if (lastMsg) {
-          threadLastAssistant.set(threadId, {
+          convLastAssistant.set(convId, {
             id: lastMsg.id,
             text: (lastMsg.content?.find?.((c: any) => c.type === 'output_text')?.text ?? '') as string,
             created_at: Math.floor(Date.now()/1000),
           })
         }
         // If no assistant message yet, synthesize from last function_call_output
-        if (!threadLastAssistant.get(threadId)) {
+        if (!convLastAssistant.get(convId)) {
           const list2 = await openai.conversations.items.list(convId, { order: 'asc' })
           let lastOutput: string | null = null
           for await (const it of list2) {
@@ -107,7 +107,7 @@ export const createSubmitToolOutputsHandlers = ({
             }
           }
           if (lastOutput) {
-            threadLastAssistant.set(threadId, {
+            convLastAssistant.set(convId, {
               id: `msg_${Math.random().toString(36).slice(2)}`,
               text: lastOutput,
               created_at: Math.floor(Date.now()/1000),
