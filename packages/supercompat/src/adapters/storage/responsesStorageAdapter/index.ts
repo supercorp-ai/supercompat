@@ -58,7 +58,6 @@ export const responsesStorageAdapter = ({
       ensureConversation,
       getConversationId,
       serializeThreadMessage,
-      convLastAssistant,
     })
     const runsHandler = createRunsHandlers({
       openai,
