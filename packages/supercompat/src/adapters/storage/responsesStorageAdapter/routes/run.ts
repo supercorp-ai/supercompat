@@ -38,14 +38,14 @@ export const createRunHandlers = ({
           await new Promise((res) => setTimeout(res, 40))
         }
       }
-      const steps = runSteps.get(runId) ?? []
-      const toolStep = steps.find((s: any) => s.step_details?.type === 'tool_calls') as any
-      if (toolStep?.step_details?.tool_calls?.length) {
-        const tool_calls = toolStep.step_details.tool_calls.map((tc: any) => ({
-          id: tc.id ?? tc.call_id ?? Math.random().toString(36).slice(2),
-          type: 'function',
-          function: { name: tc.function?.name ?? tc.name, arguments: tc.function?.arguments ?? tc.arguments ?? '' },
-        }))
+      const stepsNow = runSteps.get(runId) ?? []
+      const toolStepNow = stepsNow.find((s: any) => s.step_details?.type === 'tool_calls') as any
+      if (toolStepNow?.step_details?.tool_calls?.length) {
+        const tool_calls = toolStepNow.step_details.tool_calls.map((tc: any) => ({
+            id: tc.id ?? tc.call_id ?? Math.random().toString(36).slice(2),
+            type: 'function',
+            function: { name: tc.function?.name ?? tc.name, arguments: tc.function?.arguments ?? tc.arguments ?? '' },
+          }))
         run = { ...run, status: 'requires_action', required_action: { type: 'submit_tool_outputs', submit_tool_outputs: { tool_calls } } }
         runs.set(runId, run)
       }

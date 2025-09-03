@@ -27,6 +27,8 @@ export const responsesStorageAdapter = ({
   setConversationId: (threadId: string, conversationId: string) => Promise<void>
 }) =>
   ({ runAdapter }: StorageAdapterArgs) => {
+    // Track last user text per thread to seed Responses input without delays
+    const threadLastUserText = new Map<string, string>()
     const ensureConversation = async (threadId: string) => {
       let convId = await getConversationId(threadId)
       if (!convId) {
@@ -46,7 +48,6 @@ export const responsesStorageAdapter = ({
     // In-memory state for runs and steps
     const runs = new Map<string, OpenAI.Beta.Threads.Run>()
     const runSteps = new Map<string, OpenAI.Beta.Threads.Runs.RunStep[]>()
-    const convLastAssistant = new Map<string, { id: string; text: string; created_at: number }>()
     const runLastResponseId = new Map<string, string>()
     const runCompletedAfterTool = new Map<string, boolean>()
     const runToolSubmitted = new Map<string, boolean>()
@@ -58,6 +59,9 @@ export const responsesStorageAdapter = ({
       ensureConversation,
       getConversationId,
       serializeThreadMessage,
+      setLastUserText: (threadId: string, text: string) => {
+        if (typeof text === 'string') threadLastUserText.set(threadId, text)
+      },
     })
     const runsHandler = createRunsHandlers({
       openai,
@@ -67,10 +71,11 @@ export const responsesStorageAdapter = ({
       setConversationId,
       ensureConversation,
       onEventBridge: ({ controller }) =>
-        onEventBridgeInMemory({ controller, runs, runSteps, convLastAssistant, runCompletedAfterTool, getConversationId }),
+        onEventBridgeInMemory({ controller, runs, runSteps, runCompletedAfterTool, getConversationId }),
       runs,
       runSteps,
       runLastResponseId,
+      getLastUserText: (threadId: string) => threadLastUserText.get(threadId) ?? '',
     })
     const runHandler = createRunHandlers({ openai, runs, runSteps, getConversationId, runCompletedAfterTool, runToolSubmitted })
     const stepsHandler = createStepsHandlers({ runSteps })
@@ -79,13 +84,12 @@ export const responsesStorageAdapter = ({
       runAdapter,
       runs,
       onEventBridge: ({ controller }) =>
-        onEventBridgeInMemory({ controller, runs, runSteps, convLastAssistant, runCompletedAfterTool, getConversationId }),
+        onEventBridgeInMemory({ controller, runs, runSteps, runCompletedAfterTool, getConversationId }),
       getConversationId,
       ensureConversation,
       setConversationId,
       getAssistant,
       runLastResponseId,
-      convLastAssistant,
       runCompletedAfterTool,
       runToolSubmitted,
     })

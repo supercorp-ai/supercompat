@@ -95,13 +95,14 @@ export const responsesRunAdapter = () => async ({
       } catch {}
     }
 
-    const isContinuation = Array.isArray(inputItems) && inputItems.length > 0
-    const singleTool = !isContinuation && mapTools.length === 1 ? mapTools[0] : null
+    const hasToolOutputs = Array.isArray(inputItems) && (inputItems as any[]).some((it: any) => it?.type === 'function_call_output')
+    const includeTools = mapTools.length > 0 && !hasToolOutputs
+    const singleTool = includeTools && mapTools.length === 1 ? mapTools[0] : null
     const body: any = {
       model,
-      input: (inputItems && inputItems.length > 0) ? (inputItems as any) : (latestUserText ?? ''),
+      input: (inputItems && (inputItems as any[]).length > 0) ? (inputItems as any) : (latestUserText ?? ''),
       ...(instructions || run.instructions ? { instructions: (run.instructions || instructions || '') as any } : {}),
-      ...(!isContinuation && mapTools.length ? { tools: mapTools, parallel_tool_calls: true } : {}),
+      ...(includeTools ? { tools: mapTools, parallel_tool_calls: true } : {}),
       ...(singleTool ? { tool_choice: { type: 'function', name: singleTool.name } } : {}),
     }
     if (previousResponseId) {
@@ -174,8 +175,9 @@ export const responsesRunAdapter = () => async ({
             }
           }
 
-          if (item.type === 'function_call') {
-            toolCallByItemId.set(item.id, { call_id: item.call_id, name: item.name, arguments: '' })
+          if (item.type === 'function_call' || item.type === 'tool_call') {
+            const call_id = item.call_id ?? item.id
+            toolCallByItemId.set(item.id, { call_id, name: item.name, arguments: item.arguments ?? '' })
             if (!toolCallsRunStep) {
               toolCallsRunStep = await onEvent({
                 event: 'thread.run.step.created',
@@ -211,15 +213,17 @@ export const responsesRunAdapter = () => async ({
                     type: 'tool_calls',
                     tool_calls: [
                       {
-                        id: item.call_id,
+                        id: call_id,
                         type: 'function',
-                        function: { name: item.name, arguments: '' },
+                        function: { name: item.name, arguments: item.arguments ?? '' },
                       },
                     ],
                   },
                 },
               },
             } as any)
+
+            // do not emit requires_action here; wait until completion snapshot
           }
           break
         }
@@ -285,9 +289,36 @@ export const responsesRunAdapter = () => async ({
           } as OpenAI.Beta.AssistantStreamEvent.ThreadMessageDelta)
           break
         }
-        case 'response.function_call_arguments.delta': {
+        case 'response.function_call_arguments.delta':
+        case 'response.tool_call_arguments.delta': {
           const { item_id, delta } = evt as any
           const call = toolCallByItemId.get(item_id)
+
+          // Ensure the tool-calls step exists even if argument deltas arrive first
+          if (!toolCallsRunStep) {
+            toolCallsRunStep = await onEvent({
+              event: 'thread.run.step.created',
+              data: {
+                id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
+                object: 'thread.run.step',
+                run_id: run.id,
+                assistant_id: run.assistant_id,
+                thread_id: run.thread_id,
+                type: 'tool_calls',
+                status: 'in_progress',
+                completed_at: null,
+                created_at: dayjs().unix(),
+                expired_at: null,
+                last_error: null,
+                metadata: {},
+                failed_at: null,
+                cancelled_at: null,
+                usage: null,
+                step_details: { type: 'tool_calls', tool_calls: [] },
+              },
+            })
+          }
+
           if (call) {
             call.arguments += delta
             await onEvent({
@@ -329,9 +360,10 @@ export const responsesRunAdapter = () => async ({
                 if (out.type === 'message') {
                   const txt = (out.content?.find?.((c: any) => c.type === 'output_text')?.text ?? '') as string
                   if (txt && !textBuffer) textBuffer = txt
-                } else if (out.type === 'function_call') {
-                  const call = { call_id: out.call_id, name: out.name, arguments: out.arguments ?? '' }
-                  toolCallByItemId.set(out.id ?? out.call_id, call)
+                } else if (out.type === 'function_call' || out.type === 'tool_call') {
+                  const call_id = out.call_id ?? out.id
+                  const call = { call_id, name: out.name, arguments: out.arguments ?? '' }
+                  toolCallByItemId.set(out.id ?? call_id, call)
                 }
               }
             }
@@ -368,6 +400,21 @@ export const responsesRunAdapter = () => async ({
                 tool_calls: undefined,
               },
             })
+
+            // Ensure the assistant message exists in the conversation for immediate reads
+            if ((conversationId ?? null) && typeof textBuffer === 'string' && textBuffer.trim().length > 0) {
+              await client.conversations.items.create(conversationId!, {
+                items: [
+                  {
+                    type: 'message',
+                    role: 'assistant',
+                    content: [
+                      { type: 'output_text', text: textBuffer },
+                    ],
+                  } as any,
+                ],
+              })
+            }
           }
 
           const toolCalls = Array.from(toolCallByItemId.values())
@@ -403,7 +450,7 @@ export const responsesRunAdapter = () => async ({
             data: {
               ...run,
               failed_at: dayjs().unix(),
-              status: 'in_progress',
+              status: 'failed',
               last_error: { code: 'server_error', message: 'response failed' },
             },
           })
@@ -417,7 +464,7 @@ export const responsesRunAdapter = () => async ({
       data: {
         ...run,
         failed_at: dayjs().unix(),
-        status: 'in_progress',
+        status: 'failed',
         last_error: { code: 'server_error', message: `${e?.message ?? ''} ${e?.cause?.message ?? ''}` },
       },
     })

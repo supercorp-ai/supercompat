@@ -14,6 +14,7 @@ export const createRunsHandlers = ({
   runs,
   runSteps,
   runLastResponseId,
+  getLastUserText,
 }: {
   openai: OpenAI
   runAdapter: RunAdapter
@@ -25,6 +26,7 @@ export const createRunsHandlers = ({
   runs: Map<string, OpenAI.Beta.Threads.Run>
   runSteps: Map<string, OpenAI.Beta.Threads.Runs.RunStep[]>
   runLastResponseId: Map<string, string>
+  getLastUserText: (threadId: string) => string
 }): { post: RequestHandler } => {
   const post: RequestHandler = async (url, options) => {
     const pathname = new URL(url).pathname
@@ -69,6 +71,7 @@ export const createRunsHandlers = ({
     runSteps.set(runId, [])
 
     const startRun = async (controller?: ReadableStreamDefaultController) => {
+      const seedText = getLastUserText(threadId)
       await runAdapter({
         client: openai,
         run,
@@ -76,6 +79,7 @@ export const createRunsHandlers = ({
         getAssistant,
         getConversationId: async () => await getConversationId(threadId),
         setConversationId: async (convId: string) => await setConversationId(threadId, convId),
+        ...(seedText ? { inputItems: seedText as any } : {}),
         setLastResponseId: async (respId: string) => { runLastResponseId.set(run.id, respId) },
       })
     }

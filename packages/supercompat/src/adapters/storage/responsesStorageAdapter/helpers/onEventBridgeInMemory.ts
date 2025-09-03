@@ -5,14 +5,12 @@ export const onEventBridgeInMemory = ({
   controller,
   runs,
   runSteps,
-  convLastAssistant,
   runCompletedAfterTool,
   getConversationId,
 }: {
   controller?: ReadableStreamDefaultController
   runs: Map<string, OpenAI.Beta.Threads.Run>
   runSteps: Map<string, OpenAI.Beta.Threads.Runs.RunStep[]>
-  convLastAssistant: Map<string, { id: string; text: string; created_at: number }>
   runCompletedAfterTool?: Map<string, boolean>
   getConversationId: (threadId: string) => Promise<string | null>
 }) =>
@@ -88,20 +86,6 @@ export const onEventBridgeInMemory = ({
     }
 
     if (event.event === 'thread.message.completed') {
-      const msg = event.data as any
-      const text = (msg?.content?.[0]?.text?.value ?? '') as string
-      if (text) {
-        try {
-          const convId = await getConversationId(msg.thread_id)
-          if (convId) {
-            convLastAssistant.set(convId, {
-              id: msg.id,
-              text,
-              created_at: msg.created_at ?? Math.floor(Date.now() / 1000),
-            })
-          }
-        } catch {}
-      }
       controller?.enqueue(`data: ${JSON.stringify(event)}\n\n`)
       return
     }
