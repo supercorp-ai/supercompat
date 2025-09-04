@@ -26,17 +26,15 @@ export const post = ({
     }),
   })
 
-  const resultOptions = {
-    ...omit(body, ['response_format']),
+  const resultOptions: any = {
+    model: body.model,
     stream: body.stream ? isEmpty(body.tools) : false,
     system,
-    messages: serializeMessages({
-      messages: chatMessages,
-    }),
+    messages: serializeMessages({ messages: chatMessages }),
     max_tokens: 4096,
-    tools: serializeTools({
-      tools: body.tools,
-    }),
+    tools: serializeTools({ tools: body.tools }),
+    temperature: body.temperature,
+    top_p: body.top_p,
   }
 
   if (body.stream) {
@@ -57,7 +55,7 @@ export const post = ({
                 },
               ]
             } : {
-              content: chunk.delta.text,
+              content: (chunk.delta as any).text,
             }
 
             const messageDelta = {
@@ -87,7 +85,7 @@ export const post = ({
                 }
               ],
             } : {
-              content: chunk.content_block.text,
+              content: (chunk.content_block as any).text,
             }
 
             const messageDelta = {

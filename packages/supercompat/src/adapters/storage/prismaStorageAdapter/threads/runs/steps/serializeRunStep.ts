@@ -23,6 +23,8 @@ export const serializeRunStep = ({
   cancelled_at: runStep.cancelledAt ? dayjs(runStep.cancelledAt).unix() : null,
   failed_at: runStep.failedAt ? dayjs(runStep.failedAt).unix() : null,
   completed_at: runStep.completedAt ? dayjs(runStep.completedAt).unix() : null,
-  metadata: runStep.metadata,
+  // metadata type from Prisma is JsonValue, cast to OpenAI Metadata
+  // @ts-ignore-next-line
+  metadata: (runStep.metadata as unknown) as OpenAI.Beta.Threads.Runs.RunStep['metadata'],
   usage: runStep.usage as OpenAI.Beta.Threads.Runs.RunStep['usage'],
 })

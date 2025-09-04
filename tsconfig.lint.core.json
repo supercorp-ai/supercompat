@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "packages/supercompat/src/supercompat.ts",
+    "packages/supercompat/src/adapters/run/**/*",
+    "packages/supercompat/src/adapters/client/**/*",
+    "packages/supercompat/src/lib/**/*",
+    "packages/supercompat/src/types/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "packages/supercompat/src/adapters/storage/**"
+  ]
+}

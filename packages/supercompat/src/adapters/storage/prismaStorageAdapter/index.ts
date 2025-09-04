@@ -27,7 +27,7 @@ export const prismaStorageAdapter = ({
     '^/(?:v1|/?openai)/threads$': threads({ prisma }),
     [messagesRegexp]: messages({ prisma }),
     [runsRegexp]: runs({ prisma, runAdapter }),
-    [runRegexp]: run({ prisma, runAdapter }),
+    [runRegexp]: run({ prisma }),
     [stepsRegexp]: steps({ prisma }),
     [submitToolOutputsRegexp]: submitToolOutputs({ prisma, runAdapter }),
   },

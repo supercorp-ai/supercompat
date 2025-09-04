@@ -33,10 +33,9 @@ const serializeToolCall = ({
   toolCall,
 }: {
   toolCall: OpenAI.Beta.Threads.Runs.Steps.FunctionToolCall
-}) => ({
+}): OpenAI.ChatCompletionMessageParam => ({
   tool_call_id: toolCall.id,
   role: 'tool' as 'tool',
-  name: toolCall.function.name,
   content: serializeToolContent({
     toolCall,
   }),
@@ -46,12 +45,14 @@ const serializeMessageWithContent = ({
   message,
 }: {
   message: MessageWithRun
-}) => ({
+}): OpenAI.ChatCompletionMessageParam => ({
   role: message.role,
   content: serializeContent({
     content: message.content as unknown as OpenAI.Beta.Threads.Messages.TextContentBlock[],
   }),
-  ...(message?.metadata?.toolCalls ? { tool_calls: message.metadata.toolCalls } : {}),
+  ...((message.role === 'assistant' && (message as any)?.metadata?.toolCalls)
+    ? { tool_calls: (message as any).metadata.toolCalls }
+    : {}),
 })
 
 const serializeContent = ({
@@ -65,19 +66,24 @@ export const serializeMessage = ({
 }: {
   message: MessageWithRun
 }) => {
-  const result = [serializeMessageWithContent({ message })]
+  const result: OpenAI.ChatCompletionMessageParam[] = [
+    serializeMessageWithContent({ message }) as OpenAI.ChatCompletionMessageParam,
+  ]
 
   const run = message.run
 
   if (!run) return result
 
-  const messageToolCalls = message.metadata?.toolCalls || []
+  const messageToolCalls: any[] = Array.isArray((message as any)?.metadata?.toolCalls)
+    ? ((message as any).metadata.toolCalls as any[])
+    : []
 
   messageToolCalls.forEach((tc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
     const runStep = run.runSteps.find((rs) => {
       if (rs.type !== 'tool_calls') return false
 
-      return rs.step_details.tool_calls.some((rsTc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
+      const stepDetails = rs.step_details as any
+      return stepDetails.tool_calls.some((rsTc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
         if (rsTc.type !== 'function') return false
 
         return rsTc.id === tc.id
@@ -86,7 +92,8 @@ export const serializeMessage = ({
 
     if (!runStep) return
 
-    const toolCall = runStep.step_details.tool_calls.find((rsTc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
+    const stepDetails = runStep.step_details as any
+    const toolCall = stepDetails.tool_calls.find((rsTc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
       if (rsTc.type !== 'function') return false
 
       return rsTc.id === tc.id

@@ -38,13 +38,10 @@ export const createSubmitToolOutputsHandlers = ({
     if (!existingRun) return new Response(JSON.stringify({ error: 'run not found' }), { status: 404 })
 
     const startRun = async (controller?: ReadableStreamDefaultController) => {
-      const resumed = { ...existingRun, status: 'queued', required_action: null }
+      const resumed: OpenAI.Beta.Threads.Run = { ...existingRun, status: 'queued', required_action: null } as OpenAI.Beta.Threads.Run
       runs.set(runId, resumed)
       runToolSubmitted.set(runId, true)
-      // Directly create function_call_output items; fail loud on error
-      await openai.conversations.items.create(convId, {
-        items: tool_outputs.map((t: any) => ({ type: 'function_call_output', call_id: t.tool_call_id, output: String(t.output ?? '') })),
-      })
+      // Do not pre-insert outputs into Conversations; pass via Responses input
 
       await runAdapter({
         client: openai,

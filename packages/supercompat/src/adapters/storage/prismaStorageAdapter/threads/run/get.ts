@@ -23,6 +23,13 @@ export const get = ({
     },
   })
 
+  if (!run) {
+    return new Response(JSON.stringify({ error: 'run not found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    }) as GetResponse
+  }
+
   return new Response(JSON.stringify(
     serializeRun({ run })
   ), {

@@ -23,9 +23,9 @@ export const serializeRun = ({
   completed_at: run.completedAt ? dayjs(run.completedAt).unix() : null,
   model: run.model,
   instructions: run.instructions,
-  tools: run.tools as OpenAI.Beta.Threads.Run['tools'],
-  metadata: run.metadata,
-  usage: run.usage as OpenAI.Beta.Threads.Run['usage'],
+  tools: (run.tools as unknown) as any,
+  metadata: (run.metadata as unknown) as any,
+  usage: (run.usage as unknown) as any,
   truncation_strategy: {
     type: 'auto',
   },

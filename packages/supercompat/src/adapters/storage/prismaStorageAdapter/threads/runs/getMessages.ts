@@ -2,13 +2,9 @@ import type { PrismaClient } from '@prisma/client'
 import { serializeMessage } from '../messages/serializeMessage'
 import { serializeRunStep } from './steps/serializeRunStep'
 import { serializeRun } from './serializeRun'
-import type { Run, MessageWithRun, RunStep } from '@/types/prisma'
+import type { RunStep } from '@/types/prisma'
 
-const getTake = ({
-  run,
-}: {
-  run: Run
-}) => {
+const getTake = ({ run }: { run: { truncationStrategy: any } }) => {
   // @ts-ignore-next-line
   if (run.truncationStrategy.type === 'auto') {
     return null
@@ -29,13 +25,7 @@ const getTake = ({
   throw new Error(`Unsupported truncation strategy type: ${run.truncationStrategy.type}`)
 }
 
-export const getMessages = ({
-  prisma,
-  run,
-}: {
-  prisma: PrismaClient
-  run: Run
-}) => async () => {
+export const getMessages = ({ prisma, run }: { prisma: PrismaClient; run: { threadId: string; truncationStrategy: any } }) => async () => {
   const take = getTake({
     run,
   })
@@ -57,13 +47,13 @@ export const getMessages = ({
     ...(take ? { take } : {}),
   })
 
-  return messages.map((message: MessageWithRun) => ({
+  return (messages as any[]).map((message: any) => ({
     ...serializeMessage({ message }),
-    run: message.run ? ({
-      ...serializeRun({ run: message.run }),
-      runSteps: message.run.runSteps.map((runStep: RunStep) => (
-        serializeRunStep({ runStep })
-      )),
-    }) : null,
+    run: message.run
+      ? ({
+          ...serializeRun({ run: message.run }),
+          runSteps: (message.run.runSteps as any[]).map((runStep: any) => serializeRunStep({ runStep })),
+        })
+      : null,
   }))
 }

@@ -2,8 +2,8 @@ import type { PrismaClient } from '@prisma/client'
 import dayjs from 'dayjs'
 
 export const post = ({ prisma }: { prisma: PrismaClient }) =>
-  async (_url: string, options: RequestInit & { body: string }) => {
-    const body = JSON.parse(options.body)
+  async (_url: string, options: RequestInit & { body?: string }) => {
+    const body = JSON.parse(options.body || '{}')
     const { model, instructions } = body
 
     const assistant = await prisma.assistant.create({

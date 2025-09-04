@@ -33,7 +33,7 @@ export const get = ({
   const runsPlusOne = await prisma.run.findMany({
     where: { threadId },
     take: pageSize + 1,
-    orderBy: { createdAt: order },
+    orderBy: { createdAt: order as any },
     ...(after && {
       skip: 1,
       cursor: { id: after },

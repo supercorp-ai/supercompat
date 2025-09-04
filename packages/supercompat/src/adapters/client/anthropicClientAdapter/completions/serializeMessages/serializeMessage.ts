@@ -18,12 +18,35 @@ export const serializeMessage = ({
           type: 'text',
           text: message.content,
         },
-        ...(message.tool_calls ?? []).map((toolCall) => ({
-          type: 'tool_use',
-          id: toolCall.id,
-          name: toolCall.function.name,
-          input: toolCall.function.arguments ? JSON.parse(toolCall.function.arguments) : {},
-        })),
+        ...((message.tool_calls ?? [])
+          .map((toolCall) => {
+            if (toolCall.type === 'function') {
+              return {
+                type: 'tool_use',
+                id: toolCall.id,
+                name: toolCall.function.name,
+                input: toolCall.function.arguments ? JSON.parse(toolCall.function.arguments) : {},
+              }
+            }
+
+            if (toolCall.type === 'custom') {
+              let input: any = {}
+              try {
+                input = toolCall.custom.input ? JSON.parse(toolCall.custom.input) : {}
+              } catch {
+                input = toolCall.custom.input ?? {}
+              }
+              return {
+                type: 'tool_use',
+                id: toolCall.id,
+                name: toolCall.custom.name,
+                input,
+              }
+            }
+
+            return null
+          })
+          .filter(Boolean) as any[]),
       ],
     }
   } else if (message.role === 'tool') {

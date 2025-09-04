@@ -28,7 +28,7 @@ export const get = ({
   const runStepsPlusOne = await prisma.runStep.findMany({
     where: { threadId, runId },
     take: pageSize + 1,
-    orderBy: { createdAt: order },
+    orderBy: { createdAt: order as any },
     ...(after && {
       skip: 1,
       cursor: { id: after },

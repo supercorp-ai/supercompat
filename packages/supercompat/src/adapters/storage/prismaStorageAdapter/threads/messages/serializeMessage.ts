@@ -20,7 +20,7 @@ export const serializeMessage = ({
   content: message.content as unknown as OpenAI.Beta.Threads.Messages.TextContentBlock[],
   assistant_id: message.assistantId,
   run_id: message.runId,
-  attachments: message.attachments,
+  attachments: (message as any).attachments as any,
   status: message.status.toLowerCase() as OpenAI.Beta.Threads.Messages.Message['status'],
   metadata: assign(message.metadata as Record<any, any> ?? {}, message.toolCalls ? { toolCalls: message.toolCalls } : {}),
 })

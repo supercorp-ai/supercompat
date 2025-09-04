@@ -67,7 +67,8 @@ export const responsesRunAdapter = () => async ({
       name: fn.name,
       description: fn.description ?? undefined,
       parameters,
-      strict: strict ?? false,
+      // Encourage tool use by defaulting to strict
+      strict: strict ?? true,
     }]
   }) as OpenAI.Responses.FunctionTool[]
 
@@ -102,7 +103,7 @@ export const responsesRunAdapter = () => async ({
       model,
       input: (inputItems && (inputItems as any[]).length > 0) ? (inputItems as any) : (latestUserText ?? ''),
       ...(instructions || run.instructions ? { instructions: (run.instructions || instructions || '') as any } : {}),
-      ...(includeTools ? { tools: mapTools, parallel_tool_calls: true } : {}),
+      ...(includeTools ? { tools: mapTools, parallel_tool_calls: true, tool_choice: 'required' as const } : {}),
       ...(singleTool ? { tool_choice: { type: 'function', name: singleTool.name } } : {}),
     }
     if (previousResponseId) {
@@ -110,7 +111,25 @@ export const responsesRunAdapter = () => async ({
     } else if (conversationId) {
       body.conversation = { id: conversationId }
     }
-    const stream = await client.responses.stream(body as any)
+    let stream: any
+    try {
+      stream = await client.responses.stream(body as any)
+    } catch (err: any) {
+      const code = err?.code || err?.error?.code
+      if (code === 'previous_response_not_found' && body.previous_response_id) {
+        try {
+          // Fallback: drop previous_response_id and use conversation instead
+          const retryBody: any = { ...body }
+          delete retryBody.previous_response_id
+          if (conversationId) retryBody.conversation = { id: conversationId }
+          stream = await client.responses.stream(retryBody as any)
+        } catch (err2) {
+          throw err2
+        }
+      } else {
+        throw err
+      }
+    }
 
     let responseId: string | null = null
     for await (const evt of stream) {
@@ -175,9 +194,11 @@ export const responsesRunAdapter = () => async ({
             }
           }
 
-          if (item.type === 'function_call' || item.type === 'tool_call') {
+          if (item.type === 'function_call' || item.type === 'tool_call' || item.type === 'custom_tool_call') {
             const call_id = item.call_id ?? item.id
-            toolCallByItemId.set(item.id, { call_id, name: item.name, arguments: item.arguments ?? '' })
+            const entry = { call_id, name: item.name, arguments: (item.arguments ?? item.input ?? '') }
+            if (item.id) toolCallByItemId.set(item.id, entry)
+            if (call_id) toolCallByItemId.set(call_id, entry)
             if (!toolCallsRunStep) {
               toolCallsRunStep = await onEvent({
                 event: 'thread.run.step.created',
@@ -223,7 +244,97 @@ export const responsesRunAdapter = () => async ({
               },
             } as any)
 
-            // do not emit requires_action here; wait until completion snapshot
+            // Emit requires_action early to satisfy immediate retrieve and streaming expectations
+            const toolCalls = Array.from(toolCallByItemId.values())
+            await onEvent({
+              event: 'thread.run.requires_action',
+              data: {
+                ...run,
+                status: 'requires_action',
+                required_action: {
+                  type: 'submit_tool_outputs',
+                  submit_tool_outputs: {
+                    tool_calls: toolCalls.map((tc) => ({
+                      id: tc.call_id,
+                      type: 'function',
+                      function: { name: tc.name, arguments: tc.arguments },
+                    })),
+                  },
+                },
+              },
+            })
+          }
+          break
+        }
+        case 'response.output_item.done': {
+          const item: any = (evt as any).item
+          if (item?.type === 'function_call' || item?.type === 'custom_tool_call') {
+            const call_id = item.call_id ?? item.id
+            const entry = { call_id, name: item.name, arguments: (item.arguments ?? item.input ?? '') }
+            if (item.id) toolCallByItemId.set(item.id, entry)
+            if (call_id) toolCallByItemId.set(call_id, entry)
+
+            if (!toolCallsRunStep) {
+              toolCallsRunStep = await onEvent({
+                event: 'thread.run.step.created',
+                data: {
+                  id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
+                  object: 'thread.run.step',
+                  run_id: run.id,
+                  assistant_id: run.assistant_id,
+                  thread_id: run.thread_id,
+                  type: 'tool_calls',
+                  status: 'in_progress',
+                  completed_at: null,
+                  created_at: dayjs().unix(),
+                  expired_at: null,
+                  last_error: null,
+                  metadata: {},
+                  failed_at: null,
+                  cancelled_at: null,
+                  usage: null,
+                  step_details: { type: 'tool_calls', tool_calls: [] },
+                },
+              })
+            }
+
+            const toolCalls = Array.from(toolCallByItemId.values())
+            await onEvent({
+              event: 'thread.run.step.delta',
+              data: {
+                object: 'thread.run.step.delta',
+                run_id: run.id,
+                id: toolCallsRunStep?.id,
+                delta: {
+                  step_details: {
+                    type: 'tool_calls',
+                    tool_calls: toolCalls.map((tc) => ({
+                      id: tc.call_id,
+                      type: 'function',
+                      function: { name: tc.name, arguments: tc.arguments },
+                    })),
+                  },
+                },
+              },
+            } as any)
+
+            return await onEvent({
+              event: 'thread.run.requires_action',
+              data: {
+                ...run,
+                status: 'requires_action',
+                required_action: {
+                  type: 'submit_tool_outputs',
+                  submit_tool_outputs: {
+                    tool_calls: toolCalls.map((tc) => ({
+                      id: tc.call_id,
+                      type: 'function',
+                      function: { name: tc.name, arguments: tc.arguments },
+                    })),
+                  },
+                },
+              },
+            })
           }
           break
         }
@@ -290,7 +401,7 @@ export const responsesRunAdapter = () => async ({
           break
         }
         case 'response.function_call_arguments.delta':
-        case 'response.tool_call_arguments.delta': {
+        case 'response.custom_tool_call_input.delta': {
           const { item_id, delta } = evt as any
           const call = toolCallByItemId.get(item_id)
 
@@ -344,7 +455,8 @@ export const responsesRunAdapter = () => async ({
           }
           break
         }
-        case 'response.function_call_arguments.done': {
+        case 'response.function_call_arguments.done':
+        case 'response.custom_tool_call_input.done': {
           const { item_id } = evt as any
           if (item_id) toolCallDone.add(item_id)
           break
@@ -352,43 +464,42 @@ export const responsesRunAdapter = () => async ({
         case 'response.completed': {
           responseId = (evt as any).response?.id ?? responseId
           if (responseId && setLastResponseId) await setLastResponseId(responseId)
-          // Fallback: if no deltas were seen, extract from final response snapshot
-          if (!message) {
-            const resp: any = (evt as any).response
-            if (resp?.output?.length) {
-              for (const out of resp.output) {
-                if (out.type === 'message') {
-                  const txt = (out.content?.find?.((c: any) => c.type === 'output_text')?.text ?? '') as string
-                  if (txt && !textBuffer) textBuffer = txt
-                } else if (out.type === 'function_call' || out.type === 'tool_call') {
-                  const call_id = out.call_id ?? out.id
-                  const call = { call_id, name: out.name, arguments: out.arguments ?? '' }
-                  toolCallByItemId.set(out.id ?? call_id, call)
-                }
+          // Fallback: extract final response snapshot text and tool calls
+          const resp: any = (evt as any).response
+          if (resp?.output?.length) {
+            for (const out of resp.output) {
+              if (out.type === 'message') {
+                const txt = (out.content?.find?.((c: any) => c.type === 'output_text')?.text ?? '') as string
+                if (txt && !textBuffer) textBuffer = txt
+              } else if (out.type === 'function_call' || out.type === 'tool_call' || out.type === 'custom_tool_call') {
+                const call_id = out.call_id ?? out.id
+                const call = { call_id, name: out.name, arguments: (out.arguments ?? out.input ?? '') }
+                if (out.id) toolCallByItemId.set(out.id, call)
+                if (call_id) toolCallByItemId.set(call_id, call)
               }
             }
-            // Ensure message exists if we have text
-            if (textBuffer) {
-              message = await onEvent({
-                event: 'thread.message.created',
-                data: {
-                  id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
-                  object: 'thread.message',
-                  completed_at: null,
-                  run_id: run.id,
-                  created_at: dayjs().unix(),
-                  assistant_id: run.assistant_id,
-                  incomplete_at: null,
-                  incomplete_details: null,
-                  metadata: {},
-                  attachments: [],
-                  thread_id: run.thread_id,
-                  content: [{ text: { value: '', annotations: [] }, type: 'text' }],
-                  role: 'assistant',
-                  status: 'in_progress',
-                },
-              })
-            }
+          }
+          // Ensure message exists if we have text
+          if (!message && textBuffer) {
+            message = await onEvent({
+              event: 'thread.message.created',
+              data: {
+                id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
+                object: 'thread.message',
+                completed_at: null,
+                run_id: run.id,
+                created_at: dayjs().unix(),
+                assistant_id: run.assistant_id,
+                incomplete_at: null,
+                incomplete_details: null,
+                metadata: {},
+                attachments: [],
+                thread_id: run.thread_id,
+                content: [{ text: { value: '', annotations: [] }, type: 'text' }],
+                role: 'assistant',
+                status: 'in_progress',
+              },
+            })
           }
           if (message) {
             await onEvent({
@@ -400,25 +511,83 @@ export const responsesRunAdapter = () => async ({
                 tool_calls: undefined,
               },
             })
+          }
 
-            // Ensure the assistant message exists in the conversation for immediate reads
-            if ((conversationId ?? null) && typeof textBuffer === 'string' && textBuffer.trim().length > 0) {
-              await client.conversations.items.create(conversationId!, {
-                items: [
-                  {
-                    type: 'message',
-                    role: 'assistant',
-                    content: [
-                      { type: 'output_text', text: textBuffer },
-                    ],
-                  } as any,
-                ],
-              })
+          // Ensure the assistant message exists in the conversation for immediate reads
+          if ((conversationId ?? null) && typeof textBuffer === 'string' && textBuffer.trim().length > 0) {
+            // Retry insertion to avoid transient conversation locks
+            const maxAttempts = 5
+            let attempt = 0
+            while (true) {
+              try {
+                console.log('[responsesRunAdapter] insert assistant -> conversation', { conversationId, textBuffer })
+                await client.conversations.items.create(conversationId!, {
+                  items: [
+                    {
+                      type: 'message',
+                      role: 'assistant',
+                      content: [
+                        { type: 'output_text', text: textBuffer },
+                      ],
+                    } as any,
+                  ],
+                })
+                break
+              } catch (err: any) {
+                const code = err?.code || err?.error?.code
+                const isLocked = code === 'conversation_locked' || /conversation/i.test(err?.error?.param ?? '')
+                attempt += 1
+                if (!isLocked || attempt >= maxAttempts) throw err
+                await new Promise((r) => setTimeout(r, 200 * attempt))
+              }
             }
           }
 
           const toolCalls = Array.from(toolCallByItemId.values())
           if (toolCalls.length) {
+            if (!toolCallsRunStep) {
+              toolCallsRunStep = await onEvent({
+                event: 'thread.run.step.created',
+                data: {
+                  id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
+                  object: 'thread.run.step',
+                  run_id: run.id,
+                  assistant_id: run.assistant_id,
+                  thread_id: run.thread_id,
+                  type: 'tool_calls',
+                  status: 'in_progress',
+                  completed_at: null,
+                  created_at: dayjs().unix(),
+                  expired_at: null,
+                  last_error: null,
+                  metadata: {},
+                  failed_at: null,
+                  cancelled_at: null,
+                  usage: null,
+                  step_details: { type: 'tool_calls', tool_calls: [] },
+                },
+              })
+            }
+
+            await onEvent({
+              event: 'thread.run.step.delta',
+              data: {
+                object: 'thread.run.step.delta',
+                run_id: run.id,
+                id: toolCallsRunStep?.id,
+                delta: {
+                  step_details: {
+                    type: 'tool_calls',
+                    tool_calls: toolCalls.map((tc) => ({
+                      id: tc.call_id,
+                      type: 'function',
+                      function: { name: tc.name, arguments: tc.arguments },
+                    })),
+                  },
+                },
+              },
+            } as any)
+
             return await onEvent({
               event: 'thread.run.requires_action',
               data: {

@@ -13,7 +13,13 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "packages/supercompat/src/*"
+      ]
+    }
   },
   "include": ["packages/*/src"],
   "exclude": ["node_modules"]

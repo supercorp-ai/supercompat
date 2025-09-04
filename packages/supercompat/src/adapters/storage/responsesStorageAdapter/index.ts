@@ -71,7 +71,7 @@ export const responsesStorageAdapter = ({
       setConversationId,
       ensureConversation,
       onEventBridge: ({ controller }) =>
-        onEventBridgeInMemory({ controller, runs, runSteps, runCompletedAfterTool, getConversationId }),
+        onEventBridgeInMemory({ controller, runs, runSteps, runCompletedAfterTool, getConversationId, openai, ensureConversation }),
       runs,
       runSteps,
       runLastResponseId,
@@ -84,7 +84,7 @@ export const responsesStorageAdapter = ({
       runAdapter,
       runs,
       onEventBridge: ({ controller }) =>
-        onEventBridgeInMemory({ controller, runs, runSteps, runCompletedAfterTool, getConversationId }),
+        onEventBridgeInMemory({ controller, runs, runSteps, runCompletedAfterTool, getConversationId, openai, ensureConversation }),
       getConversationId,
       ensureConversation,
       setConversationId,

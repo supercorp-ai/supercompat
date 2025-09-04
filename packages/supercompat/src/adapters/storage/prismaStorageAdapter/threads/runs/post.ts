@@ -18,11 +18,11 @@ export const post = ({
 }: {
   prisma: PrismaClient
   runAdapter: RunAdapterPartobClient
-}) => async (urlString: string, options: RequestInit & { body: string }): Promise<RunCreateResponse> => {
+}) => async (urlString: string, options: RequestInit & { body?: string }): Promise<RunCreateResponse> => {
   const url = new URL(urlString)
   const [, threadId] = url.pathname.match(new RegExp(runsRegexp))!
 
-  const body = JSON.parse(options.body)
+  const body = JSON.parse(options.body || '{}')
   const { assistant_id, stream } = body
 
   const assistant = await prisma.assistant.findUnique({
@@ -63,8 +63,8 @@ export const post = ({
       expiresAt: dayjs().add(1, 'hour').unix(),
       model,
       instructions,
-      tools,
-      metadata,
+      tools: (tools || []) as any,
+      metadata: (metadata || {}) as any,
       thread: {
         connect: {
           id: threadId,
@@ -85,7 +85,7 @@ export const post = ({
   const readableStream = new ReadableStream({
     async start(controller) {
       try {
-        await runAdapter({
+        await (runAdapter as any)({
           run: data,
           onEvent: onEvent({
             controller: {
@@ -136,9 +136,7 @@ export const post = ({
       },
     })
   } else {
-    return new Response(JSON.stringify(
-      data
-    ), {
+    return new Response(JSON.stringify(data), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',

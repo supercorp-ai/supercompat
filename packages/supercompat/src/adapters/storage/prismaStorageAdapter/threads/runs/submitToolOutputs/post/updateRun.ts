@@ -14,8 +14,8 @@ export const updateRun = async ({
   onThreadRunStepCompleted?: ({ runStep }: { runStep: any }) => void
   tool_outputs: any
 }) => (
-  prisma.$transaction(async (prisma: PrismaClient) => {
-    const runSteps = await prisma.runStep.findMany({
+  prisma.$transaction(async (tx) => {
+    const runSteps = await tx.runStep.findMany({
       where: {
         threadId,
         runId,
@@ -28,7 +28,7 @@ export const updateRun = async ({
     })
 
     for (const runStep of runSteps) {
-      const completedRunStep = await prisma.runStep.update({
+      const completedRunStep = await tx.runStep.update({
         where: {
           id: runStep.id,
         },
@@ -65,7 +65,7 @@ export const updateRun = async ({
       })
     }
 
-    return prisma.run.update({
+    return tx.run.update({
       where: {
         id: runId,
       },

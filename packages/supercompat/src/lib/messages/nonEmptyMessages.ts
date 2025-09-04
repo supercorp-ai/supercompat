@@ -14,25 +14,24 @@ const nonEmptyContent = ({
   return message.content as OpenAI.Chat.ChatCompletionMessageParam["content"]
 }
 
-type ExtendedRole = OpenAI.Chat.ChatCompletionMessageParam['role'] | 'developer'
-
-type ExtendedMessageParam = Omit<OpenAI.Chat.ChatCompletionMessageParam, 'role'> & {
-  role: ExtendedRole
-}
-
 export const nonEmptyMessages = ({
   messages,
 }: {
   messages: OpenAI.Chat.ChatCompletionMessageParam[]
 }) => {
-  const result = [] as ExtendedMessageParam[]
+  const result: OpenAI.Chat.ChatCompletionMessageParam[] = []
 
-  messages.forEach((message: OpenAI.Chat.ChatCompletionMessageParam) => (
-    result.push({
-      ...message,
-      content: nonEmptyContent({ message }),
-    })
-  ))
+  messages.forEach((message: OpenAI.Chat.ChatCompletionMessageParam) => {
+    const hasContent = 'content' in (message as any)
+    const next = hasContent
+      ? ({
+        ...message,
+        content: nonEmptyContent({ message }),
+      } as any)
+      : (message as any)
+
+    result.push(next)
+  })
 
   return result
 }

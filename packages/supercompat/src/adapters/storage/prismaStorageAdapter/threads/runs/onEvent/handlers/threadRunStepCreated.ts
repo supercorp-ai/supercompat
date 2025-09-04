@@ -1,6 +1,6 @@
 import type OpenAI from 'openai'
 import { RunStepType, RunStepStatus } from '@/types/prisma'
-import type { PrismaClient } from '@prisma/client'
+import type { Prisma, PrismaClient } from '@prisma/client'
 import { serializeRunStep } from '../../steps/serializeRunStep'
 
 const type = (event: OpenAI.Beta.AssistantStreamEvent.ThreadRunStepCreated) => {
@@ -36,7 +36,7 @@ export const threadRunStepCreated = async ({
       threadId: event.data.thread_id,
       type: type(event),
       status: status(event),
-      stepDetails: event.data.step_details,
+      stepDetails: (event.data.step_details as unknown) as Prisma.InputJsonValue,
       completedAt: event.data.completed_at,
     },
   })
