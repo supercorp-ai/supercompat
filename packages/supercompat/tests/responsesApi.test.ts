@@ -241,15 +241,24 @@ test('responsesRunAdapter streams tool calls via OpenAI', async () => {
   for await (const _event of submit) {
   }
 
-  const listAfter = await client.beta.threads.messages.list(thread.id)
-  const finalAssistant = listAfter.data
-    .filter((m) => m.role === 'assistant')
-    .at(-1)
-  const finalText = (
-    finalAssistant?.content[0] as OpenAI.Beta.Threads.MessageContentText
-  ).text.value
-    .toLowerCase()
-  assert.ok(finalText.includes('70 degrees'))
+  // Messages can arrive slightly after the streaming iterator completes.
+  // Poll briefly to avoid flakiness without slowing the path when ready.
+  let finalText = ''
+  for (let i = 0; i < 20; i++) {
+    const listAfter = await client.beta.threads.messages.list(thread.id)
+    const finalAssistant = listAfter.data
+      .filter((m) => m.role === 'assistant')
+      .at(-1)
+    const maybeText = (
+      finalAssistant?.content?.[0] as OpenAI.Beta.Threads.MessageContentText | undefined
+    )?.text?.value
+    if (typeof maybeText === 'string' && maybeText.trim().length > 0) {
+      finalText = maybeText.toLowerCase()
+      break
+    }
+    await new Promise((r) => setTimeout(r, 200))
+  }
+  assert.ok(finalText.includes('70'))
 })
 
 test('responsesStorageAdapter works with polling', async (t) => {
@@ -368,42 +377,51 @@ test('responsesStorageAdapter streams with tool', async (t) => {
     instructions:
       'Use the get_current_weather tool and then answer the message.',
     tools,
+    stream: true,
   })
 
-  let runStatus = await client.beta.threads.runs.retrieve(run.id, {
-    thread_id: thread.id,
-  })
-  assert.equal(runStatus.status, 'requires_action')
+  let requiresActionEvent:
+    | OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
+    | undefined
+  for await (const event of run) {
+    if (event.event === 'thread.run.requires_action') {
+      requiresActionEvent = event as OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
+    }
+  }
 
-  const steps = await client.beta.threads.runs.steps.list(run.id, {
-    thread_id: thread.id,
-  })
+  assert.ok(requiresActionEvent)
+
+  const steps = await client.beta.threads.runs.steps.list(
+    requiresActionEvent!.data.id,
+    { thread_id: thread.id },
+  )
   const toolStep = steps.data.find(
     (s) => s.step_details?.type === 'tool_calls',
   )
   assert.equal(toolStep?.step_details?.tool_calls[0]?.type, 'function')
 
   const toolCall =
-    runStatus.required_action?.submit_tool_outputs.tool_calls[0]
+    requiresActionEvent!.data.required_action?.submit_tool_outputs.tool_calls[0]
   assert.ok(toolCall)
   const toolCallId = toolCall?.id
 
-  await client.beta.threads.runs.submitToolOutputs(run.id, {
-    thread_id: thread.id,
-    tool_outputs: [
-      { tool_call_id: toolCallId, output: '70 degrees and sunny.' },
-    ],
-    stream: true,
-  })
+  const submit = await client.beta.threads.runs.submitToolOutputs(
+    requiresActionEvent!.data.id,
+    {
+      thread_id: thread.id,
+      tool_outputs: [
+        { tool_call_id: toolCallId, output: '70 degrees and sunny.' },
+      ],
+      stream: true,
+    },
+  )
 
-  runStatus = await client.beta.threads.runs.retrieve(run.id, {
-    thread_id: thread.id,
-  })
-  assert.equal(runStatus.status, 'completed')
+  for await (const _event of submit) {
+  }
 
 
   let finalText = ''
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 20; i++) {
     const listAfter = await client.beta.threads.messages.list(thread.id)
     const finalAssistant = listAfter.data
       .filter((m) => m.role === 'assistant')

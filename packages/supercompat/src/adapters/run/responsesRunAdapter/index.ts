@@ -111,28 +111,19 @@ export const responsesRunAdapter = () => async ({
     } else if (conversationId) {
       body.conversation = { id: conversationId }
     }
-    let stream: any
-    try {
-      stream = await client.responses.stream(body as any)
-    } catch (err: any) {
-      const code = err?.code || err?.error?.code
-      if (code === 'previous_response_not_found' && body.previous_response_id) {
-        try {
-          // Fallback: drop previous_response_id and use conversation instead
-          const retryBody: any = { ...body }
-          delete retryBody.previous_response_id
-          if (conversationId) retryBody.conversation = { id: conversationId }
-          stream = await client.responses.stream(retryBody as any)
-        } catch (err2) {
-          throw err2
-        }
-      } else {
-        throw err
-      }
-    }
-
+    // Stream with guarded fallback logic:
+    // - If resuming with tool outputs, prefer retrying previous_response_id a few times
+    //   instead of falling back to conversation (to preserve call_id linkage).
+    // - Otherwise, fall back once to conversation addressing.
     let responseId: string | null = null
-    for await (const evt of stream) {
+    let attemptedPrevFallback = false
+    let prevIdRetries = 0
+    let currentBody: any = body
+    while (true) {
+      let stream: any
+      try {
+        stream = await client.responses.stream(currentBody as any)
+        for await (const evt of stream) {
       switch (evt.type) {
         case 'response.created': {
           responseId = (evt as any).response?.id ?? responseId
@@ -514,7 +505,10 @@ export const responsesRunAdapter = () => async ({
           }
 
           // Ensure the assistant message exists in the conversation for immediate reads
-          if ((conversationId ?? null) && typeof textBuffer === 'string' && textBuffer.trim().length > 0) {
+          // Only attempt this when resuming via tool outputs (previousResponseId is set).
+          // For initial runs, the server updates the conversation itself; writing here can
+          // race and trigger "conversation_locked" errors.
+          if (previousResponseId && (conversationId ?? null) && typeof textBuffer === 'string' && textBuffer.trim().length > 0) {
             // Retry insertion to avoid transient conversation locks
             const maxAttempts = 5
             let attempt = 0
@@ -625,6 +619,31 @@ export const responsesRunAdapter = () => async ({
           })
         }
       }
+        // Completed processing without stream error; exit outer loop
+        }
+        break
+      } catch (err: any) {
+        const code = err?.code || err?.error?.code
+        // If we have tool outputs, retry a few times with the previous_response_id
+        if (previousResponseId && hasToolOutputs && code === 'previous_response_not_found' && prevIdRetries < 5) {
+          prevIdRetries += 1
+          await new Promise((r) => setTimeout(r, 150))
+          currentBody = body
+          continue
+        }
+        // Otherwise (no tool outputs), fall back once to conversation addressing
+        if (!hasToolOutputs && !attemptedPrevFallback && previousResponseId) {
+          attemptedPrevFallback = true
+          const retryBody: any = { ...body }
+          delete retryBody.previous_response_id
+          if (conversationId) retryBody.conversation = { id: conversationId }
+          currentBody = retryBody
+          continue
+        }
+        throw err
+      }
+      // If we reached here without continue/throw, break outer while
+      break
     }
   } catch (e: any) {
     console.error(e)

@@ -16,7 +16,8 @@
   "keywords": [],
   "license": "ISC",
   "scripts": {
-    "build": "tsup"
+    "build": "tsup",
+    "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@paralleldrive/cuid2": "^2.2.2",
@@ -33,6 +34,7 @@
     "@prisma/client": "^6.15.0",
     "@superinterface/react": "^5.0.0-beta.0",
     "@types/lodash": "^4.17.16",
+    "esbuild-plugin-tsconfig-paths": "^1.0.1",
     "groq-sdk": "^0.21.0",
     "humiris-ai": "^1.11.0",
     "prisma": "^6.15.0",
