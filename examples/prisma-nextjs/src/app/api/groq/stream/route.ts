@@ -60,7 +60,7 @@ export const GET = async () => {
     {
       assistant_id: assistantId,
       instructions: 'Use the get_current_weather and then answer the message.',
-      model: 'llama3-8b-8192',
+      model: 'openai/gpt-oss-20b',
       stream: true,
       tools,
       truncation_strategy: {

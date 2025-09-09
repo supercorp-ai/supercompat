@@ -54,7 +54,7 @@ test('completions run adapter surfaces groq tool calls', async () => {
   ]
 
   const assistant = await client.beta.assistants.create({
-    model: 'llama3-8b-8192',
+    model: 'openai/gpt-oss-20b',
     instructions: 'Use the get_current_weather and then answer the message.',
     tools,
   })
