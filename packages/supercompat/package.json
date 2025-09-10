@@ -23,7 +23,7 @@
     "dayjs": "^1.11.13",
     "deepmerge-ts": "^7.1.5",
     "lodash": "^4.17.21",
-    "openai": "^5.16.0",
+    "openai": "^5.20.0",
     "radash": "^12.1.0",
     "ts-deepmerge": "^7.0.3"
   },
