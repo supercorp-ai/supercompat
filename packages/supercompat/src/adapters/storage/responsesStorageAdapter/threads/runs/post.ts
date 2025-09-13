@@ -5,17 +5,48 @@ import { assign } from 'radash'
 import { runsRegexp } from '@/lib/runs/runsRegexp'
 import { serializeRun } from './serializeRun'
 import { RunAdapterPartobClient } from '@/types'
-import { onEvent } from './onEvent'
 
 type RunCreateResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Run>
 }
 
+const serializeTools = ({
+  tools,
+}: {
+  tools: OpenAI.Beta.Threads.Runs.RunCreateParams['tools']
+}) => {
+  if (!tools?.length) return {}
+
+  return {
+    tools: tools.map((tool) => ({
+      type: tool.type,
+      // @ts-ignore-next-line
+      ...(tool[tool.type] || {}),
+    }))
+  }
+}
+
+const defaultAssistant = {
+  model: '',
+  instructions: '',
+  additional_instructions: null,
+  truncation_strategy: {
+    type: 'auto',
+  },
+  response_format: {
+    type: 'text',
+  },
+  // tools: [],
+  // metadata: {},
+}
+
 export const post = ({
   openai,
+  openaiAssistant,
   runAdapter,
 }: {
   openai: OpenAI
+  openaiAssistant: OpenAI.Beta.Assistants.Assistant
   runAdapter: RunAdapterPartobClient
 }) => async (urlString: string, options: RequestInit & { body: string }): Promise<RunCreateResponse> => {
   const url = new URL(urlString)
@@ -27,6 +58,8 @@ export const post = ({
     stream,
   } = body
 
+  console.dir({ runsPort: true, body }, { depth: null })
+
   const {
     model,
     instructions,
@@ -36,17 +69,8 @@ export const post = ({
     response_format,
     truncation_strategy,
   } = assign({
-    model: '',
-    instructions: '',
-    additional_instructions: null,
-    truncation_strategy: {
-      type: 'auto',
-    },
-    response_format: {
-      type: 'text',
-    },
-    // tools: [],
-    // metadata: {},
+    ...defaultAssistant,
+    ...openaiAssistant,
   }, body)
 
 
@@ -56,38 +80,27 @@ export const post = ({
     model,
     metadata,
     stream,
-    tools,
+    ...serializeTools({ tools }),
     truncation: truncation_strategy.type,
-    text: response_format,
+    text: {
+      format: response_format,
+    },
+    input: '',
   })
-
-  const data = serializeRun({ response })
 
   const readableStream = new ReadableStream({
     async start(controller) {
       try {
         await runAdapter({
-          run: data,
-          onEvent: onEvent({
-            controller: {
-              ...controller,
-              enqueue: (data) => {
-                controller.enqueue(`data: ${JSON.stringify(data)}\n\n`)
-              },
-            },
-          }),
+          response,
+          onEvent: async (event) => (
+            controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
+          ),
         })
       } catch (error: any) {
         console.error(error)
 
-        onEvent({
-          controller: {
-            ...controller,
-            enqueue: (data) => {
-              controller.enqueue(`data: ${JSON.stringify(data)}\n\n`)
-            },
-          },
-        })({
+        const event = {
           event: 'thread.run.failed',
           data: {
             id: uid(24),
@@ -97,7 +110,9 @@ export const post = ({
               message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
             },
           },
-        } as OpenAI.Beta.AssistantStreamEvent.ThreadRunFailed)
+        }
+
+        controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
       }
 
       controller.close()
@@ -111,6 +126,8 @@ export const post = ({
       },
     })
   } else {
+    const data = serializeRun({ response })
+
     return new Response(JSON.stringify(
       data
     ), {

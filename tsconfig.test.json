@@ -9,6 +9,7 @@
     "types": ["node"],
     "noEmitOnError": false,
     "allowImportingTsExtensions": true,
+    "esModuleInterop": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["packages/supercompat/src/*"]

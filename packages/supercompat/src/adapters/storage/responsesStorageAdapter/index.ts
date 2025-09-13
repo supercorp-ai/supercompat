@@ -18,17 +18,19 @@ type MethodHandlers = { get?: RequestHandler; post?: RequestHandler }
 
 export const responsesStorageAdapter = ({
   openai,
+  openaiAssistant,
 }: {
   openai: OpenAI
+  openaiAssistant: OpenAI.Beta.Assistants.Assistant
 }): ((args: StorageAdapterArgs) => { requestHandlers: Record<string, MethodHandlers> }) =>
 ({ runAdapter }: StorageAdapterArgs) => ({
   requestHandlers: {
     '^/(?:v1/|openai/)?assistants$': assistants({ openai }),
     '^/(?:v1|/?openai)/threads$': threads({ openai }),
     [messagesRegexp]: messages({ openai }),
-    [runsRegexp]: runs({ prisma, runAdapter }),
-    [runRegexp]: run({ prisma, runAdapter }),
-    [stepsRegexp]: steps({ prisma }),
-    [submitToolOutputsRegexp]: submitToolOutputs({ prisma, runAdapter }),
+    [runsRegexp]: runs({ openai, openaiAssistant, runAdapter }),
+    [runRegexp]: run({ openai, runAdapter }),
+    [stepsRegexp]: steps({ openai }),
+    [submitToolOutputsRegexp]: submitToolOutputs({ openai, openaiAssistant, runAdapter }),
   },
 })
