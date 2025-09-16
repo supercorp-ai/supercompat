@@ -2,6 +2,7 @@ import type { OpenAI } from 'openai'
 import { assign, last } from 'radash'
 import { stepsRegexp } from '@/lib/steps/stepsRegexp'
 import { serializeItemAsRunStep } from '@/lib/items/serializeItemAsRunStep'
+import { responseId } from '@/lib/items/responseId'
 
 export const get = ({
   openai,
@@ -24,20 +25,17 @@ export const get = ({
     // after: null,
   }, Object.fromEntries(url.searchParams))
 
-  const items = await openai.conversations.items.list(threadId, {
-    limit: parseInt(limit),
-    after,
-    order: order as 'asc' | 'desc',
-  })
+  const response = await openai.responses.retrieve(runId)
 
   return new Response(JSON.stringify({
-    data: items.data.map((item) => serializeItemAsRunStep({
+    data: response.output.map((item) => serializeItemAsRunStep({
       item,
       threadId,
       openaiAssistant,
+      runId: response.id,
     })),
-    has_more: items.has_more,
-    last_id: last(items.data)?.id ?? null,
+    has_more: false,
+    last_id: last(response.output)?.id ?? null,
   }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },

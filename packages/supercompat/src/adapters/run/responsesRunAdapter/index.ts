@@ -20,10 +20,170 @@ const serializeToolCalls = ({
   }))
 )
 
+/* ======================= self-contained metadata helpers ======================= */
+
+type ItemResponseEntry = { responseId: string; itemIds: string[] }
+type ConversationMetadata = Record<string, string>
+
+const BUCKET_PREFIX = 'responseItemsMap'        // keys: responseItemsMap0..15
+const MAX_BUCKETS = 16                          // total metadata key slots we’ll use
+const MAX_VALUE_LENGTH = 512                    // OpenAI metadata value limit
+
+function parseBucket({ value }: { value?: string }): ItemResponseEntry[] {
+  if (!value || value === '[]') return []
+  try {
+    const arr = JSON.parse(value)
+    return Array.isArray(arr) ? (arr as ItemResponseEntry[]) : []
+  } catch {
+    return []
+  }
+}
+
+function serializeBucket({ entries }: { entries: ItemResponseEntry[] }): string {
+  return JSON.stringify(entries) // minified JSON
+}
+
+function bucketKey({ index }: { index: number }): string {
+  return `${BUCKET_PREFIX}${index}`
+}
+
+function listBucketIndices({ metadata }: { metadata: ConversationMetadata }): number[] {
+  return Object.keys(metadata)
+    .map((k) => {
+      const m = new RegExp(`^${BUCKET_PREFIX}(\\d+)$`).exec(k)
+      return m ? Number(m[1]) : -1
+    })
+    .filter((i) => i >= 0)
+    .sort((a, b) => a - b)
+}
+
+// Flatten to FIFO (oldest → newest) list of pairs
+function parseAllPairs({ metadata }: { metadata: ConversationMetadata }): Array<{ responseId: string; itemId: string }> {
+  const indices = listBucketIndices({ metadata })
+  const pairs: Array<{ responseId: string; itemId: string }> = []
+  for (const idx of indices) {
+    const key = bucketKey({ index: idx })
+    const entries = parseBucket({ value: metadata[key] })
+    for (const e of entries) {
+      for (const iid of e.itemIds) {
+        pairs.push({ responseId: e.responseId, itemId: iid })
+      }
+    }
+  }
+  return pairs
+}
+
+// Pack pairs into up to 16 buckets of <=512 chars each
+function tryPackPairs({
+  baseMetadata,
+  pairs,
+}: {
+  baseMetadata: ConversationMetadata
+  pairs: Array<{ responseId: string; itemId: string }>
+}): { success: boolean; newMetadata: ConversationMetadata } {
+  const newBuckets: string[] = []
+  let currentEntries: ItemResponseEntry[] = []
+
+  const flush = () => {
+    newBuckets.push(serializeBucket({ entries: currentEntries }))
+    currentEntries = []
+  }
+
+  for (const { responseId, itemId } of pairs) {
+    // tentative append to current bucket
+    const next = currentEntries.map((e) => ({ responseId: e.responseId, itemIds: [...e.itemIds] }))
+    const last = next[next.length - 1]
+    if (last && last.responseId === responseId) {
+      last.itemIds.push(itemId)
+    } else {
+      next.push({ responseId, itemIds: [itemId] })
+    }
+
+    const candidate = serializeBucket({ entries: next })
+    if (candidate.length <= MAX_VALUE_LENGTH) {
+      currentEntries = next
+      continue
+    }
+
+    // would overflow -> flush current bucket and start new one
+    flush()
+    if (newBuckets.length >= MAX_BUCKETS) {
+      // would require a 17th bucket
+      return { success: false, newMetadata: baseMetadata }
+    }
+    currentEntries = [{ responseId, itemIds: [itemId] }]
+  }
+
+  if (currentEntries.length > 0) flush()
+
+  // rebuild final metadata: keep non-bucket keys, replace bucket keys
+  const result: ConversationMetadata = {}
+  for (const [k, v] of Object.entries(baseMetadata)) {
+    if (!k.startsWith(BUCKET_PREFIX)) result[k] = v
+  }
+  newBuckets.forEach((val, i) => {
+    if (val && val !== '[]') result[bucketKey({ index: i })] = val
+  })
+  return { success: true, newMetadata: result }
+}
+
+// Public entry: append new itemIds for a responseId; evict oldest pairs until it fits
+function appendItemIdsToConversationMetadata({
+  metadata,
+  responseId,
+  itemIds,
+}: {
+  metadata?: ConversationMetadata
+  responseId: string
+  itemIds: string[]
+}): ConversationMetadata {
+  const base = { ...(metadata || {}) }
+  const existing = parseAllPairs({ metadata: base })
+  const nextPairs = existing.concat(itemIds.map((id) => ({ responseId, itemId: id })))
+
+  let working = nextPairs
+  // loop: try pack -> if over capacity, drop exactly one oldest pair and retry
+  // this is deterministic, simple, and safe
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { success, newMetadata } = tryPackPairs({ baseMetadata: base, pairs: working })
+    if (success) return newMetadata
+    if (working.length === 0) {
+      throw new Error('responseItemsMap: cannot pack even a single item into 16 buckets')
+    }
+    working = working.slice(1) // evict one oldest
+  }
+}
+
+/** Save helper with NO retries: if the conversation is locked, this will throw. */
+async function saveResponseItemsToConversationMetadata({
+  openai,
+  threadId,
+  responseId,
+  itemIds,
+}: {
+  openai: OpenAI
+  threadId: string
+  responseId: string
+  itemIds: string[]
+}) {
+  const conversation = await openai.conversations.retrieve(threadId)
+  const updated = appendItemIdsToConversationMetadata({
+    metadata: conversation.metadata as Record<string, string> | undefined,
+    responseId,
+    itemIds,
+  })
+  await openai.conversations.update(threadId, { metadata: updated })
+}
+
+/* ======================= end self-contained metadata helpers ======================= */
+
 export const responsesRunAdapter =
   ({
+    openai,
     openaiAssistant,
   }: {
+    openai: OpenAI
     openaiAssistant: OpenAI.Beta.Assistants.Assistant
   }) =>
   async ({
@@ -37,6 +197,8 @@ export const responsesRunAdapter =
   }) => {
     let responseCreatedResponse: OpenAI.Responses.Response | null = null
     const toolCalls: Record<string, OpenAI.Responses.ResponseFunctionToolCall> = {}
+
+    let itemIds: string[] = []
 
     try {
       for await (const event of response as AsyncIterable<OpenAI.Responses.ResponseStreamEvent>) {
@@ -64,6 +226,8 @@ export const responsesRunAdapter =
             break
 
           case 'response.completed': {
+            itemIds = event.response.output.filter((o) => o.id).map((o) => o.id!)
+
             const toolCalls = event.response.output.filter((o) => o.type === 'function_call') as OpenAI.Responses.ResponseFunctionToolCall[]
 
             if (toolCalls.length > 0) {
@@ -164,6 +328,8 @@ export const responsesRunAdapter =
               })
             }
 
+            if (event.item.id) itemIds.push(event.item.id)
+
             break
           }
 
@@ -262,5 +428,15 @@ export const responsesRunAdapter =
           },
         } as any,
       })
+    } finally {
+      // One final metadata write using the best-known list (final if completed, partial otherwise)
+      if (responseCreatedResponse?.id && itemIds.length > 0) {
+        await saveResponseItemsToConversationMetadata({
+          openai,
+          threadId,
+          responseId: responseCreatedResponse.id,
+          itemIds,
+        })
+      }
     }
   }
