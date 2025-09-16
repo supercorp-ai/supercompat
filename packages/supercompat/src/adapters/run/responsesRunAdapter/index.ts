@@ -1,30 +1,24 @@
 import dayjs from 'dayjs'
 import { uid } from 'radash'
 import type OpenAI from 'openai'
+import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
+import { serializeItemAsMessage } from '@/lib/items/serializeItemAsMessage'
+import { serializeItemAsRunStep } from '@/lib/items/serializeItemAsRunStep'
 
-type AssistantEvent = OpenAI.Beta.AssistantStreamEvent
-
-// Explicit types so nothing collapses to `never`
-interface ToolCall {
-  id: string // this is the call_id
-  type: 'function'
-  function: {
-    name: string
-    arguments: string
-  }
-}
-
-interface AssistantMessage {
-  id: string
-  object: 'thread.message'
-  role: 'assistant'
-  thread_id: string
-  run_id: string
-  assistant_id: string
-  created_at: number
-  status: 'in_progress' | 'completed'
-  content: Array<{ type: 'text'; text: { value: string; annotations: any[] } }>
-}
+const serializeToolCalls = ({
+  toolCalls,
+}: {
+  toolCalls: OpenAI.Responses.ResponseFunctionToolCall[]
+}) => (
+  toolCalls.map((toolCall) => ({
+    id: toolCall.call_id,
+    type: 'function' as const,
+    function: {
+      name: toolCall.name,
+      arguments: toolCall.arguments,
+    },
+  }))
+)
 
 export const responsesRunAdapter =
   ({
@@ -33,330 +27,222 @@ export const responsesRunAdapter =
     openaiAssistant: OpenAI.Beta.Assistants.Assistant
   }) =>
   async ({
+    threadId,
     response,
     onEvent,
   }: {
+    threadId: string
     response: AsyncIterable<any>
-    onEvent: (event: AssistantEvent) => Promise<any>
+    onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
   }) => {
-    const now = dayjs().unix()
+    let responseCreatedResponse: OpenAI.Responses.Response | null = null
+    const toolCalls: Record<string, OpenAI.Responses.ResponseFunctionToolCall> = {}
 
-    // Minimal synthetic run/message envelope
-    const runId = `run_${uid(18)}`
-    const threadId = `thread_${uid(18)}`
-    let model = 'unknown'
-
-    let msg: AssistantMessage = {
-      id: `msg_${uid(18)}`,
-      object: 'thread.message',
-      role: 'assistant',
-      thread_id: threadId,
-      run_id: runId,
-      assistant_id: openaiAssistant.id,
-      created_at: now,
-      status: 'in_progress',
-      content: [{ type: 'text', text: { value: '', annotations: [] } }],
-    }
-
-    // ---- Tool call state
-    // Map transient output item.id -> stable call_id
-    const itemToCallId = new Map<string, string>()
-    // Map stable call_id -> ToolCall accumulator
-    const callsById = new Map<string, ToolCall>()
-    // Keep order of appearance for the final list
-    const callOrder: string[] = []
-    let toolCallsStepId: string | null = null
-    let sawToolCalls = false
-
-    // ---- Emit Assistants-style boot events
-    await onEvent({
-      event: 'thread.run.created',
-      data: {
-        id: runId,
-        object: 'thread.run',
-        thread_id: threadId,
-        assistant_id: openaiAssistant.id,
-        created_at: now,
-        status: 'queued',
-        model,
-      } as any,
-    })
-    await onEvent({
-      event: 'thread.run.in_progress',
-      data: {
-        id: runId,
-        object: 'thread.run',
-        thread_id: threadId,
-        assistant_id: openaiAssistant.id,
-        created_at: now,
-        status: 'in_progress',
-        model,
-      } as any,
-    })
-    await onEvent({ event: 'thread.message.created', data: msg as any })
-
-    // ---- Helpers
-    const ensureToolCallsStep = async () => {
-      if (toolCallsStepId) return
-      toolCallsStepId = `step_${uid(18)}`
-      await onEvent({
-        event: 'thread.run.step.created',
-        data: {
-          id: toolCallsStepId,
-          object: 'thread.run.step',
-          run_id: runId,
-          assistant_id: openaiAssistant.id,
-          thread_id: threadId,
-          type: 'tool_calls',
-          status: 'in_progress',
-          created_at: dayjs().unix(),
-          completed_at: null,
-          step_details: { type: 'tool_calls', tool_calls: [] },
-        } as any,
-      })
-    }
-
-    // Create or fetch a ToolCall accumulator by call_id
-    const getOrCreateToolCall = (callId: string, name?: string): ToolCall => {
-      let tc = callsById.get(callId)
-      if (!tc) {
-        tc = {
-          id: callId,
-          type: 'function',
-          function: { name: name || 'unknown_function', arguments: '' },
-        }
-        callsById.set(callId, tc)
-        callOrder.push(callId)
-      } else if (name && tc.function.name === 'unknown_function') {
-        tc.function.name = name
-      }
-      return tc
-    }
-
-    // Emit a step delta reflecting the latest args chunk
-    const emitToolArgsDelta = async (callId: string, name: string, argsDelta: string) => {
-      if (!toolCallsStepId) return
-      await onEvent({
-        event: 'thread.run.step.delta',
-        data: {
-          object: 'thread.run.step.delta',
-          run_id: runId,
-          id: toolCallsStepId,
-          delta: {
-            step_details: {
-              type: 'tool_calls',
-              tool_calls: [
-                {
-                  id: callId, // IMPORTANT: stable call_id in deltas too
-                  type: 'function',
-                  function: { name, arguments: argsDelta || '' },
-                },
-              ],
-            },
-          },
-        } as any,
-      })
-    }
-
-    // Mark the tool_calls step as completed (optional cosmetic)
-    const completeToolCallsStep = async () => {
-      if (!toolCallsStepId) return
-      await onEvent({
-        event: 'thread.run.step.completed',
-        data: {
-          id: toolCallsStepId,
-          object: 'thread.run.step',
-          run_id: runId,
-          assistant_id: openaiAssistant.id,
-          thread_id: threadId,
-          type: 'tool_calls',
-          status: 'completed',
-          created_at: now,
-          completed_at: dayjs().unix(),
-          step_details: {
-            type: 'tool_calls',
-            tool_calls: callOrder.map((cid) => callsById.get(cid)),
-          },
-        } as any,
-      })
-    }
-
-    // ---- Stream mapping
     try {
-      for await (const evt of response as any as AsyncIterable<any>) {
-        const t = evt?.type
-        if (evt?.response?.model) model = evt.response.model
-
-        switch (t) {
-          // lifecycle
+      for await (const event of response as AsyncIterable<OpenAI.Responses.ResponseStreamEvent>) {
+        switch (event.type) {
           case 'response.created':
+            responseCreatedResponse = event.response
+
+            await onEvent({
+              event: 'thread.run.created',
+              data: serializeResponseAsRun({
+                response: event.response,
+                assistantId: openaiAssistant.id,
+              }),
+            })
+            break
+
           case 'response.in_progress':
+            await onEvent({
+              event: 'thread.run.in_progress',
+              data: serializeResponseAsRun({
+                response: event.response,
+                assistantId: openaiAssistant.id,
+              }),
+            })
             break
 
           case 'response.completed': {
-            await onEvent({
-              event: 'thread.message.completed',
-              data: { ...msg, status: 'completed' } as any,
-            })
+            const toolCalls = event.response.output.filter((o) => o.type === 'function_call') as OpenAI.Responses.ResponseFunctionToolCall[]
 
-            if (sawToolCalls) {
-              await completeToolCallsStep()
-              const finalCalls = callOrder
-                .map((cid) => callsById.get(cid)!)
-                .filter(Boolean)
-
+            if (toolCalls.length > 0) {
               await onEvent({
                 event: 'thread.run.requires_action',
                 data: {
-                  id: runId,
-                  object: 'thread.run',
-                  thread_id: threadId,
-                  assistant_id: openaiAssistant.id,
-                  status: 'requires_action',
-                  required_action: {
-                    type: 'submit_tool_outputs',
-                    submit_tool_outputs: {
-                      // IMPORTANT: these must be keyed by stable call_id
-                      tool_calls: finalCalls,
+                  ...serializeResponseAsRun({
+                    response: event.response,
+                    assistantId: openaiAssistant.id,
+                  }),
+                  ...({
+                    status: 'requires_action',
+                    required_action: {
+                      type: 'submit_tool_outputs',
+                      submit_tool_outputs: {
+                        tool_calls: serializeToolCalls({
+                          toolCalls,
+                        }),
+                      },
                     },
-                  },
-                } as any,
+                  }),
+                }
               })
             } else {
               await onEvent({
                 event: 'thread.run.completed',
-                data: {
-                  id: runId,
-                  object: 'thread.run',
-                  thread_id: threadId,
-                  assistant_id: openaiAssistant.id,
-                  status: 'completed',
-                  completed_at: dayjs().unix(),
-                } as any,
+                data: serializeResponseAsRun({
+                  response: event.response,
+                  assistantId: openaiAssistant.id,
+                }),
               })
             }
             break
           }
 
-          case 'response.error': {
+          case 'response.failed': {
             await onEvent({
               event: 'thread.run.failed',
-              data: {
-                id: runId,
-                object: 'thread.run',
-                thread_id: threadId,
-                assistant_id: openaiAssistant.id,
-                status: 'failed',
-                failed_at: dayjs().unix(),
-                last_error: {
-                  code: evt?.error?.code || 'server_error',
-                  message: evt?.error?.message || 'Unknown error',
-                },
-              } as any,
+              data: serializeResponseAsRun({
+                response: event.response,
+                assistantId: openaiAssistant.id,
+              }),
             })
             break
           }
 
-          // text streaming
           case 'response.output_text.delta': {
-            const delta = typeof evt?.delta === 'string' ? evt.delta : ''
-
             await onEvent({
               event: 'thread.message.delta',
               data: {
-                id: msg.id,
+                id: event.item_id,
                 delta: {
-                  content: [{ type: 'text', index: 0, text: { value: delta } }],
+                  content: [{ type: 'text', index: event.output_index - 1, text: { value: event.delta } }],
                 },
-              } as any,
-            })
-
-            msg.content[0].text.value += delta
+              },
+            } as OpenAI.Beta.AssistantStreamEvent.ThreadMessageDelta)
 
             break
           }
-          case 'response.output_text.done': {
-            const finalText = typeof evt?.text === 'string' ? evt.text : ''
+
+          // case 'response.output_text.done': {
+          //   break
+          // }
+          //
+          case 'response.output_item.added': {
+            if (event.item.type === 'message') {
+              await onEvent({
+                event: 'thread.run.step.created',
+                data: serializeItemAsRunStep({
+                  item: event.item,
+                  threadId,
+                  openaiAssistant,
+                  runId: responseCreatedResponse!.id,
+                })
+              })
+
+              await onEvent({
+                event: 'thread.message.created',
+                data: serializeItemAsMessage({
+                  item: event.item,
+                  threadId,
+                  openaiAssistant,
+                  createdAt: dayjs().unix(),
+                  runId: responseCreatedResponse!.id,
+                })
+              })
+            } else if (event.item.type === 'function_call') {
+              toolCalls[event.item.id!] = event.item
+
+              await onEvent({
+                event: 'thread.run.step.created',
+                data: serializeItemAsRunStep({
+                  item: event.item,
+                  threadId,
+                  openaiAssistant,
+                  runId: responseCreatedResponse!.id,
+                })
+              })
+            }
+
+            break
+          }
+
+          case 'response.output_item.done': {
+            if (event.item.type === 'message') {
+              await onEvent({
+                event: 'thread.run.step.completed',
+                data: serializeItemAsRunStep({
+                  item: event.item,
+                  threadId,
+                  openaiAssistant,
+                  runId: responseCreatedResponse!.id,
+                })
+              })
+
+              await onEvent({
+                event: 'thread.message.completed',
+                data: serializeItemAsMessage({
+                  item: event.item,
+                  threadId,
+                  openaiAssistant,
+                  createdAt: dayjs().unix(),
+                  runId: responseCreatedResponse!.id,
+                })
+              })
+            } else if (event.item.type === 'function_call') {
+              toolCalls[event.item.id!] = event.item
+
+              await onEvent({
+                event: 'thread.run.step.completed',
+                data: serializeItemAsRunStep({
+                  item: event.item,
+                  threadId,
+                  openaiAssistant,
+                  runId: responseCreatedResponse!.id,
+                })
+              })
+            }
+
+            break
+          }
+
+          case 'response.function_call_arguments.delta': {
+            const toolCall = toolCalls[event.item_id]
+            if (!toolCall) break
 
             await onEvent({
-              event: 'thread.message.completed',
+              event: 'thread.run.step.delta',
               data: {
-                id: msg.id,
-                object: 'thread.message',
-                role: 'assistant',
-                thread_id: threadId,
-                run_id: runId,
-                assistant_id: openaiAssistant.id,
-                created_at: msg.created_at,
-                status: 'completed',
-                content: [{ type: 'text', text: { value: finalText, annotations: [] } }],
-              } as any
+                id: event.item_id,
+                object: 'thread.run.step.delta',
+                delta: {
+                  step_details: {
+                    type: 'tool_calls',
+                    tool_calls: [
+                      {
+                        id: toolCall.call_id,
+                        type: 'function',
+                        index: event.output_index,
+                        function: {
+                          name: toolCall.name,
+                          arguments: event.delta,
+                          output: null,
+                        },
+                      },
+                    ],
+                  },
+                },
+              }
             })
 
             break
           }
-
-          // structure markers some SDKs surface
-          case 'response.output_item.added': {
-            // When an item is added and it's a function_call, capture the mapping:
-            // item.id (transient) -> call_id (stable)
-            const item = evt?.item
-            if (item?.type === 'function_call') {
-              const itemId = item?.id
-              const callId = item?.call_id // <- stable!
-              const name = item?.name as string | undefined
-
-              if (itemId && callId) {
-                itemToCallId.set(itemId, callId)
-                // Also ensure accumulator exists with optional name
-                getOrCreateToolCall(callId, name)
-                await ensureToolCallsStep()
-                sawToolCalls = true
-              }
-            }
-            break
-          }
-
-          case 'response.output_item.done':
-            // no-op; we finalize on response.completed
-            break
-
-          // function calling / tools
-          case 'response.function_call_arguments.delta': {
-            // Deltas are associated with the transient output item id
-            const itemId = evt?.item_id as string | undefined
-            const argsDelta = typeof evt?.delta === 'string' ? evt.delta : ''
-            const maybeName = typeof evt?.name === 'string' ? evt.name : undefined
-
-            if (!itemId) break
-            const callId = itemToCallId.get(itemId)
-            if (!callId) {
-              // Some SDKs omit output_item.added; fallback: derive from evt if present
-              const fallbackCallId = evt?.call_id as string | undefined
-              if (!fallbackCallId) break
-              itemToCallId.set(itemId, fallbackCallId)
-            }
-
-            const effectiveCallId = itemToCallId.get(itemId)!
-            const tc = getOrCreateToolCall(effectiveCallId, maybeName)
-            tc.function.arguments += argsDelta
-            if (maybeName && tc.function.name === 'unknown_function') {
-              tc.function.name = maybeName
-            }
-
-            await ensureToolCallsStep()
-            sawToolCalls = true
-            await emitToolArgsDelta(effectiveCallId, tc.function.name, argsDelta)
-            break
-          }
-
-          case 'response.function_call_arguments.done': {
-            // Nothing to do; we've already aggregated via deltas.
-            break
-          }
+          //
+          // case 'response.function_call_arguments.done': {
+          //   break
+          // }
 
           default:
-            // ignore other event types (reasoning spans, etc.)
             break
         }
       }
@@ -364,7 +250,7 @@ export const responsesRunAdapter =
       await onEvent({
         event: 'thread.run.failed',
         data: {
-          id: runId,
+          id: responseCreatedResponse?.id || `run_${uid(18)}`,
           object: 'thread.run',
           thread_id: threadId,
           assistant_id: openaiAssistant.id,

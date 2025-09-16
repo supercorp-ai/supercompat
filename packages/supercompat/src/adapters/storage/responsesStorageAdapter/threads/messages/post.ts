@@ -1,8 +1,8 @@
 import type OpenAI from 'openai'
 import dayjs from 'dayjs'
 import { isArray } from 'radash'
-import { serializeMessage } from './serializeMessage'
 import { messagesRegexp } from '@/lib/messages/messagesRegexp'
+import { serializeItemAsMessage } from '@/lib/items/serializeItemAsMessage'
 
 type MessageCreateResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Messages.Message>
@@ -83,12 +83,11 @@ export const post = ({
   );
 
   return new Response(JSON.stringify(
-    serializeMessage({
+    serializeItemAsMessage({
       item: items.data[0],
       threadId,
-      initialCreatedAt: dayjs().subtract(1, 'seconds').format(),
-      index: 0,
       openaiAssistant,
+      createdAt: dayjs().unix(),
     }),
   ), {
     status: 200,

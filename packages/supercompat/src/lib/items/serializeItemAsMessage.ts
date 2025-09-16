@@ -2,10 +2,12 @@ import dayjs from 'dayjs'
 import { uid } from 'radash'
 import type OpenAI from 'openai'
 
+type ItemType = OpenAI.Conversations.ConversationItem | OpenAI.Responses.ResponseItem
+
 const serializeContent = ({
   item,
 }: {
-  item: OpenAI.Conversations.ConversationItem
+  item: ItemType
 }): OpenAI.Beta.Threads.Messages.TextContentBlock[] => {
   if (item.type !== 'message') return []
 
@@ -35,7 +37,7 @@ const serializeContent = ({
 const serializeAttachments = ({
   item,
 }: {
-  item: OpenAI.Conversations.ConversationItem
+  item: ItemType
 }): OpenAI.Beta.Threads.Messages.Message['attachments'] => (
   []
 )
@@ -43,28 +45,28 @@ const serializeAttachments = ({
 const serializeMetadata = ({
   item,
 }: {
-  item: OpenAI.Conversations.ConversationItem
+  item: ItemType
 }): OpenAI.Beta.Threads.Messages.Message['metadata'] => (
   {}
 )
   // assign(message.metadata as Record<any, any> ?? {}, message.toolCalls ? { toolCalls: message.toolCalls } : {}),
 
-export const serializeMessage = ({
+export const serializeItemAsMessage = ({
   item,
-  initialCreatedAt,
-  index,
   threadId,
   openaiAssistant,
+  createdAt,
+  runId = null,
 }: {
-  item: OpenAI.Conversations.ConversationItem
-  initialCreatedAt: string
-  index: number
+  item: ItemType
   threadId: string
   openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  createdAt: number
+  runId?: string | null
 }): OpenAI.Beta.Threads.Message => ({
   id: item.id || uid(24),
   object: 'thread.message' as 'thread.message',
-  created_at: dayjs(initialCreatedAt).subtract(index, 'seconds').unix(),
+  created_at: createdAt,
   thread_id: threadId,
   completed_at: null,
   incomplete_at: null,
@@ -72,7 +74,7 @@ export const serializeMessage = ({
   role: typeof (item as any).role === 'string' ? (item as any).role : 'assistant',
   content: serializeContent({ item }),
   assistant_id: (item as any).role === 'assistant' ? openaiAssistant.id : null,
-  run_id: null,
+  run_id: runId,
   attachments: serializeAttachments({ item }),
   status: typeof (item as any).status === 'string' ? (item as any).status : 'completed',
   metadata: serializeMetadata({ item }),

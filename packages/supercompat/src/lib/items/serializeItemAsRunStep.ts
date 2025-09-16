@@ -6,37 +6,38 @@ type RunStep = OpenAI.Beta.Threads.Runs.RunStep
 type FunctionToolCall = OpenAI.Beta.Threads.Runs.Steps.FunctionToolCall
 type ToolCallsStepDetails = OpenAI.Beta.Threads.Runs.Steps.ToolCallsStepDetails
 
-type ConvItem = OpenAI.Conversations.ConversationItem
+type ItemType = OpenAI.Conversations.ConversationItem | OpenAI.Responses.ResponseItem | OpenAI.Responses.ResponseFunctionToolCall
 
-type ConvMessageItem = Extract<ConvItem, { type: 'message' }>
-type ConvFnItem      = Extract<ConvItem, { type: 'function_call' }>
+type ConvMessageItem = Extract<ItemType, { type: 'message' }>
+type ConvFnItem      = Extract<ItemType, { type: 'function_call' }>
 
-const isConvMessage = (i: ConvItem): i is ConvMessageItem =>
+const isConvMessage = (i: ItemType): i is ConvMessageItem =>
   'type' in i && i.type === 'message'
 
-const isConvFn = (i: ConvItem): i is ConvFnItem =>
+const isConvFn = (i: ItemType): i is ConvFnItem =>
   'type' in i && i.type === 'function_call'
 
 // If the SDK marks these optional, assert once after narrowing:
 type ConvFnWithArgs = ConvFnItem & { name: string; arguments: string }
 
-export function serializeRunStep({
+export function serializeItemAsRunStep({
   item,
   threadId,
   openaiAssistant,
+  runId = `run_${uid(24)}`,
 }: {
-  item: ConvItem
+  item: ItemType
   threadId: string
   openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  runId?: string
 }): RunStep {
   const now = dayjs().unix()
-  const runId = `run_${uid(24)}`
 
   // Normalize the item id to a definite string
   const itemId: string = typeof item.id === 'string' ? item.id : `item_${uid(18)}`
 
   const base: Omit<RunStep, 'type' | 'step_details'> = {
-    id: itemId, // <- always string
+    id: itemId,
     object: 'thread.run.step',
     created_at: now,
     assistant_id: openaiAssistant.id,

@@ -1,7 +1,7 @@
 import type { OpenAI } from 'openai'
 import { assign, last } from 'radash'
 import { stepsRegexp } from '@/lib/steps/stepsRegexp'
-import { serializeRunStep } from './serializeRunStep'
+import { serializeItemAsRunStep } from '@/lib/items/serializeItemAsRunStep'
 
 export const get = ({
   openai,
@@ -31,7 +31,7 @@ export const get = ({
   })
 
   return new Response(JSON.stringify({
-    data: items.data.map((item) => serializeRunStep({
+    data: items.data.map((item) => serializeItemAsRunStep({
       item,
       threadId,
       openaiAssistant,

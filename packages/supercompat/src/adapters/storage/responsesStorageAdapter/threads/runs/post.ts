@@ -3,7 +3,7 @@ import { uid } from 'radash'
 import dayjs from 'dayjs'
 import { assign } from 'radash'
 import { runsRegexp } from '@/lib/runs/runsRegexp'
-import { serializeRun } from './serializeRun'
+import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
 import { RunAdapterPartobClient } from '@/types'
 
 type RunCreateResponse = Response & {
@@ -92,6 +92,7 @@ export const post = ({
     async start(controller) {
       try {
         await runAdapter({
+          threadId,
           response,
           onEvent: async (event) => (
             controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
@@ -126,7 +127,10 @@ export const post = ({
       },
     })
   } else {
-    const data = serializeRun({ response })
+    const data = serializeResponseAsRun({
+      response,
+      assistantId: assistant_id,
+    })
 
     return new Response(JSON.stringify(
       data
