@@ -27,7 +27,11 @@ interface AssistantMessage {
 }
 
 export const responsesRunAdapter =
-  () =>
+  ({
+    openaiAssistant,
+  }: {
+    openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  }) =>
   async ({
     response,
     onEvent,
@@ -40,7 +44,6 @@ export const responsesRunAdapter =
     // Minimal synthetic run/message envelope
     const runId = `run_${uid(18)}`
     const threadId = `thread_${uid(18)}`
-    const asstId = `asst_${uid(18)}`
     let model = 'unknown'
 
     let msg: AssistantMessage = {
@@ -49,7 +52,7 @@ export const responsesRunAdapter =
       role: 'assistant',
       thread_id: threadId,
       run_id: runId,
-      assistant_id: asstId,
+      assistant_id: openaiAssistant.id,
       created_at: now,
       status: 'in_progress',
       content: [{ type: 'text', text: { value: '', annotations: [] } }],
@@ -72,7 +75,7 @@ export const responsesRunAdapter =
         id: runId,
         object: 'thread.run',
         thread_id: threadId,
-        assistant_id: asstId,
+        assistant_id: openaiAssistant.id,
         created_at: now,
         status: 'queued',
         model,
@@ -84,7 +87,7 @@ export const responsesRunAdapter =
         id: runId,
         object: 'thread.run',
         thread_id: threadId,
-        assistant_id: asstId,
+        assistant_id: openaiAssistant.id,
         created_at: now,
         status: 'in_progress',
         model,
@@ -102,7 +105,7 @@ export const responsesRunAdapter =
           id: toolCallsStepId,
           object: 'thread.run.step',
           run_id: runId,
-          assistant_id: asstId,
+          assistant_id: openaiAssistant.id,
           thread_id: threadId,
           type: 'tool_calls',
           status: 'in_progress',
@@ -111,20 +114,6 @@ export const responsesRunAdapter =
           step_details: { type: 'tool_calls', tool_calls: [] },
         } as any,
       })
-    }
-
-    const emitTextDelta = async (chunk: string) => {
-      if (!chunk) return
-      await onEvent({
-        event: 'thread.message.delta',
-        data: {
-          id: msg.id,
-          delta: {
-            content: [{ type: 'text', index: 0, text: { value: chunk } }],
-          },
-        } as any,
-      })
-      msg.content[0].text.value += chunk
     }
 
     // Create or fetch a ToolCall accumulator by call_id
@@ -178,7 +167,7 @@ export const responsesRunAdapter =
           id: toolCallsStepId,
           object: 'thread.run.step',
           run_id: runId,
-          assistant_id: asstId,
+          assistant_id: openaiAssistant.id,
           thread_id: threadId,
           type: 'tool_calls',
           status: 'completed',
@@ -222,7 +211,7 @@ export const responsesRunAdapter =
                   id: runId,
                   object: 'thread.run',
                   thread_id: threadId,
-                  assistant_id: asstId,
+                  assistant_id: openaiAssistant.id,
                   status: 'requires_action',
                   required_action: {
                     type: 'submit_tool_outputs',
@@ -240,7 +229,7 @@ export const responsesRunAdapter =
                   id: runId,
                   object: 'thread.run',
                   thread_id: threadId,
-                  assistant_id: asstId,
+                  assistant_id: openaiAssistant.id,
                   status: 'completed',
                   completed_at: dayjs().unix(),
                 } as any,
@@ -256,7 +245,7 @@ export const responsesRunAdapter =
                 id: runId,
                 object: 'thread.run',
                 thread_id: threadId,
-                assistant_id: asstId,
+                assistant_id: openaiAssistant.id,
                 status: 'failed',
                 failed_at: dayjs().unix(),
                 last_error: {
@@ -271,12 +260,39 @@ export const responsesRunAdapter =
           // text streaming
           case 'response.output_text.delta': {
             const delta = typeof evt?.delta === 'string' ? evt.delta : ''
-            await emitTextDelta(delta)
+
+            await onEvent({
+              event: 'thread.message.delta',
+              data: {
+                id: msg.id,
+                delta: {
+                  content: [{ type: 'text', index: 0, text: { value: delta } }],
+                },
+              } as any,
+            })
+
+            msg.content[0].text.value += delta
+
             break
           }
           case 'response.output_text.done': {
             const finalText = typeof evt?.text === 'string' ? evt.text : ''
-            if (finalText) await emitTextDelta(finalText)
+
+            await onEvent({
+              event: 'thread.message.completed',
+              data: {
+                id: msg.id,
+                object: 'thread.message',
+                role: 'assistant',
+                thread_id: threadId,
+                run_id: runId,
+                assistant_id: openaiAssistant.id,
+                created_at: msg.created_at,
+                status: 'completed',
+                content: [{ type: 'text', text: { value: finalText, annotations: [] } }],
+              } as any
+            })
+
             break
           }
 
@@ -351,7 +367,7 @@ export const responsesRunAdapter =
           id: runId,
           object: 'thread.run',
           thread_id: threadId,
-          assistant_id: asstId,
+          assistant_id: openaiAssistant.id,
           status: 'failed',
           failed_at: dayjs().unix(),
           last_error: {

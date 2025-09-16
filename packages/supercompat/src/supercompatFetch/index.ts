@@ -28,6 +28,7 @@ export const supercompatFetch = ({
       requestHandlers,
     })
 
+
     if (!pathHandler) {
       return originalFetch({
         client,

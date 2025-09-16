@@ -20,13 +20,16 @@ const isConvFn = (i: ConvItem): i is ConvFnItem =>
 // If the SDK marks these optional, assert once after narrowing:
 type ConvFnWithArgs = ConvFnItem & { name: string; arguments: string }
 
-/**
- * Only args: { item, threadId }.
- * Emits a completed snapshot (status='completed') since we don't get timing args here.
- */
-export function serializeRunStep({ item, threadId }: { item: ConvItem; threadId: string }): RunStep {
+export function serializeRunStep({
+  item,
+  threadId,
+  openaiAssistant,
+}: {
+  item: ConvItem
+  threadId: string
+  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+}): RunStep {
   const now = dayjs().unix()
-  const assistantId = `asst_${uid(24)}`
   const runId = `run_${uid(24)}`
 
   // Normalize the item id to a definite string
@@ -36,7 +39,7 @@ export function serializeRunStep({ item, threadId }: { item: ConvItem; threadId:
     id: itemId, // <- always string
     object: 'thread.run.step',
     created_at: now,
-    assistant_id: assistantId,
+    assistant_id: openaiAssistant.id,
     thread_id: threadId,
     run_id: runId,
     status: 'completed',

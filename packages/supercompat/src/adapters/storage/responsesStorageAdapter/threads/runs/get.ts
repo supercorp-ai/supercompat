@@ -30,7 +30,14 @@ export const get = ({
 
   const pageSize = parseInt(limit, 10)
 
-  throw new Error('Not implemented')
+  return new Response(JSON.stringify({
+    data: [],
+    has_more: false,
+    last_id: null,
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
 
   // const runsPlusOne = await prisma.run.findMany({
   //   where: { threadId },

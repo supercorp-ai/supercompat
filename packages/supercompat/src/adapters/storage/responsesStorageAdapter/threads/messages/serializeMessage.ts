@@ -54,22 +54,24 @@ export const serializeMessage = ({
   initialCreatedAt,
   index,
   threadId,
+  openaiAssistant,
 }: {
   item: OpenAI.Conversations.ConversationItem
   initialCreatedAt: string
   index: number
   threadId: string
+  openaiAssistant: OpenAI.Beta.Assistants.Assistant
 }): OpenAI.Beta.Threads.Message => ({
   id: item.id || uid(24),
   object: 'thread.message' as 'thread.message',
-  created_at: dayjs(initialCreatedAt).add(index, 'seconds').unix(),
+  created_at: dayjs(initialCreatedAt).subtract(index, 'seconds').unix(),
   thread_id: threadId,
   completed_at: null,
   incomplete_at: null,
   incomplete_details: null,
   role: typeof (item as any).role === 'string' ? (item as any).role : 'assistant',
   content: serializeContent({ item }),
-  assistant_id: null,
+  assistant_id: (item as any).role === 'assistant' ? openaiAssistant.id : null,
   run_id: null,
   attachments: serializeAttachments({ item }),
   status: typeof (item as any).status === 'string' ? (item as any).status : 'completed',

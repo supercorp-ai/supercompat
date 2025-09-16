@@ -10,8 +10,10 @@ type MessageCreateResponse = Response & {
 
 export const get = ({
   openai,
+  openaiAssistant,
 }: {
   openai: OpenAI
+  openaiAssistant: OpenAI.Beta.Assistants.Assistant
 }) => async (urlString: string): Promise<MessageCreateResponse> => {
   const url = new URL(urlString)
 
@@ -37,7 +39,7 @@ export const get = ({
 
   return new Response(JSON.stringify({
     data: items.data.map((item: OpenAI.Conversations.ConversationItem, index) => (
-      serializeMessage({ item, initialCreatedAt, index, threadId })
+      serializeMessage({ item, initialCreatedAt, index, threadId, openaiAssistant })
     )),
     has_more: items.has_more,
     last_id: items.last_id,

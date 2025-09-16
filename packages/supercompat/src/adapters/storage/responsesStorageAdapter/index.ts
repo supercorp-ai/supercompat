@@ -25,12 +25,12 @@ export const responsesStorageAdapter = ({
 }): ((args: StorageAdapterArgs) => { requestHandlers: Record<string, MethodHandlers> }) =>
 ({ runAdapter }: StorageAdapterArgs) => ({
   requestHandlers: {
-    '^/(?:v1/|openai/)?assistants$': assistants({ openai }),
+    '^/(?:v1|/?openai)/assistants$': assistants({ openai, openaiAssistant }),
     '^/(?:v1|/?openai)/threads$': threads({ openai }),
-    [messagesRegexp]: messages({ openai }),
+    [messagesRegexp]: messages({ openai, openaiAssistant }),
     [runsRegexp]: runs({ openai, openaiAssistant, runAdapter }),
     [runRegexp]: run({ openai, runAdapter }),
-    [stepsRegexp]: steps({ openai }),
+    [stepsRegexp]: steps({ openai, openaiAssistant }),
     [submitToolOutputsRegexp]: submitToolOutputs({ openai, openaiAssistant, runAdapter }),
   },
 })

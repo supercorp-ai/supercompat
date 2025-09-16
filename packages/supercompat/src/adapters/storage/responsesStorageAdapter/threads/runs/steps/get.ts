@@ -5,8 +5,10 @@ import { serializeRunStep } from './serializeRunStep'
 
 export const get = ({
   openai,
+  openaiAssistant,
 }: {
   openai: OpenAI
+  openaiAssistant: OpenAI.Beta.Assistants.Assistant
 }) => async (urlString: string) => {
   const url = new URL(urlString)
 
@@ -29,7 +31,11 @@ export const get = ({
   })
 
   return new Response(JSON.stringify({
-    data: items.data.map((item) => serializeRunStep({ item })),
+    data: items.data.map((item) => serializeRunStep({
+      item,
+      threadId,
+      openaiAssistant,
+    })),
     has_more: items.has_more,
     last_id: last(items.data)?.id ?? null,
   }), {

@@ -55,8 +55,10 @@ const messageContentBlocks = ({
 
 export const post = ({
   openai,
+  openaiAssistant,
 }: {
   openai: OpenAI
+  openaiAssistant: OpenAI.Beta.Assistants.Assistant
 }) => async (urlString: string, options: RequestInit & { body: string }): Promise<MessageCreateResponse> => {
   const url = new URL(urlString)
 
@@ -86,6 +88,7 @@ export const post = ({
       threadId,
       initialCreatedAt: dayjs().subtract(1, 'seconds').format(),
       index: 0,
+      openaiAssistant,
     }),
   ), {
     status: 200,
