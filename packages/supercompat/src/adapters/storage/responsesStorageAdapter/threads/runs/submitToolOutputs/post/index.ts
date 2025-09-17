@@ -1,7 +1,7 @@
 import type { OpenAI } from 'openai'
 import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
 import { RunAdapterPartobClient } from '@/types'
-// import { onEvent } from '../../onEvent'
+import { serializeItemAsRunStep } from '@/lib/items/serializeItemAsRunStep'
 
 const serializeTools = ({
   tools,
@@ -19,13 +19,13 @@ const serializeTools = ({
   }
 }
 
-const serializeInput = ({
+const getFunctionCallOutputItems = ({
   tool_outputs,
 }: {
   tool_outputs: OpenAI.Beta.Threads.RunSubmitToolOutputsParams['tool_outputs']
 }) => (
   tool_outputs.map((toolOutput) => ({
-    type: 'function_call_output',
+    type: 'function_call_output' as const,
     call_id: toolOutput.tool_call_id,
     output: toolOutput.output,
   }))
@@ -50,12 +50,13 @@ export const post = ({
     stream,
   } = body
 
-  console.dir({ body }, { depth: null })
+  const functionCallOutputItems = getFunctionCallOutputItems({ tool_outputs })
+
+  const previousResponse = await openai.responses.retrieve(runId)
+
   const response = await openai.responses.create({
     conversation: threadId,
-    input: serializeInput({
-      tool_outputs,
-    }),
+    input: functionCallOutputItems,
     instructions: openaiAssistant.instructions,
     model: openaiAssistant.model,
     // metadata,
@@ -67,18 +68,27 @@ export const post = ({
 
   const readableStream = new ReadableStream({
     async start(controller) {
-      // const run = await updateRun({
-      //   prisma,
-      //   runId,
-      //   threadId,
-      //   tool_outputs,
-      //   onThreadRunStepCompleted: async ({ runStep }) => {
-      //     controller.enqueue(`data: ${JSON.stringify({
-      //       event: 'thread.run.step.completed',
-      //       data: serializeRunStep({ runStep }),
-      //     })}\n\n`)
-      //   }
-      // })
+      functionCallOutputItems.forEach((item) => {
+        const functionCallItem = previousResponse.output.find((i) => (
+          i.type === 'function_call' && i.call_id === item.call_id
+        ))
+
+        if (!functionCallItem) {
+          return
+        }
+
+        controller.enqueue(`data: ${JSON.stringify({
+          event: 'thread.run.step.completed',
+          data: serializeItemAsRunStep({
+            item: functionCallItem,
+            items: functionCallOutputItems,
+            threadId,
+            openaiAssistant,
+            runId,
+          })
+        })}\n\n`)
+
+      })
 
       await runAdapter({
         threadId,

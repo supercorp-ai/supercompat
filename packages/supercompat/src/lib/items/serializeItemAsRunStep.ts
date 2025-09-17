@@ -18,7 +18,7 @@ export function serializeItemAsRunStep({
   completedAt = dayjs().unix(),
 }: {
   item: ItemType
-  items: ItemType[]
+  items: Omit<ItemType, 'id'>[]
   threadId: string
   openaiAssistant: OpenAI.Beta.Assistants.Assistant
   runId?: string

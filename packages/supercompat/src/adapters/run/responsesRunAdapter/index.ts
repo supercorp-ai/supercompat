@@ -365,7 +365,7 @@ export const responsesRunAdapter =
               toolCalls[event.item.id!] = event.item
 
               await onEvent({
-                event: 'thread.run.step.completed',
+                event: 'thread.run.step.in_progress',
                 data: serializeItemAsRunStep({
                   item: event.item,
                   items: [],
