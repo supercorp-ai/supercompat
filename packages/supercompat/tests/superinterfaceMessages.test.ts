@@ -89,7 +89,6 @@ test('createMessageResponse processes tool calls without thread id errors', asyn
   const assistantMessage = messageList.data.find(
     (m: any) => m.role === 'assistant',
   )
-  console.dir({ assistantMessage }, { depth: null })
   assert.ok(
     assistantMessage.content[0].text.value.includes('72'),
     'assistant response missing tool output',
