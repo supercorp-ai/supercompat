@@ -417,22 +417,27 @@ test('responsesStorageAdapter streams with tool', async (t) => {
       : {}),
   })
 
+  const openaiAssistant = {
+    id: 'some-assistant-id',
+    object: 'assistant' as const,
+    model: 'gpt-4.1-mini',
+    instructions: 'You are a concise, helpful assistant.',
+    description: null,
+    name: 'Some Assistant',
+    metadata: {},
+    tools: [],
+    created_at: dayjs().unix(),
+  }
+
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter(),
+    runAdapter: responsesRunAdapter({
+      openai: realOpenAI,
+      openaiAssistant,
+    }),
     storage: responsesStorageAdapter({
       openai: realOpenAI,
-      openaiAssistant: {
-        id: 'some-assistant-id',
-        object: 'assistant',
-        model: 'gpt-4.1-mini',
-        instructions: 'You are a concise, helpful assistant.',
-        description: null,
-        name: 'Some Assistant',
-        metadata: {},
-        tools: [],
-        created_at: dayjs().unix(),
-      },
+      openaiAssistant,
       // getConversationId: async (threadId) => {
       //   const row = await prisma.thread.findUnique({ where: { id: threadId } })
       //   return (row as any)?.openaiConversationId ?? null

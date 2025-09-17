@@ -81,8 +81,8 @@ export const post = ({
       // })
 
       await runAdapter({
+        threadId,
         response,
-        // run: serializeRun({ run }),
         onEvent: async (event) => (
           controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
         ),

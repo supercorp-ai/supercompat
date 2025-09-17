@@ -58,8 +58,6 @@ export const post = ({
     stream,
   } = body
 
-  console.dir({ runsPort: true, body }, { depth: null })
-
   const {
     model,
     instructions,
