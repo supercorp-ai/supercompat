@@ -43,6 +43,11 @@ export const get = ({
   })
 
   const functionCallOutputs = functionCallOutputsResponses.filter(Boolean) as OpenAI.Conversations.ConversationItem[]
+  const nonFcItems = response.output.filter((item) => (
+    item.type !== 'function_call'
+  ))
+
+  console.dir({ output: response.output, nonFcItems }, { depth: null })
 
   return new Response(JSON.stringify({
     data: response.output.map((item) => serializeItemAsRunStep({

@@ -31,30 +31,35 @@ export const get = ({
   }, Object.fromEntries(url.searchParams))
 
   const conversation = await openai.conversations.retrieve(threadId)
+  const sortOrder = order === 'asc' ? 'asc' : 'desc'
+
   const items = await openai.conversations.items.list(threadId, {
-    limit: parseInt(limit),
+    limit: parseInt(limit, 10),
     after,
-    order: order as 'asc' | 'desc',
+    order: sortOrder,
   })
 
-  console.dir({ conversation, items }, { depth: null })
-  const initialCreatedAt = dayjs(conversation.created_at).add(items.data.length, 'seconds').format()
-  const messageItems = items.data.filter((item) => (
-    item.type !== 'function_call'
-  ))
+  const itemsWithRunIds = mapItemsWithRunIds({ conversation, items: items.data })
+  const responseMap = await fetchResponsesForItems({
+    openai,
+    items: itemsWithRunIds,
+  })
 
-  // console.dir({ items }, { depth: null })
+  const timestampedItems = assignTimestamps({
+    items: itemsWithRunIds,
+    responseMap,
+    sortOrder,
+    conversationCreatedAt: normaliseConversationTimestamp(conversation.created_at),
+  })
+
   return new Response(JSON.stringify({
-    data: items.data.map((item: OpenAI.Conversations.ConversationItem, index) => (
+    data: timestampedItems.map(({ item, runId, assignedTimestamp }) => (
       serializeItemAsMessage({
         item,
         threadId,
         openaiAssistant,
-        createdAt: dayjs(initialCreatedAt).subtract(index, 'seconds').unix(),
-        runId: item.id ? responseId({
-          conversation,
-          itemId: item.id,
-        }) : null,
+        createdAt: assignedTimestamp,
+        runId,
       })
     )),
     has_more: items.has_more,
@@ -65,4 +70,155 @@ export const get = ({
       'Content-Type': 'application/json',
     },
   })
+}
+
+type ItemWithRunId = {
+  item: OpenAI.Conversations.ConversationItem
+  runId: string | null
+}
+
+type ItemWithAssignedTimestamp = ItemWithRunId & {
+  timestamp: number | null
+  assignedTimestamp: number
+}
+
+const mapItemsWithRunIds = ({
+  conversation,
+  items,
+}: {
+  conversation: OpenAI.Conversations.Conversation
+  items: OpenAI.Conversations.ConversationItem[]
+}): ItemWithRunId[] => (
+  items.map((item) => ({
+    item,
+    runId: item.id ? responseId({
+      conversation,
+      itemId: item.id,
+    }) : null,
+  }))
+)
+
+const fetchResponsesForItems = async ({
+  openai,
+  items,
+}: {
+  openai: OpenAI
+  items: ItemWithRunId[]
+}): Promise<Map<string, OpenAI.Responses.Response>> => {
+  const responseIds = Array.from(new Set(
+    items
+      .map(({ runId }) => runId)
+      .filter((id): id is string => Boolean(id)),
+  ))
+
+  const results = await Promise.allSettled(
+    responseIds.map((id) => openai.responses.retrieve(id)),
+  )
+
+  const map = new Map<string, OpenAI.Responses.Response>()
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      map.set(responseIds[index], result.value)
+    }
+  })
+
+  return map
+}
+
+const normaliseConversationTimestamp = (value: number | string): number => (
+  typeof value === 'number' ? value : dayjs(value).unix()
+)
+
+// Ensure timestamps follow the requested order even when some items lack response metadata.
+const assignTimestamps = ({
+  items,
+  responseMap,
+  sortOrder,
+  conversationCreatedAt,
+}: {
+  items: ItemWithRunId[]
+  responseMap: Map<string, OpenAI.Responses.Response>
+  sortOrder: 'asc' | 'desc'
+  conversationCreatedAt: number
+}): ItemWithAssignedTimestamp[] => {
+  const itemsWithTimestamps = items.map((entry) => ({
+    ...entry,
+    timestamp: entry.runId ? responseMap.get(entry.runId)?.created_at ?? null : null,
+    assignedTimestamp: 0,
+  }))
+
+  const fallbackTimestampForIndex = (index: number): number => (
+    sortOrder === 'asc'
+      ? conversationCreatedAt + index
+      : conversationCreatedAt + (itemsWithTimestamps.length - index)
+  )
+
+  const findNextKnownTimestamp = (startIndex: number) => {
+    for (let i = startIndex; i < itemsWithTimestamps.length; i += 1) {
+      const candidate = itemsWithTimestamps[i]
+      if (candidate.timestamp != null) {
+        return { index: i, timestamp: candidate.timestamp }
+      }
+    }
+
+    return null
+  }
+
+  if (sortOrder === 'asc') {
+    let lastAssigned: number | null = null
+
+    itemsWithTimestamps.forEach((entry, index) => {
+      let nextValue = entry.timestamp
+
+      if (nextValue == null) {
+        if (lastAssigned != null) {
+          nextValue = lastAssigned + 1
+        } else {
+          const nextKnown = findNextKnownTimestamp(index + 1)
+          if (nextKnown) {
+            const gap = nextKnown.index - index
+            nextValue = nextKnown.timestamp - gap
+          } else {
+            nextValue = fallbackTimestampForIndex(index)
+          }
+        }
+      }
+
+      if (lastAssigned != null && nextValue <= lastAssigned) {
+        nextValue = lastAssigned + 1
+      }
+
+      entry.assignedTimestamp = nextValue
+      lastAssigned = nextValue
+    })
+  } else {
+    let lastAssigned: number | null = null
+
+    itemsWithTimestamps.forEach((entry, index) => {
+      let nextValue = entry.timestamp
+
+      if (nextValue == null) {
+        if (lastAssigned != null) {
+          nextValue = lastAssigned - 1
+        } else {
+          const nextKnown = findNextKnownTimestamp(index + 1)
+          if (nextKnown) {
+            const gap = nextKnown.index - index
+            nextValue = nextKnown.timestamp + gap
+          } else {
+            nextValue = fallbackTimestampForIndex(index)
+          }
+        }
+      }
+
+      if (lastAssigned != null && nextValue >= lastAssigned) {
+        nextValue = lastAssigned - 1
+      }
+
+      entry.assignedTimestamp = nextValue
+      lastAssigned = nextValue
+    })
+  }
+
+  return itemsWithTimestamps
 }
