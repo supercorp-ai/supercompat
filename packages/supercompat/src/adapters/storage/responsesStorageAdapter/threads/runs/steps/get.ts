@@ -3,6 +3,7 @@ import pMap from 'p-map'
 import { last } from 'radash'
 import { stepsRegexp } from '@/lib/steps/stepsRegexp'
 import { serializeItemAsRunStep } from '@/lib/items/serializeItemAsRunStep'
+import dayjs from 'dayjs'
 
 export const get = ({
   openai,
@@ -49,14 +50,34 @@ export const get = ({
 
   console.dir({ output: response.output, nonFcItems }, { depth: null })
 
-  return new Response(JSON.stringify({
-    data: response.output.map((item) => serializeItemAsRunStep({
+  const data = response.output.flatMap((item) => {
+    const step = serializeItemAsRunStep({
       item,
       items: functionCallOutputs,
       threadId,
       openaiAssistant,
       runId: response.id,
-    })),
+    });
+
+    if (item.type === 'function_call') {
+      const synthCreation = {
+        id: `mc${item.id}`,
+        run_id: response.id,
+        status: 'completed',
+        completed_at: step.created_at,
+        step_details: {
+          type: 'message_creation',
+          message_creation: { message_id: item.id },
+        },
+      };
+      return [synthCreation, step];
+    }
+
+    return [step];
+  })
+
+  return new Response(JSON.stringify({
+    data,
     has_more: false,
     last_id: last(response.output)?.id ?? null,
   }), {
