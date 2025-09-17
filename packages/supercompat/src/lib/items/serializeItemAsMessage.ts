@@ -47,7 +47,9 @@ const serializeMetadata = ({
 }: {
   item: ItemType
 }): OpenAI.Beta.Threads.Messages.Message['metadata'] => (
-  {}
+  {
+    item: JSON.stringify(item),
+  }
 )
   // assign(message.metadata as Record<any, any> ?? {}, message.toolCalls ? { toolCalls: message.toolCalls } : {}),
 

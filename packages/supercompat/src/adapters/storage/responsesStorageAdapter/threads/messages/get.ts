@@ -37,8 +37,13 @@ export const get = ({
     order: order as 'asc' | 'desc',
   })
 
-  const initialCreatedAt = dayjs().subtract(items.data.length, 'seconds').format()
+  console.dir({ conversation, items }, { depth: null })
+  const initialCreatedAt = dayjs(conversation.created_at).add(items.data.length, 'seconds').format()
+  const messageItems = items.data.filter((item) => (
+    item.type !== 'function_call'
+  ))
 
+  // console.dir({ items }, { depth: null })
   return new Response(JSON.stringify({
     data: items.data.map((item: OpenAI.Conversations.ConversationItem, index) => (
       serializeItemAsMessage({

@@ -298,6 +298,7 @@ export const responsesRunAdapter =
                 event: 'thread.run.step.created',
                 data: serializeItemAsRunStep({
                   item: event.item,
+                  items: [],
                   threadId,
                   openaiAssistant,
                   runId: responseCreatedResponse!.id,
@@ -321,6 +322,7 @@ export const responsesRunAdapter =
                 event: 'thread.run.step.created',
                 data: serializeItemAsRunStep({
                   item: event.item,
+                  items: [],
                   threadId,
                   openaiAssistant,
                   runId: responseCreatedResponse!.id,
@@ -339,6 +341,7 @@ export const responsesRunAdapter =
                 event: 'thread.run.step.completed',
                 data: serializeItemAsRunStep({
                   item: event.item,
+                  items: [],
                   threadId,
                   openaiAssistant,
                   runId: responseCreatedResponse!.id,
@@ -362,6 +365,7 @@ export const responsesRunAdapter =
                 event: 'thread.run.step.completed',
                 data: serializeItemAsRunStep({
                   item: event.item,
+                  items: [],
                   threadId,
                   openaiAssistant,
                   runId: responseCreatedResponse!.id,

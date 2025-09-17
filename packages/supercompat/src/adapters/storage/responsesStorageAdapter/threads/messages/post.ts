@@ -3,6 +3,7 @@ import dayjs from 'dayjs'
 import { isArray } from 'radash'
 import { messagesRegexp } from '@/lib/messages/messagesRegexp'
 import { serializeItemAsMessage } from '@/lib/items/serializeItemAsMessage'
+import { uid } from 'radash'
 
 type MessageCreateResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Messages.Message>
@@ -56,9 +57,11 @@ const messageContentBlocks = ({
 export const post = ({
   openai,
   openaiAssistant,
+  createResponseItems,
 }: {
   openai: OpenAI
   openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  createResponseItems: OpenAI.Responses.ResponseItem[]
 }) => async (urlString: string, options: RequestInit & { body: string }): Promise<MessageCreateResponse> => {
   const url = new URL(urlString)
 
@@ -67,24 +70,29 @@ export const post = ({
   const body = JSON.parse(options.body)
   const { role, content, metadata } = body
 
-  const items = await openai.conversations.items.create(
-    threadId,
-    {
-      items: [
-        {
-          type: "message",
-          role,
-          content: messageContentBlocks({
-            content,
-          }),
-        },
-      ],
-    }
-  );
+  const item = {
+    id: `msg_${uid(24)}`,
+    status: 'in_progress' as const,
+    type: "message" as const,
+    role,
+    content: messageContentBlocks({
+      content,
+    }),
+  }
 
+  createResponseItems.push(item)
+
+  // const items = await openai.conversations.items.create(
+  //   threadId,
+  //   {
+  //     items: [
+  //     ],
+  //   }
+  // );
+  //
   return new Response(JSON.stringify(
     serializeItemAsMessage({
-      item: items.data[0],
+      item,
       threadId,
       openaiAssistant,
       createdAt: dayjs().unix(),

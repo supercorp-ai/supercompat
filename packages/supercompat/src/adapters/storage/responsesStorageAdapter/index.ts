@@ -22,15 +22,18 @@ export const responsesStorageAdapter = ({
 }: {
   openai: OpenAI
   openaiAssistant: OpenAI.Beta.Assistants.Assistant
-}): ((args: StorageAdapterArgs) => { requestHandlers: Record<string, MethodHandlers> }) =>
-({ runAdapter }: StorageAdapterArgs) => ({
-  requestHandlers: {
-    '^/(?:v1|/?openai)/assistants$': assistants({ openai, openaiAssistant }),
-    '^/(?:v1|/?openai)/threads$': threads({ openai }),
-    [messagesRegexp]: messages({ openai, openaiAssistant }),
-    [runsRegexp]: runs({ openai, openaiAssistant, runAdapter }),
-    [runRegexp]: run({ openai, runAdapter }),
-    [stepsRegexp]: steps({ openai, openaiAssistant }),
-    [submitToolOutputsRegexp]: submitToolOutputs({ openai, openaiAssistant, runAdapter }),
-  },
-})
+}): ((args: StorageAdapterArgs) => { requestHandlers: Record<string, MethodHandlers> }) => {
+  const createResponseItems: OpenAI.Responses.ResponseItem[] = []
+
+  return ({ runAdapter }: StorageAdapterArgs) => ({
+    requestHandlers: {
+      '^/(?:v1|/?openai)/assistants$': assistants({ openai, openaiAssistant }),
+      '^/(?:v1|/?openai)/threads$': threads({ openai }),
+      [messagesRegexp]: messages({ openai, openaiAssistant, createResponseItems }),
+      [runsRegexp]: runs({ openai, openaiAssistant, runAdapter, createResponseItems }),
+      [runRegexp]: run({ openai, runAdapter }),
+      [stepsRegexp]: steps({ openai, openaiAssistant }),
+      [submitToolOutputsRegexp]: submitToolOutputs({ openai, openaiAssistant, runAdapter }),
+    },
+  })
+}

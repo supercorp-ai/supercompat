@@ -11,9 +11,6 @@ type ItemType = OpenAI.Conversations.ConversationItem | OpenAI.Responses.Respons
 type ConvMessageItem = Extract<ItemType, { type: 'message' }>
 type ConvFnItem      = Extract<ItemType, { type: 'function_call' }>
 
-const isConvMessage = (i: ItemType): i is ConvMessageItem =>
-  'type' in i && i.type === 'message'
-
 const isConvFn = (i: ItemType): i is ConvFnItem =>
   'type' in i && i.type === 'function_call'
 
@@ -22,11 +19,13 @@ type ConvFnWithArgs = ConvFnItem & { name: string; arguments: string }
 
 export function serializeItemAsRunStep({
   item,
+  items,
   threadId,
   openaiAssistant,
   runId = `run_${uid(24)}`,
 }: {
   item: ItemType
+  items: ItemType[]
   threadId: string
   openaiAssistant: OpenAI.Beta.Assistants.Assistant
   runId?: string
@@ -53,7 +52,7 @@ export function serializeItemAsRunStep({
     usage: null,
   }
 
-  if (isConvMessage(item)) {
+  if (item.type === 'message') {
     return {
       ...base,
       type: 'message_creation',
@@ -69,28 +68,32 @@ export function serializeItemAsRunStep({
     }
   }
 
-  if (isConvFn(item)) {
-    const fn = item as ConvFnWithArgs
+  if (item.type === 'function_call') {
+    const functionCallOutput = items.find((i) => (
+      i.type === 'function_call_output' &&
+      i.call_id === item.call_id
+    )) as OpenAI.Responses.ResponseFunctionToolCallOutputItem | undefined
 
-    const toolCall: FunctionToolCall = {
-      // prefer itemId; if your client also exposes a separate call_id, you could fall back to it
-      id: itemId,
-      type: 'function',
-      function: {
-        name: fn.name,
-        arguments: fn.arguments,
-        output: null, // required by Assistants; fill when submitting tool outputs
-      },
-    }
+    // if (functionCallOutput) {
+      const toolCall: FunctionToolCall = {
+        id: item.call_id,
+        type: 'function',
+        function: {
+          name: item.name,
+          arguments: item.arguments,
+          output: functionCallOutput ? functionCallOutput.output : null,
+        },
+      }
 
-    return {
-      ...base,
-      type: 'tool_calls',
-      step_details: {
+      return {
+        ...base,
         type: 'tool_calls',
-        tool_calls: [toolCall],
-      } satisfies ToolCallsStepDetails,
-    }
+        step_details: {
+          type: 'tool_calls',
+          tool_calls: [toolCall],
+        } satisfies ToolCallsStepDetails,
+      }
+    // }
   }
 
   // Fallback: treat unknown items as message_creation
@@ -100,6 +103,9 @@ export function serializeItemAsRunStep({
     step_details: {
       type: 'message_creation',
       message_creation: { message_id: itemId },
+    },
+    metadata: {
+      item: JSON.stringify(item),
     },
   }
 }

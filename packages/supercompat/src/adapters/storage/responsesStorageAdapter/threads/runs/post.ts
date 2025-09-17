@@ -44,10 +44,12 @@ export const post = ({
   openai,
   openaiAssistant,
   runAdapter,
+  createResponseItems,
 }: {
   openai: OpenAI
   openaiAssistant: OpenAI.Beta.Assistants.Assistant
   runAdapter: RunAdapterPartobClient
+  createResponseItems: OpenAI.Responses.ResponseItem[]
 }) => async (urlString: string, options: RequestInit & { body: string }): Promise<RunCreateResponse> => {
   const url = new URL(urlString)
   const [, threadId] = url.pathname.match(new RegExp(runsRegexp))!
@@ -83,7 +85,7 @@ export const post = ({
     text: {
       format: response_format,
     },
-    input: '',
+    input: createResponseItems,
   })
 
   const readableStream = new ReadableStream({
