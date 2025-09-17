@@ -302,6 +302,8 @@ export const responsesRunAdapter =
                   threadId,
                   openaiAssistant,
                   runId: responseCreatedResponse!.id,
+                  status: 'in_progress',
+                  completedAt: null,
                 })
               })
 
@@ -313,6 +315,7 @@ export const responsesRunAdapter =
                   openaiAssistant,
                   createdAt: dayjs().unix(),
                   runId: responseCreatedResponse!.id,
+                  status: 'in_progress',
                 })
               })
             } else if (event.item.type === 'function_call') {

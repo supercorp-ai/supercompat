@@ -1,5 +1,4 @@
 import type { OpenAI } from 'openai'
-import dayjs from 'dayjs'
 
 export const serializeThread = ({
   conversation,
@@ -8,7 +7,7 @@ export const serializeThread = ({
 }) => ({
   id: conversation.id,
   object: 'thread' as 'thread',
-  created_at: dayjs(conversation.created_at).unix(),
+  created_at: conversation.created_at,
   metadata: conversation.metadata,
   // TODO
   tool_resources: null,

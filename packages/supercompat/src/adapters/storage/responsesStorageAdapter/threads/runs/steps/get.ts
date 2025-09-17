@@ -48,8 +48,6 @@ export const get = ({
     item.type !== 'function_call'
   ))
 
-  console.dir({ output: response.output, nonFcItems }, { depth: null })
-
   const data = response.output.flatMap((item) => {
     const step = serializeItemAsRunStep({
       item,

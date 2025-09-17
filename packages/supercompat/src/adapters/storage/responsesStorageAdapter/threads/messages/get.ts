@@ -49,7 +49,7 @@ export const get = ({
     items: itemsWithRunIds,
     responseMap,
     sortOrder,
-    conversationCreatedAt: normaliseConversationTimestamp(conversation.created_at),
+    conversationCreatedAt: conversation.created_at,
   })
 
   return new Response(JSON.stringify({
@@ -124,10 +124,6 @@ const fetchResponsesForItems = async ({
 
   return map
 }
-
-const normaliseConversationTimestamp = (value: number | string): number => (
-  typeof value === 'number' ? value : dayjs(value).unix()
-)
 
 // Ensure timestamps follow the requested order even when some items lack response metadata.
 const assignTimestamps = ({

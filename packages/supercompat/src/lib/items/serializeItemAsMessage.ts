@@ -59,12 +59,14 @@ export const serializeItemAsMessage = ({
   openaiAssistant,
   createdAt,
   runId = null,
+  status = 'completed',
 }: {
   item: ItemType
   threadId: string
   openaiAssistant: OpenAI.Beta.Assistants.Assistant
   createdAt: number
   runId?: string | null
+  status?: 'completed' | 'in_progress'
 }): OpenAI.Beta.Threads.Message => ({
   id: item.id || uid(24),
   object: 'thread.message' as 'thread.message',
@@ -78,6 +80,6 @@ export const serializeItemAsMessage = ({
   assistant_id: (item as any).role === 'assistant' ? openaiAssistant.id : null,
   run_id: runId,
   attachments: serializeAttachments({ item }),
-  status: typeof (item as any).status === 'string' ? (item as any).status : 'completed',
+  status: typeof (item as any).status === 'string' ? (item as any).status : status,
   metadata: serializeMetadata({ item }),
 })

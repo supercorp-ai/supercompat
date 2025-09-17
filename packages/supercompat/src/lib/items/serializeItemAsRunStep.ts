@@ -8,46 +8,39 @@ type ToolCallsStepDetails = OpenAI.Beta.Threads.Runs.Steps.ToolCallsStepDetails
 
 type ItemType = OpenAI.Conversations.ConversationItem | OpenAI.Responses.ResponseItem | OpenAI.Responses.ResponseFunctionToolCall
 
-type ConvMessageItem = Extract<ItemType, { type: 'message' }>
-type ConvFnItem      = Extract<ItemType, { type: 'function_call' }>
-
-const isConvFn = (i: ItemType): i is ConvFnItem =>
-  'type' in i && i.type === 'function_call'
-
-// If the SDK marks these optional, assert once after narrowing:
-type ConvFnWithArgs = ConvFnItem & { name: string; arguments: string }
-
 export function serializeItemAsRunStep({
   item,
   items,
   threadId,
   openaiAssistant,
   runId = `run_${uid(24)}`,
+  status = 'completed',
+  completedAt = dayjs().unix(),
 }: {
   item: ItemType
   items: ItemType[]
   threadId: string
   openaiAssistant: OpenAI.Beta.Assistants.Assistant
   runId?: string
+  status?: 'completed' | 'in_progress'
+  completedAt?: number | null
 }): RunStep {
-  const now = dayjs().unix()
-
   // Normalize the item id to a definite string
   const itemId: string = typeof item.id === 'string' ? item.id : `item_${uid(18)}`
 
   const base: Omit<RunStep, 'type' | 'step_details'> = {
     id: itemId,
     object: 'thread.run.step',
-    created_at: now,
+    created_at: dayjs().unix(),
     assistant_id: openaiAssistant.id,
     thread_id: threadId,
     run_id: runId,
-    status: 'completed',
+    status,
     last_error: null,
     expired_at: null,
     cancelled_at: null,
     failed_at: null,
-    completed_at: now,
+    completed_at: completedAt,
     metadata: {},
     usage: null,
   }
