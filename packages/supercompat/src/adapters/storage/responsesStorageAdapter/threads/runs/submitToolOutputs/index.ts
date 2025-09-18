@@ -4,18 +4,14 @@ import { post } from './post'
 import type { RequestHandler } from '@/types'
 
 export const submitToolOutputs = ({
-  openai,
-  openaiAssistant,
+  client,
   runAdapter,
 }: {
-  openai: OpenAI
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  client: OpenAI
   runAdapter: RunAdapter
 }): { post: RequestHandler } => ({
   post: post({
-    openai,
-    openaiAssistant,
-    // @ts-ignore-next-line
+    client,
     runAdapter,
   }),
 })

@@ -1,17 +1,17 @@
 import type { OpenAI } from 'openai'
 import { post } from './post'
 import { get } from './get'
-import type { RequestHandler } from '@/types'
+import type { RequestHandler, RunAdapter } from '@/types'
 
 export const messages = ({
-  openai,
-  openaiAssistant,
+  client,
+  runAdapter,
   createResponseItems,
 }: {
-  openai: OpenAI
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  client: OpenAI
+  runAdapter: RunAdapter
   createResponseItems: OpenAI.Responses.ResponseItem[]
 }): { post: RequestHandler; get: RequestHandler } => ({
-  post: post({ openai, openaiAssistant, createResponseItems }),
-  get: get({ openai, openaiAssistant }),
+  post: post({ runAdapter, createResponseItems }),
+  get: get({ client, runAdapter }),
 })

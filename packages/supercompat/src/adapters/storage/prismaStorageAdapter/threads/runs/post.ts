@@ -85,7 +85,7 @@ export const post = ({
   const readableStream = new ReadableStream({
     async start(controller) {
       try {
-        await runAdapter({
+        await runAdapter.handleRun({
           run: data,
           onEvent: onEvent({
             controller: {

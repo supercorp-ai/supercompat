@@ -1,16 +1,16 @@
 import type { OpenAI } from 'openai'
 import pMap from 'p-map'
 import { last } from 'radash'
+import type { RunAdapter } from '@/types'
 import { stepsRegexp } from '@/lib/steps/stepsRegexp'
 import { serializeItemAsRunStep } from '@/lib/items/serializeItemAsRunStep'
-import dayjs from 'dayjs'
 
 export const get = ({
-  openai,
-  openaiAssistant,
+  client,
+  runAdapter,
 }: {
-  openai: OpenAI
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  client: OpenAI
+  runAdapter: RunAdapter
 }) => async (urlString: string) => {
   const url = new URL(urlString)
 
@@ -26,14 +26,14 @@ export const get = ({
   //   // after: null,
   // }, Object.fromEntries(url.searchParams))
 
-  const response = await openai.responses.retrieve(runId)
+  const response = await client.responses.retrieve(runId)
 
   const functionCalls = response.output.filter((item) => (
     item.type === 'function_call'
   ))
 
   const functionCallOutputsResponses = await pMap(functionCalls, async (functionCall) => {
-    const items = await openai.conversations.items.list(threadId, {
+    const items = await client.conversations.items.list(threadId, {
       after: functionCall.id,
       order: 'asc',
     })
@@ -44,9 +44,8 @@ export const get = ({
   })
 
   const functionCallOutputs = functionCallOutputsResponses.filter(Boolean) as OpenAI.Conversations.ConversationItem[]
-  const nonFcItems = response.output.filter((item) => (
-    item.type !== 'function_call'
-  ))
+
+  const openaiAssistant = await runAdapter.getOpenaiAssistant()
 
   const data = response.output.flatMap((item) => {
     const step = serializeItemAsRunStep({

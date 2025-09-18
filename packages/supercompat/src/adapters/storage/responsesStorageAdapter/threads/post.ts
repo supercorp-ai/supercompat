@@ -6,16 +6,16 @@ type ThreadCreateResponse = Response & {
 }
 
 export const post = ({
-  openai,
+  client,
 }: {
-  openai: OpenAI
+  client: OpenAI
 }) => async (urlString: string, options: RequestInit & { body: string }): Promise<ThreadCreateResponse> => {
   const body = JSON.parse(options.body)
 
   const messages = body.messages || []
   const metadata = body.metadata || {}
 
-  const conversation = await openai.conversations.create({
+  const conversation = await client.conversations.create({
     metadata,
     items: messages.map((message: OpenAI.Beta.ThreadCreateParams.Message) => ({
       type: "message",

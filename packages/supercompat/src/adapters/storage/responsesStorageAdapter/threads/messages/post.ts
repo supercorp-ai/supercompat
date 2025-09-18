@@ -1,6 +1,7 @@
 import type OpenAI from 'openai'
 import dayjs from 'dayjs'
 import { isArray } from 'radash'
+import type { RunAdapter } from '@/types'
 import { messagesRegexp } from '@/lib/messages/messagesRegexp'
 import { serializeItemAsMessage } from '@/lib/items/serializeItemAsMessage'
 import { uid } from 'radash'
@@ -55,12 +56,10 @@ const messageContentBlocks = ({
 }
 
 export const post = ({
-  openai,
-  openaiAssistant,
+  runAdapter,
   createResponseItems,
 }: {
-  openai: OpenAI
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  runAdapter: RunAdapter
   createResponseItems: OpenAI.Responses.ResponseItem[]
 }) => async (urlString: string, options: RequestInit & { body: string }): Promise<MessageCreateResponse> => {
   const url = new URL(urlString)
@@ -90,6 +89,9 @@ export const post = ({
   //   }
   // );
   //
+
+  const openaiAssistant = await runAdapter.getOpenaiAssistant()
+
   return new Response(JSON.stringify(
     serializeItemAsMessage({
       item,

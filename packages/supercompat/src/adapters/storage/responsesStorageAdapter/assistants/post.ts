@@ -1,10 +1,4 @@
-import type { OpenAI } from 'openai'
-
-export const post = ({
-  openaiAssistant: _openaiAssistant,
-}: {
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
-}) =>
+export const post = () =>
   async () => (
     new Response(
       JSON.stringify({

@@ -4,7 +4,6 @@ import dayjs from 'dayjs'
 import OpenAI from 'openai'
 import { MessageWithRun } from '@/types'
 import { messages } from './messages'
-import { supercompat } from '@/supercompat'
 
 const updatedToolCall = ({
   toolCall,
@@ -53,228 +52,228 @@ const toolCallsData = ({
   return newToolCalls
 }
 
-export const completionsRunAdapter = () => async ({
-  client: clientAdapter,
-  run,
-  onEvent,
-  getMessages,
-}: {
-  client: OpenAI
-  run: OpenAI.Beta.Threads.Run
-  onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
-  getMessages: () => Promise<MessageWithRun[]>
-}) => {
-  if (run.status !== 'queued') return
-
-  const client = supercompat({
-    client: clientAdapter,
-  })
-
-  onEvent({
-    event: 'thread.run.in_progress',
-    data: {
-      ...run,
-      status: 'in_progress',
-    },
-  })
-
-  const opts = {
-    messages: await messages({
+export const completionsRunAdapter = () => {
+  return {
+    handleRun: async ({
+      client,
       run,
+      onEvent,
       getMessages,
-    }),
-    model: run.model,
-    stream: true,
-    response_format: run.response_format,
-    ...(isEmpty(run.tools) ? {} : { tools: run.tools }),
-  } as OpenAI.ChatCompletionCreateParamsStreaming
+    }: {
+      client: OpenAI
+      run: OpenAI.Beta.Threads.Run
+      onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
+      getMessages: () => Promise<MessageWithRun[]>
+    }) => {
+      if (run.status !== 'queued') return
 
-  let providerResponse
-
-  try {
-    providerResponse = await client.chat.completions.create(opts)
-  } catch(e: any) {
-    console.error(e)
-
-    return onEvent({
-      event: 'thread.run.failed',
-      data: {
-        ...run,
-        failed_at: dayjs().unix(),
-        status: 'in_progress',
-        last_error: {
-          code: 'server_error',
-          message: `${e?.message ?? ''} ${e?.cause?.message ?? ''}`,
+      onEvent({
+        event: 'thread.run.in_progress',
+        data: {
+          ...run,
+          status: 'in_progress',
         },
-      },
-    })
-  }
+      })
 
-  let message = await onEvent({
-    event: 'thread.message.created',
-    data: {
-      id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
-      object: 'thread.message',
-      completed_at: null,
-      run_id: run.id,
-      created_at: dayjs().unix(),
-      assistant_id: run.assistant_id,
-      incomplete_at: null,
-      incomplete_details: null,
-      metadata: {},
-      attachments: [],
-      thread_id: run.thread_id,
-      content: [{ text: { value: '', annotations: [] }, type: 'text' }],
-      role: 'assistant',
-      status: 'in_progress',
-    },
-  })
+      const opts = {
+        messages: await messages({
+          run,
+          getMessages,
+        }),
+        model: run.model,
+        stream: true,
+        response_format: run.response_format,
+        ...(isEmpty(run.tools) ? {} : { tools: run.tools }),
+      } as OpenAI.ChatCompletionCreateParamsStreaming
 
-  onEvent({
-    event: 'thread.run.step.created',
-    data: {
-      id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
-      object: 'thread.run.step',
-      run_id: run.id,
-      assistant_id: run.assistant_id,
-      thread_id: run.thread_id,
-      type: 'message_creation',
-      status: 'completed',
-      completed_at: dayjs().unix(),
-      created_at: dayjs().unix(),
-      expired_at: null,
-      last_error: null,
-      metadata: {},
-      failed_at: null,
-      cancelled_at: null,
-      usage: null,
-      step_details: {
-        type: 'message_creation',
-        message_creation: {
-          message_id: message.id,
-        },
-      },
-    },
-  })
+      let providerResponse
 
-  let toolCallsRunStep
-  let currentContent = ''
-  let currentToolCalls
+      try {
+        providerResponse = await client.chat.completions.create(opts)
+      } catch(e: any) {
+        console.error(e)
 
-  for await (const chunk of providerResponse) {
-    const choices = chunk.choices ?? []
-    const choice = choices[0]
-    if (!choice) continue
-
-    const delta = choice.delta
-
-    if (delta.content) {
-      currentContent = `${currentContent}${delta.content ?? ''}`
-    }
-
-    if (delta.tool_calls) {
-      if (!toolCallsRunStep) {
-        toolCallsRunStep = await onEvent({
-          event: 'thread.run.step.created',
+        return onEvent({
+          event: 'thread.run.failed',
           data: {
-            id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
-            object: 'thread.run.step',
-            run_id: run.id,
-            assistant_id: run.assistant_id,
-            thread_id: run.thread_id,
-            type: 'tool_calls',
+            ...run,
+            failed_at: dayjs().unix(),
             status: 'in_progress',
-            completed_at: null,
-            created_at: dayjs().unix(),
-            expired_at: null,
-            last_error: null,
-            metadata: {},
-            failed_at: null,
-            cancelled_at: null,
-            usage: null,
-            step_details: {
-              type: 'tool_calls',
-              tool_calls: [],
+            last_error: {
+              code: 'server_error',
+              message: `${e?.message ?? ''} ${e?.cause?.message ?? ''}`,
             },
           },
         })
       }
 
-      onEvent({
-        event: 'thread.run.step.delta',
+      let message = await onEvent({
+        event: 'thread.message.created',
         data: {
-          object: 'thread.run.step.delta',
+          id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
+          object: 'thread.message',
+          completed_at: null,
           run_id: run.id,
-          id: toolCallsRunStep.id,
-          delta: {
-            step_details: {
-              type: 'tool_calls',
-              tool_calls: delta.tool_calls.map((tc: any) => ({
-                id: uid(24),
-                type: 'function',
-                ...tc,
-              })),
+          created_at: dayjs().unix(),
+          assistant_id: run.assistant_id,
+          incomplete_at: null,
+          incomplete_details: null,
+          metadata: {},
+          attachments: [],
+          thread_id: run.thread_id,
+          content: [{ text: { value: '', annotations: [] }, type: 'text' }],
+          role: 'assistant',
+          status: 'in_progress',
+        },
+      })
+
+      onEvent({
+        event: 'thread.run.step.created',
+        data: {
+          id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
+          object: 'thread.run.step',
+          run_id: run.id,
+          assistant_id: run.assistant_id,
+          thread_id: run.thread_id,
+          type: 'message_creation',
+          status: 'completed',
+          completed_at: dayjs().unix(),
+          created_at: dayjs().unix(),
+          expired_at: null,
+          last_error: null,
+          metadata: {},
+          failed_at: null,
+          cancelled_at: null,
+          usage: null,
+          step_details: {
+            type: 'message_creation',
+            message_creation: {
+              message_id: message.id,
             },
           },
         },
-      } as OpenAI.Beta.AssistantStreamEvent.ThreadRunStepDelta)
+      })
 
-      currentToolCalls = toolCallsData({ prevToolCalls: currentToolCalls, delta })
-    }
+      let toolCallsRunStep
+      let currentContent = ''
+      let currentToolCalls
 
-    if (delta.content) {
-      onEvent({
-        event: 'thread.message.delta',
-        data: {
-          id: message.id,
-          delta: {
-            content: [
-              {
-                type: 'text',
-                index: 0,
-                text: {
-                  value: delta.content,
+      for await (const chunk of providerResponse) {
+        const choices = chunk.choices ?? []
+        const choice = choices[0]
+        if (!choice) continue
+
+        const delta = choice.delta
+
+        if (delta.content) {
+          currentContent = `${currentContent}${delta.content ?? ''}`
+        }
+
+        if (delta.tool_calls) {
+          if (!toolCallsRunStep) {
+            toolCallsRunStep = await onEvent({
+              event: 'thread.run.step.created',
+              data: {
+                id: 'THERE_IS_A_BUG_IN_SUPERCOMPAT_IF_YOU_SEE_THIS_ID',
+                object: 'thread.run.step',
+                run_id: run.id,
+                assistant_id: run.assistant_id,
+                thread_id: run.thread_id,
+                type: 'tool_calls',
+                status: 'in_progress',
+                completed_at: null,
+                created_at: dayjs().unix(),
+                expired_at: null,
+                last_error: null,
+                metadata: {},
+                failed_at: null,
+                cancelled_at: null,
+                usage: null,
+                step_details: {
+                  type: 'tool_calls',
+                  tool_calls: [],
                 },
               },
-            ],
+            })
+          }
+
+          onEvent({
+            event: 'thread.run.step.delta',
+            data: {
+              object: 'thread.run.step.delta',
+              run_id: run.id,
+              id: toolCallsRunStep.id,
+              delta: {
+                step_details: {
+                  type: 'tool_calls',
+                  tool_calls: delta.tool_calls.map((tc: any) => ({
+                    id: uid(24),
+                    type: 'function',
+                    ...tc,
+                  })),
+                },
+              },
+            },
+          } as OpenAI.Beta.AssistantStreamEvent.ThreadRunStepDelta)
+
+          currentToolCalls = toolCallsData({ prevToolCalls: currentToolCalls, delta })
+        }
+
+        if (delta.content) {
+          onEvent({
+            event: 'thread.message.delta',
+            data: {
+              id: message.id,
+              delta: {
+                content: [
+                  {
+                    type: 'text',
+                    index: 0,
+                    text: {
+                      value: delta.content,
+                    },
+                  },
+                ],
+              },
+            },
+          } as OpenAI.Beta.AssistantStreamEvent.ThreadMessageDelta)
+        }
+      }
+
+      message = await onEvent({
+        event: 'thread.message.completed',
+        data: {
+          ...message,
+          status: 'completed',
+          content: [{ text: { value: currentContent, annotations: [] }, type: 'text' }],
+          tool_calls: currentToolCalls,
+        },
+      })
+
+      if (isEmpty(message.toolCalls)) {
+        return onEvent({
+          event: 'thread.run.completed',
+          data: {
+            ...run,
+            status: 'completed',
+            completed_at: dayjs().unix(),
+          },
+        })
+      }
+
+      return onEvent({
+        event: 'thread.run.requires_action',
+        data: {
+          ...run,
+          status: 'requires_action',
+          required_action: {
+            type: 'submit_tool_outputs',
+            submit_tool_outputs: {
+              tool_calls: message.toolCalls,
+            },
           },
         },
-      } as OpenAI.Beta.AssistantStreamEvent.ThreadMessageDelta)
+      })
     }
   }
-
-  message = await onEvent({
-    event: 'thread.message.completed',
-    data: {
-      ...message,
-      status: 'completed',
-      content: [{ text: { value: currentContent, annotations: [] }, type: 'text' }],
-      tool_calls: currentToolCalls,
-    },
-  })
-
-  if (isEmpty(message.toolCalls)) {
-    return onEvent({
-      event: 'thread.run.completed',
-      data: {
-        ...run,
-        status: 'completed',
-        completed_at: dayjs().unix(),
-      },
-    })
-  }
-
-  return onEvent({
-    event: 'thread.run.requires_action',
-    data: {
-      ...run,
-      status: 'requires_action',
-      required_action: {
-        type: 'submit_tool_outputs',
-        submit_tool_outputs: {
-          tool_calls: message.toolCalls,
-        },
-      },
-    },
-  })
 }

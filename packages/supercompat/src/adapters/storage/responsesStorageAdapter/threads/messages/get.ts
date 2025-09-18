@@ -1,6 +1,6 @@
 import type OpenAI from 'openai'
+import type { RunAdapter } from '@/types'
 import { assign } from 'radash'
-import dayjs from 'dayjs'
 import { messagesRegexp } from '@/lib/messages/messagesRegexp'
 import { serializeItemAsMessage } from '@/lib/items/serializeItemAsMessage'
 import { responseId } from '@/lib/items/responseId'
@@ -10,11 +10,11 @@ type MessageCreateResponse = Response & {
 }
 
 export const get = ({
-  openai,
-  openaiAssistant,
+  client,
+  runAdapter,
 }: {
-  openai: OpenAI
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  client: OpenAI
+  runAdapter: RunAdapter
 }) => async (urlString: string): Promise<MessageCreateResponse> => {
   const url = new URL(urlString)
 
@@ -30,10 +30,10 @@ export const get = ({
     // after: null,
   }, Object.fromEntries(url.searchParams))
 
-  const conversation = await openai.conversations.retrieve(threadId)
+  const conversation = await client.conversations.retrieve(threadId)
   const sortOrder = order === 'asc' ? 'asc' : 'desc'
 
-  const items = await openai.conversations.items.list(threadId, {
+  const items = await client.conversations.items.list(threadId, {
     limit: parseInt(limit, 10),
     after,
     order: sortOrder,
@@ -41,7 +41,7 @@ export const get = ({
 
   const itemsWithRunIds = mapItemsWithRunIds({ conversation, items: items.data })
   const responseMap = await fetchResponsesForItems({
-    openai,
+    client,
     items: itemsWithRunIds,
   })
 
@@ -51,6 +51,8 @@ export const get = ({
     sortOrder,
     conversationCreatedAt: conversation.created_at,
   })
+
+  const openaiAssistant = await runAdapter.getOpenaiAssistant()
 
   return new Response(JSON.stringify({
     data: timestampedItems.map(({ item, runId, assignedTimestamp }) => (
@@ -99,10 +101,10 @@ const mapItemsWithRunIds = ({
 )
 
 const fetchResponsesForItems = async ({
-  openai,
+  client,
   items,
 }: {
-  openai: OpenAI
+  client: OpenAI
   items: ItemWithRunId[]
 }): Promise<Map<string, OpenAI.Responses.Response>> => {
   const responseIds = Array.from(new Set(
@@ -112,7 +114,7 @@ const fetchResponsesForItems = async ({
   ))
 
   const results = await Promise.allSettled(
-    responseIds.map((id) => openai.responses.retrieve(id)),
+    responseIds.map((id) => client.responses.retrieve(id)),
   )
 
   const map = new Map<string, OpenAI.Responses.Response>()

@@ -1,5 +1,6 @@
 import { assign, partob } from 'radash'
 import { RunAdapter, StorageAdapterArgs } from '@/types'
+import { supercompat } from '@/supercompat'
 
 const storageRequestHandlers = ({
   storage,
@@ -13,7 +14,17 @@ const storageRequestHandlers = ({
   if (!storage) return {}
   if (!runAdapter) return {}
 
-  const result = storage({ runAdapter: partob(runAdapter, { client }) })
+  const wrappedClient = supercompat({
+    client,
+  })
+
+  const result = storage({
+    runAdapter: {
+      ...runAdapter,
+      handleRun: partob(runAdapter.handleRun, { client: wrappedClient }),
+    },
+    client: wrappedClient,
+  })
   return result.requestHandlers
 }
 

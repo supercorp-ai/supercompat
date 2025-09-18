@@ -1,4 +1,5 @@
 import type OpenAI from 'openai'
+import type { RunAdapter } from '@/types'
 import { runRegexp } from '@/lib/runs/runRegexp'
 import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
 
@@ -7,21 +8,21 @@ type GetResponse = Response & {
 }
 
 export const get = ({
-  openai,
-  openaiAssistant,
+  client,
+  runAdapter,
 }: {
-  openai: OpenAI
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  client: OpenAI
+  runAdapter: RunAdapter
 }) => async (urlString: string): Promise<GetResponse> => {
   const url = new URL(urlString)
 
   const [, _threadId, runId] = url.pathname.match(new RegExp(runRegexp))!
 
-  const response = await openai.responses.retrieve(runId)
+  const response = await client.responses.retrieve(runId)
 
   const data = serializeResponseAsRun({
     response,
-    assistantId: openaiAssistant.id,
+    assistantId: (await runAdapter.getOpenaiAssistant()).id,
   })
 
   return new Response(JSON.stringify(data), {

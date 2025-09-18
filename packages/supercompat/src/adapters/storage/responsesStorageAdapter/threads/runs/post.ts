@@ -42,13 +42,11 @@ const defaultAssistant = {
 }
 
 export const post = ({
-  openai,
-  openaiAssistant,
+  client,
   runAdapter,
   createResponseItems,
 }: {
-  openai: OpenAI
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  client: OpenAI
   runAdapter: RunAdapterPartobClient
   createResponseItems: OpenAI.Responses.ResponseItem[]
 }) => async (urlString: string, options: RequestInit & { body: string }): Promise<RunCreateResponse> => {
@@ -71,11 +69,11 @@ export const post = ({
     truncation_strategy,
   } = assign({
     ...defaultAssistant,
-    ...openaiAssistant,
+    ...(await runAdapter.getOpenaiAssistant()),
   }, body)
 
 
-  const response = await openai.responses.create({
+  const response = await client.responses.create({
     conversation: threadId,
     instructions,
     model,
@@ -92,7 +90,7 @@ export const post = ({
   const readableStream = new ReadableStream({
     async start(controller) {
       try {
-        await runAdapter({
+        await runAdapter.handleRun({
           threadId,
           response,
           onEvent: async (event) => (
@@ -134,7 +132,7 @@ export const post = ({
 
     if (itemIds.length > 0) {
       await saveResponseItemsToConversationMetadata({
-        openai,
+        client,
         threadId,
         responseId: response.id,
         itemIds,

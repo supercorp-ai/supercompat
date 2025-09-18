@@ -128,21 +128,21 @@ export function appendItemIdsToConversationMetadata({
 }
 
 export async function saveResponseItemsToConversationMetadata({
-  openai,
+  client,
   threadId,
   responseId,
   itemIds,
 }: {
-  openai: OpenAI
+  client: OpenAI
   threadId: string
   responseId: string
   itemIds: string[]
 }) {
-  const conversation = await openai.conversations.retrieve(threadId)
+  const conversation = await client.conversations.retrieve(threadId)
   const updated = appendItemIdsToConversationMetadata({
     metadata: conversation.metadata as Record<string, string> | undefined,
     responseId,
     itemIds,
   })
-  await openai.conversations.update(threadId, { metadata: updated })
+  await client.conversations.update(threadId, { metadata: updated })
 }

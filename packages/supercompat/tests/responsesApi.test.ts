@@ -40,13 +40,9 @@ test('responsesRunAdapter can create thread message and run via OpenAI', async (
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: responsesRunAdapter({
-      openai: realOpenAI,
-      openaiAssistant,
+      getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter({
-      openai: realOpenAI,
-      openaiAssistant,
-    }),
+    storage: responsesStorageAdapter(),
   })
 
   // const assistant = await client.beta.assistants.create({
@@ -98,13 +94,9 @@ test('responsesRunAdapter maintains conversation across runs', async (t) => {
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: responsesRunAdapter({
-      openai: realOpenAI,
-      openaiAssistant,
+      getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter({
-      openai: realOpenAI,
-      openaiAssistant,
-    }),
+    storage: responsesStorageAdapter(),
   })
 
   const thread = await client.beta.threads.create()
@@ -183,13 +175,9 @@ test('responsesRunAdapter streams tool calls via OpenAI', async () => {
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: responsesRunAdapter({
-      openai: realOpenAI,
-      openaiAssistant,
+      getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter({
-      openai: realOpenAI,
-      openaiAssistant,
-    }),
+    storage: responsesStorageAdapter(),
   })
 
   const thread = await client.beta.threads.create()
@@ -292,13 +280,9 @@ test('responsesStorageAdapter works with polling', async (t) => {
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: responsesRunAdapter({
-      openai: realOpenAI,
-      openaiAssistant,
+      getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter({
-      openai: realOpenAI,
-      openaiAssistant,
-    }),
+    storage: responsesStorageAdapter(),
   })
 
   const thread = await client.beta.threads.create()
@@ -345,13 +329,9 @@ test('responsesStorageAdapter streams without tool', async (t) => {
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: responsesRunAdapter({
-      openai: realOpenAI,
-      openaiAssistant,
+      getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter({
-      openai: realOpenAI,
-      openaiAssistant,
-    }),
+    storage: responsesStorageAdapter(),
   })
 
   const thread = await client.beta.threads.create()
@@ -427,13 +407,9 @@ test('responsesStorageAdapter streams with tool', async (t) => {
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: responsesRunAdapter({
-      openai: realOpenAI,
-      openaiAssistant,
+      getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter({
-      openai: realOpenAI,
-      openaiAssistant,
-    }),
+    storage: responsesStorageAdapter(),
   })
 
   const tools = [
@@ -564,13 +540,9 @@ test('responsesStorageAdapter exposes run steps with tools', async (t) => {
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: responsesRunAdapter({
-      openai: realOpenAI,
-      openaiAssistant,
+      getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter({
-      openai: realOpenAI,
-      openaiAssistant,
-    }),
+    storage: responsesStorageAdapter(),
   })
 
   const thread = await client.beta.threads.create()

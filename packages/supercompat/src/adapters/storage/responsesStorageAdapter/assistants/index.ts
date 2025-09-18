@@ -1,15 +1,12 @@
-import type { OpenAI } from 'openai'
 import { get } from './get'
 import { post } from './post'
-import type { RequestHandler } from '@/types'
+import type { RequestHandler, RunAdapter } from '@/types'
 
 export const assistants = ({
-  openai,
-  openaiAssistant,
+  runAdapter,
 }: {
-  openai: OpenAI
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  runAdapter: RunAdapter
 }): { post: RequestHandler } => ({
-  get: get({ openaiAssistant }),
-  post: post({ openaiAssistant }),
+  get: get({ runAdapter }),
+  post: post(),
 })

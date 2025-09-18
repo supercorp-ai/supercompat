@@ -3,9 +3,9 @@ import { post } from './post'
 import type { RequestHandler } from '@/types'
 
 export const threads = ({
-  openai,
+  client,
 }: {
-  openai: OpenAI
+  client: OpenAI
 }): { post: RequestHandler } => ({
-  post: post({ openai }),
+  post: post({ client }),
 })

@@ -1,6 +1,6 @@
 import type { OpenAI } from 'openai'
+import type { RunAdapterPartobClient } from '@/types'
 import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
-import { RunAdapterPartobClient } from '@/types'
 import { serializeItemAsRunStep } from '@/lib/items/serializeItemAsRunStep'
 
 const serializeTools = ({
@@ -32,12 +32,10 @@ const getFunctionCallOutputItems = ({
 )
 
 export const post = ({
-  openai,
-  openaiAssistant,
+  client,
   runAdapter,
 }: {
-  openai: OpenAI
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  client: OpenAI
   runAdapter: RunAdapterPartobClient
 }) => async (urlString: string, options: any) => {
   const url = new URL(urlString)
@@ -52,9 +50,11 @@ export const post = ({
 
   const functionCallOutputItems = getFunctionCallOutputItems({ tool_outputs })
 
-  const previousResponse = await openai.responses.retrieve(runId)
+  const previousResponse = await client.responses.retrieve(runId)
 
-  const response = await openai.responses.create({
+  const openaiAssistant = await runAdapter.getOpenaiAssistant()
+
+  const response = await client.responses.create({
     conversation: threadId,
     input: functionCallOutputItems,
     instructions: openaiAssistant.instructions,
@@ -90,7 +90,7 @@ export const post = ({
 
       })
 
-      await runAdapter({
+      await runAdapter.handleRun({
         threadId,
         response,
         onEvent: async (event) => (

@@ -21,6 +21,7 @@ export type RunAdapter = ({
 export type RunAdapterPartobClient = (args: Omit<Parameters<RunAdapter>[0], 'client'>) => ReturnType<RunAdapter>
 
 export type StorageAdapterArgs = {
+  client: OpenAI
   runAdapter: RunAdapter
 }
 

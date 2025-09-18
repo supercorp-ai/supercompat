@@ -1,3 +1,4 @@
+import type { RunAdapter } from '@/types'
 import type { OpenAI } from 'openai'
 
 type MessageCreateResponse = Response & {
@@ -5,14 +6,14 @@ type MessageCreateResponse = Response & {
 }
 
 export const get = ({
-  openaiAssistant,
+  runAdapter,
 }: {
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  runAdapter: RunAdapter
 }) => async (urlString: string): Promise<MessageCreateResponse> => {
   return new Response(JSON.stringify({
-    data: [openaiAssistant],
+    data: [await runAdapter.getOpenaiAssistant()],
     has_more: false,
-    last_id: openaiAssistant.id,
+    last_id: (await runAdapter.getOpenaiAssistant()).id,
   }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
