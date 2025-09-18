@@ -302,11 +302,6 @@ test('responsesStorageAdapter works with polling', async (t) => {
     }),
   })
 
-  const assistant = await client.beta.assistants.create({
-    model: 'gpt-4o-mini',
-    instructions: 'You are a helpful assistant.',
-  })
-
   const thread = await client.beta.threads.create()
 
   await client.beta.threads.messages.create(thread.id, {
@@ -315,7 +310,7 @@ test('responsesStorageAdapter works with polling', async (t) => {
   })
 
   await client.beta.threads.runs.createAndPoll(thread.id, {
-    assistant_id: assistant.id,
+    assistant_id: openaiAssistant.id,
   })
 
   const list = await client.beta.threads.messages.list(thread.id)

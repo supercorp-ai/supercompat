@@ -31,7 +31,7 @@ export const responsesStorageAdapter = ({
       '^/(?:v1|/?openai)/threads$': threads({ openai }),
       [messagesRegexp]: messages({ openai, openaiAssistant, createResponseItems }),
       [runsRegexp]: runs({ openai, openaiAssistant, runAdapter, createResponseItems }),
-      [runRegexp]: run({ openai, runAdapter }),
+      [runRegexp]: run({ openai, openaiAssistant, runAdapter }),
       [stepsRegexp]: steps({ openai, openaiAssistant }),
       [submitToolOutputsRegexp]: submitToolOutputs({ openai, openaiAssistant, runAdapter }),
     },

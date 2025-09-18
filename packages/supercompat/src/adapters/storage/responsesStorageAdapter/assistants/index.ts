@@ -11,5 +11,5 @@ export const assistants = ({
   openaiAssistant: OpenAI.Beta.Assistants.Assistant
 }): { post: RequestHandler } => ({
   get: get({ openaiAssistant }),
-  post: post({ openai }),
+  post: post({ openaiAssistant }),
 })

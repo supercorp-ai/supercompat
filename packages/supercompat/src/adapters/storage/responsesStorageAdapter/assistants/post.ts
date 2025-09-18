@@ -1,33 +1,23 @@
 import type { OpenAI } from 'openai'
-// import dayjs from 'dayjs'
 
-export const post = ({ openai }: { openai: OpenAI }) =>
-  async (_url: string, options: RequestInit & { body: string }) => {
-    const body = JSON.parse(options.body)
-    const { model, instructions } = body
-
-    throw new Error('Not implemented')
-
-    // const assistant = await prisma.assistant.create({
-    //   data: { modelSlug: model, instructions },
-    // })
-    //
-    // const data = {
-    //   id: assistant.id,
-    //   object: 'assistant',
-    //   created_at: dayjs().unix(),
-    //   name: null,
-    //   description: null,
-    //   model,
-    //   instructions,
-    //   tools: [],
-    //   metadata: {},
-    // }
-    //
-    // return new Response(JSON.stringify(data), {
-    //   status: 200,
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    // })
-  }
+export const post = ({
+  openaiAssistant: _openaiAssistant,
+}: {
+  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+}) =>
+  async () => (
+    new Response(
+      JSON.stringify({
+        error: {
+          message: 'Assistant creation is not implemented for the Responses storage adapter.',
+          type: 'not_implemented',
+        },
+      }),
+      {
+        status: 501,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      },
+    )
+  )

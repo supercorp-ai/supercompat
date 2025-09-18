@@ -5,6 +5,7 @@ import { assign } from 'radash'
 import { runsRegexp } from '@/lib/runs/runsRegexp'
 import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
 import { RunAdapterPartobClient } from '@/types'
+import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveResponseItemsToConversationMetadata'
 
 type RunCreateResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Run>
@@ -127,6 +128,19 @@ export const post = ({
       },
     })
   } else {
+    const itemIds = (response.output ?? [])
+      .filter((o) => o.id)
+      .map((o) => o.id!)
+
+    if (itemIds.length > 0) {
+      await saveResponseItemsToConversationMetadata({
+        openai,
+        threadId,
+        responseId: response.id,
+        itemIds,
+      })
+    }
+
     const data = serializeResponseAsRun({
       response,
       assistantId: assistant_id,
