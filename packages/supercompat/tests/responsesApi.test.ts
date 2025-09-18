@@ -249,7 +249,7 @@ test('responsesRunAdapter streams tool calls via OpenAI', async () => {
   }
 
   const listAfter = await client.beta.threads.messages.list(thread.id)
-  assert.ok(listAfter, 'Should have messages after tool call')
+  assert.ok(listAfter.data[0].content[0].text.value.includes('70'))
   // // Messages can arrive slightly after the streaming iterator completes.
   // // Poll briefly to avoid flakiness without slowing the path when ready.
   // let finalText = ''
