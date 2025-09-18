@@ -10,7 +10,7 @@ const serializeStatus = ({
 }): OpenAI.Beta.Threads.Run['status'] => {
   if (response.error) return 'failed'
 
-  return (response.status?.toLowerCase() as 'completed' | 'failed' || 'completed')
+  return (response.status?.toLowerCase() as 'completed' | 'failed' | 'in_progress' | 'requires_action' | undefined) ?? 'completed'
 }
 
 const serializeUsage = ({
@@ -23,6 +23,44 @@ const serializeUsage = ({
   total_tokens: response.usage?.total_tokens ?? 0,
 })
 
+const findPendingToolCalls = ({
+  response,
+}: {
+  response: OpenAI.Responses.Response
+}): OpenAI.Responses.ResponseFunctionToolCall[] => {
+  const toolCalls = (response.output ?? []).filter(
+    (item): item is OpenAI.Responses.ResponseFunctionToolCall => item.type === 'function_call',
+  )
+
+  if (toolCalls.length === 0) return []
+
+  const completedCallIds = new Set(
+    (response.output ?? [])
+      .filter(
+        (item): item is OpenAI.Responses.ResponseFunctionToolCallOutputItem =>
+          item.type === 'function_call_output',
+      )
+      .map((item) => item.call_id)
+      .filter((id): id is string => Boolean(id)),
+  )
+
+  return toolCalls.filter((call) => !completedCallIds.has(call.call_id))
+}
+
+const serializeToolCalls = ({
+  toolCalls,
+}: {
+  toolCalls: OpenAI.Responses.ResponseFunctionToolCall[]
+}) =>
+  toolCalls.map((toolCall) => ({
+    id: toolCall.call_id,
+    type: 'function' as const,
+    function: {
+      name: toolCall.name,
+      arguments: toolCall.arguments,
+    },
+  }))
+
 export const serializeResponseAsRun = ({
   response,
   assistantId,
@@ -30,7 +68,8 @@ export const serializeResponseAsRun = ({
   response: OpenAI.Responses.Response
   assistantId: string
 }): OpenAI.Beta.Threads.Run => {
-  const status = serializeStatus({ response })
+  const pendingToolCalls = findPendingToolCalls({ response })
+  const status = pendingToolCalls.length > 0 ? 'requires_action' : serializeStatus({ response })
 
   return {
     id: response.id,
@@ -39,7 +78,15 @@ export const serializeResponseAsRun = ({
     thread_id: response.conversation!.id,
     assistant_id: assistantId,
     status,
-    required_action: null,
+    required_action:
+      pendingToolCalls.length > 0
+        ? {
+            type: 'submit_tool_outputs',
+            submit_tool_outputs: {
+              tool_calls: serializeToolCalls({ toolCalls: pendingToolCalls }),
+            },
+          }
+        : null,
     last_error: response.error as OpenAI.Beta.Threads.Run['last_error'],
     expires_at: response.created_at,
     started_at: response.created_at,
