@@ -6,11 +6,10 @@ import { runsRegexp } from '@/lib/runs/runsRegexp'
 import { serializeRun } from './serializeRun'
 import { RunAdapterPartobClient } from '@/types'
 import { onEvent } from './onEvent'
-import { getMessages, RunForMessages } from './getMessages'
-import { getThread } from './getThread'
+import { getMessages } from './getMessages'
 
 type RunCreateResponse = Response & {
-  json: () => Promise<ReturnType<OpenAI.Beta.Threads.Runs['create']>>
+  json: () => Promise<OpenAI.Beta.Threads.Run>
 }
 
 export const post = ({
@@ -19,14 +18,22 @@ export const post = ({
 }: {
   prisma: PrismaClient
   runAdapter: RunAdapterPartobClient
-}) => async (urlString: string, options: any): Promise<RunCreateResponse> => {
+}) => async (urlString: string, options: RequestInit & { body: string }): Promise<RunCreateResponse> => {
   const url = new URL(urlString)
   const [, threadId] = url.pathname.match(new RegExp(runsRegexp))!
 
   const body = JSON.parse(options.body)
   const { assistant_id, stream } = body
 
-  const assistant = await prisma.assistant.findUnique({ where: { id: assistant_id } })
+  const assistant = await prisma.assistant.findUnique({
+    where: {
+      id: assistant_id,
+    },
+  })
+
+  if (!assistant) {
+    throw new Error('Assistant not found')
+  }
 
   const {
     model,
@@ -36,22 +43,19 @@ export const post = ({
     metadata,
     response_format,
     truncation_strategy,
-  } = assign(
-    {
-      model: assistant?.model || 'gpt-4o-mini',
-      instructions: assistant?.instructions || '',
-      additional_instructions: null,
-      truncation_strategy: {
-        type: 'auto',
-      },
-      response_format: {
-        type: 'text',
-      },
-      // tools: [],
-      // metadata: {},
+  } = assign({
+    model: assistant.modelSlug,
+    instructions: '',
+    additional_instructions: null,
+    truncation_strategy: {
+      type: 'auto',
     },
-    body,
-  )
+    response_format: {
+      type: 'text',
+    },
+    // tools: [],
+    // metadata: {},
+  }, body)
 
   const run = await prisma.run.create({
     data: {
@@ -83,12 +87,19 @@ export const post = ({
       try {
         await runAdapter({
           run: data,
-          onEvent: onEvent({ controller, prisma }),
+          onEvent: onEvent({
+            controller: {
+              ...controller,
+              enqueue: (data) => {
+                controller.enqueue(`data: ${JSON.stringify(data)}\n\n`)
+              },
+            },
+            prisma,
+          }),
           getMessages: getMessages({
             prisma,
-            run: run as unknown as RunForMessages,
+            run,
           }),
-          getThread: getThread({ prisma, threadId }),
         })
       } catch (error: any) {
         console.error(error)
@@ -112,7 +123,7 @@ export const post = ({
             },
           },
         } as OpenAI.Beta.AssistantStreamEvent.ThreadRunFailed)
-       }
+      }
 
       controller.close()
     },

@@ -23,7 +23,6 @@ export const GET = async () => {
   })
 
   const response = await client.models.list()
-  // console.dir({ response }, { depth: null })
 
   const models = []
 

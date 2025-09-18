@@ -1,1 +1,1 @@
-export const messagesRegexp = '^/(?:v1/|openai/)?threads/([^/]+)/messages$'
+export const messagesRegexp = '^/(?:v1|/?openai)/threads/([^/]+)/messages$'

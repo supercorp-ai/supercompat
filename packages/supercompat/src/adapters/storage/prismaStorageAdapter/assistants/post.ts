@@ -7,7 +7,7 @@ export const post = ({ prisma }: { prisma: PrismaClient }) =>
     const { model, instructions } = body
 
     const assistant = await prisma.assistant.create({
-      data: { model, instructions },
+      data: { modelSlug: model, instructions },
     })
 
     const data = {

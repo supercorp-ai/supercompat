@@ -60,7 +60,7 @@ export const GET = async () => {
     {
       assistant_id: assistantId,
       instructions: 'Use the get_current_weather and then answer the message.',
-      model: 'llama3-8b-8192',
+      model: 'openai/gpt-oss-20b',
       stream: true,
       tools,
       truncation_strategy: {
@@ -85,9 +85,9 @@ export const GET = async () => {
   const toolCallId = requiresActionEvent.data.required_action?.submit_tool_outputs.tool_calls[0].id
 
   const submitToolOutputsRun = await client.beta.threads.runs.submitToolOutputs(
+    thread.id,
     requiresActionEvent.data.id,
     {
-      thread_id: thread.id,
       stream: true,
       tool_outputs: [
         {

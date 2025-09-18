@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import dayjs from 'dayjs'
 
 export const updateRun = async ({
@@ -14,7 +14,7 @@ export const updateRun = async ({
   onThreadRunStepCompleted?: ({ runStep }: { runStep: any }) => void
   tool_outputs: any
 }) => (
-  prisma.$transaction(async (prisma: Prisma.TransactionClient) => {
+  prisma.$transaction(async (prisma: PrismaClient) => {
     const runSteps = await prisma.runStep.findMany({
       where: {
         threadId,

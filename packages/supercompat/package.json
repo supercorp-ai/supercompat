@@ -1,6 +1,6 @@
 {
   "name": "supercompat",
-  "version": "3.0.0",
+  "version": "3.1.0-beta.5",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -16,27 +16,27 @@
   "keywords": [],
   "license": "ISC",
   "scripts": {
-    "build": "tsup",
-    "lint": "tsc -p tsconfig.json --noEmit"
+    "build": "tsup"
   },
   "dependencies": {
     "@paralleldrive/cuid2": "^2.2.2",
     "dayjs": "^1.11.13",
     "deepmerge-ts": "^7.1.5",
     "lodash": "^4.17.21",
-    "openai": "^5.15.0",
+    "openai": "^5.20.0",
     "radash": "^12.1.0",
     "ts-deepmerge": "^7.0.3"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.40.1",
     "@mistralai/mistralai": "^1.6.0",
-    "@prisma/client": "^6.7.0",
+    "@prisma/client": "^6.15.0",
+    "@superinterface/react": "^5.0.0-beta.0",
     "@types/lodash": "^4.17.16",
     "groq-sdk": "^0.21.0",
     "humiris-ai": "^1.11.0",
+    "prisma": "^6.15.0",
     "tsup": "^8.4.0",
-    "undici": "^7.15.0",
-    "@superinterface/react": "5.0.0-beta.0"
+    "undici": "^7.15.0"
   }
 }

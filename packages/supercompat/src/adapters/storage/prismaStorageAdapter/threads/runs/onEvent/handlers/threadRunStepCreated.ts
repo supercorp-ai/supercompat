@@ -27,26 +27,26 @@ export const threadRunStepCreated = async ({
 }: {
   prisma: PrismaClient
   event: OpenAI.Beta.AssistantStreamEvent.ThreadRunStepCreated
-  controller: ReadableStreamDefaultController<string>
+  controller: ReadableStreamDefaultController<OpenAI.Beta.AssistantStreamEvent.ThreadRunStepCreated>
 }) => {
-    const runStep = await prisma.runStep.create({
-      data: {
-        runId: event.data.run_id,
-        assistantId: event.data.assistant_id,
-        threadId: event.data.thread_id,
-        type: type(event),
-        status: status(event),
-        stepDetails: event.data.step_details as any,
-        completedAt: event.data.completed_at,
-      },
-    })
+  const runStep = await prisma.runStep.create({
+    data: {
+      runId: event.data.run_id,
+      assistantId: event.data.assistant_id,
+      threadId: event.data.thread_id,
+      type: type(event),
+      status: status(event),
+      stepDetails: event.data.step_details,
+      completedAt: event.data.completed_at,
+    },
+  })
 
-    const serializedRunStep = serializeRunStep({ runStep })
+  const serializedRunStep = serializeRunStep({ runStep })
 
-    controller.enqueue(`data: ${JSON.stringify({
-      ...event,
-      data: serializedRunStep as any,
-    })}\n\n`)
+  controller.enqueue({
+    ...event,
+    data: serializedRunStep,
+  })
 
-    return serializedRunStep as any
-  }
+  return serializedRunStep
+}

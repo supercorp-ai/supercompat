@@ -24,7 +24,7 @@ export const get = ({
   })
 
   return new Response(JSON.stringify(
-    serializeRun({ run: run as any })
+    serializeRun({ run })
   ), {
     status: 200,
     headers: {

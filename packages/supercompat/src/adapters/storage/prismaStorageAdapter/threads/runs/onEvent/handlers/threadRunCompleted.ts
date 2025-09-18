@@ -2,18 +2,18 @@ import type OpenAI from 'openai'
 import { RunStatus } from '@/types/prisma'
 import type { PrismaClient } from '@prisma/client'
 
-export const threadRunCompleted = async ({
+export const threadRunCompleted = ({
   prisma,
   event,
   controller,
 }: {
   prisma: PrismaClient
   event: OpenAI.Beta.AssistantStreamEvent.ThreadRunCompleted
-  controller: ReadableStreamDefaultController<string>
+  controller: ReadableStreamDefaultController<OpenAI.Beta.AssistantStreamEvent.ThreadRunCompleted>
 }) => {
-  controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
+  controller.enqueue(event)
 
-  const runRecord = await prisma.run.update({
+  return prisma.run.update({
     where: {
       id: event.data.id,
     },
@@ -22,6 +22,4 @@ export const threadRunCompleted = async ({
       requiredAction: undefined,
     },
   })
-
-    return runRecord
-  }
+}

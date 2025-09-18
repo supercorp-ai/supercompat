@@ -21,11 +21,8 @@ export const serializeMessage = ({
         ...(message.tool_calls ?? []).map((toolCall) => ({
           type: 'tool_use',
           id: toolCall.id,
-          name: 'function' in toolCall ? toolCall.function.name : '',
-          input:
-            'function' in toolCall && toolCall.function.arguments
-              ? JSON.parse(toolCall.function.arguments)
-              : {},
+          name: toolCall.function.name,
+          input: toolCall.function.arguments ? JSON.parse(toolCall.function.arguments) : {},
         })),
       ],
     }

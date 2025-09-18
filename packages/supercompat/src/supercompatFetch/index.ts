@@ -20,16 +20,14 @@ export const supercompatFetch = ({
     runAdapter,
   })
 
-  return async (
-    ...args: Parameters<typeof fetch>
-  ): Promise<Response> => {
-    const [input, options] = args
-    const url = typeof input === 'string' ? input : input.toString()
+  return async (...args: any[]) => {
+    const [url, options] = args
 
     const pathHandler = findRequestHandler({
       url,
       requestHandlers,
     })
+
 
     if (!pathHandler) {
       return originalFetch({

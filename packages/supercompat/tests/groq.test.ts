@@ -37,7 +37,7 @@ test('supercompat can run via Groq', async () => {
   })
 
   const assistant = await client.beta.assistants.create({
-    model: 'llama3-8b-8192',
+    model: 'openai/gpt-oss-20b',
     instructions: 'You are a helpful assistant.',
   })
 

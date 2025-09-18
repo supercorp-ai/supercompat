@@ -1,44 +1,39 @@
-# AGENTS
+# Supercompat — Agent Notes
 
-## Setup
-- Use Node.js v24 via nvm:
-  ```bash
-  nvm install 24
-  nvm use 24
-  npm install
-  ```
-- Ensure a local PostgreSQL instance is running with user `postgres` and password `postgres`.
-- Create a test database and set the connection string:
-  ```bash
-  createdb supercompat_test
-  export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/supercompat_test
-  npx prisma migrate deploy --schema examples/prisma-nextjs/prisma/schema.prisma
-  npx prisma generate --schema examples/prisma-nextjs/prisma/schema.prisma
-  cp -r examples/prisma-nextjs/node_modules/.prisma packages/supercompat/node_modules/
-  cp -r examples/prisma-nextjs/node_modules/@prisma packages/supercompat/node_modules/
-  ```
-- Ensure the following API environment variables are available for live tests:
-  - `TEST_OPENAI_API_KEY`
-  - `GROQ_API_KEY`
-  - `MISTRAL_API_KEY`
-  - `ANTHROPIC_API_KEY`
-  - `PERPLEXITY_API_KEY`
-  - `AZURE_OPENAI_API_KEY`
-  - `EXAMPLE_AZURE_OPENAI_ENDPOINT`
-  - `GOOGLE_API_KEY`
-  - `HUMIRIS_API_KEY`
+## Quickstart
 
-## Testing
-- Run the full quality gate before committing:
-  ```bash
-  npm run lint
-  npm run lint:ts
-  npm run test
-  ```
-- All tests must pass; none may be skipped.
+- Node: use `>=18` (v20+ recommended).
+- Install: `npm ci` (from repo root).
+- Env: add `TEST_OPENAI_API_KEY=sk-...` to `.env` in repo root. Optional: `HTTPS_PROXY=...`.
+- Prisma (tests): `npm run setup:prisma` to create/reset the local test DB and generate Prisma clients.
 
-## Code style
-- Use two spaces for indentation, single quotes for strings, and omit semicolons.
-- Avoid barrel files; import helpers directly from their files.
-- Prefer ripgrep (`rg`) over recursive `grep`.
-- Avoid nested ternary expressions; extract complex logic into helper functions instead.
+## Build & Lint
+
+- Build all: `npm run build`
+- Type check (repo): `npm run lint`
+- Type check (package): `cd packages/supercompat && npm run lint`
+
+## Tests
+
+- Run full suite with env: `npm run test:env`
+  - Equivalent: `npx env-cmd -f .env npm test`
+  - Uses Node’s built-in test runner via `tsx` and `tsconfig.test.json`.
+
+### Run a single test file
+
+- Example:
+  - `npx env-cmd -f .env npx tsx --tsconfig tsconfig.test.json --test "packages/supercompat/tests/responsesApi.test.ts"`
+  - Replace the test path to target a specific file.
+
+## Troubleshooting
+
+- TypeError reading `.text` on `undefined` in tests:
+  - This usually means the assistant message content is not available yet (eventual consistency with the Assistants API). Re-run, or add a short retry when reading `message.content[0]`.
+  - Ensure `.env` has a valid `TEST_OPENAI_API_KEY`.
+  - Ensure Prisma DB is set up: `npm run setup:prisma` (requires local Postgres at `postgresql://postgres:postgres@localhost:5432/supercompat_test`).
+  - If behind a proxy, set `HTTPS_PROXY` in `.env`.
+
+## Notes
+
+- Path aliases are resolved via `esbuild-plugin-tsconfig-paths` and TypeScript `paths` in `packages/supercompat/tsconfig.json`.
+- DTS bundling is enabled. If you run into external type hoisting issues, switch to `dts: { resolve: false }` in `packages/supercompat/tsup.config.ts`.

@@ -1,8 +1,9 @@
 import type OpenAI from 'openai'
-import type { PrismaClient } from '@prisma/client'
-import { assign } from 'radash'
+// @ts-ignore-next-line
+import type { PrismaClient, Run } from '@prisma/client'
+import { assign, last } from 'radash'
 import { runsRegexp } from '@/lib/runs/runsRegexp'
-import { serializeRun, PrismaRun } from './serializeRun'
+import { serializeRun } from './serializeRun'
 
 type MessageCreateResponse = Response & {
   json: () => Promise<ReturnType<OpenAI.Beta.Threads.Messages['create']>>
@@ -29,27 +30,24 @@ export const get = ({
 
   const pageSize = parseInt(limit, 10)
 
-  const runsPlusOne: PrismaRun[] = await prisma.run.findMany({
+  const runsPlusOne = await prisma.run.findMany({
     where: { threadId },
     take: pageSize + 1,
-    orderBy: { createdAt: order as 'asc' | 'desc' },
+    orderBy: { createdAt: order },
     ...(after && {
       skip: 1,
       cursor: { id: after },
     }),
-  })
+  }) as Run[]
 
   const runs = runsPlusOne.slice(0, pageSize)
 
-  return new Response(
-    JSON.stringify({
-      data: runs.map((run: PrismaRun) => serializeRun({ run })),
-      has_more: runsPlusOne.length > pageSize,
-      last_id: runs.at(-1)?.id ?? null,
-    }),
-    {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    },
-  )
+  return new Response(JSON.stringify({
+    data: runs.map((run: Run) => serializeRun({ run })),
+    has_more: runsPlusOne.length > pageSize,
+    last_id: runs.at(-1)?.id ?? null,
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
 }
