@@ -249,7 +249,6 @@ test('responsesRunAdapter streams tool calls via OpenAI', async () => {
   }
 
   const listAfter = await client.beta.threads.messages.list(thread.id)
-  console.dir({ listAfter }, { depth: null })
   assert.ok(listAfter, 'Should have messages after tool call')
   // // Messages can arrive slightly after the streaming iterator completes.
   // // Poll briefly to avoid flakiness without slowing the path when ready.
@@ -377,8 +376,6 @@ test('responsesStorageAdapter streams without tool', async (t) => {
     if (event.event === 'thread.run.completed') {
       sawCompleted = true
     }
-    // If anything unexpected happens, you can log:
-    // console.log(event.event)
   }
   assert.ok(sawCompleted, 'Run should complete without requiring action')
 
