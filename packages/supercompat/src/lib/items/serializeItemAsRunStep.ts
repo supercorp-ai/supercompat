@@ -89,6 +89,23 @@ export function serializeItemAsRunStep({
     // }
   }
 
+  if (item.type === 'image_generation_call') {
+    return {
+      ...base,
+      type: 'message_creation',
+      step_details: {
+        type: 'message_creation',
+        message_creation: { message_id: itemId },
+      },
+      metadata: {
+        item: JSON.stringify({
+          ...item,
+          result: 'truncated',
+        }),
+      },
+    }
+  }
+
   // Fallback: treat unknown items as message_creation
   return {
     ...base,

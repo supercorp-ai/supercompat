@@ -4,6 +4,7 @@ import { last } from 'radash'
 import type { RunAdapter } from '@/types'
 import { stepsRegexp } from '@/lib/steps/stepsRegexp'
 import { serializeItemAsRunStep } from '@/lib/items/serializeItemAsRunStep'
+import { serializeItemAsImageGenerationRunStep } from '@/lib/items/serializeItemAsImageGenerationRunStep'
 
 export const get = ({
   client,
@@ -68,6 +69,16 @@ export const get = ({
         },
       };
       return [synthCreation, step];
+    } else if (item.type === 'image_generation_call') {
+      return [
+        serializeItemAsImageGenerationRunStep({
+          item,
+          openaiAssistant,
+          threadId,
+          runId: response.id,
+        }),
+        step,
+      ]
     }
 
     return [step];

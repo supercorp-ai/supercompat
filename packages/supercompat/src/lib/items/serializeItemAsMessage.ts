@@ -57,11 +57,20 @@ const serializeMetadata = ({
   item,
 }: {
   item: ItemType
-}): OpenAI.Beta.Threads.Messages.Message['metadata'] => (
-  {
+}): OpenAI.Beta.Threads.Messages.Message['metadata'] => {
+  if (item.type === 'image_generation_call') {
+    return {
+      item: JSON.stringify({
+        ...item,
+        result: 'truncated',
+      }),
+    }
+  }
+
+  return {
     item: JSON.stringify(item),
   }
-)
+}
   // assign(message.metadata as Record<any, any> ?? {}, message.toolCalls ? { toolCalls: message.toolCalls } : {}),
 
 export const serializeItemAsMessage = ({

@@ -5,6 +5,7 @@ import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
 import { serializeItemAsMessage } from '@/lib/items/serializeItemAsMessage'
 import { serializeItemAsRunStep } from '@/lib/items/serializeItemAsRunStep'
 import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveResponseItemsToConversationMetadata'
+import { serializeItemAsImageGenerationRunStep } from '@/lib/items/serializeItemAsImageGenerationRunStep'
 
 const serializeToolCalls = ({
   toolCalls,
@@ -147,6 +148,18 @@ export const responsesRunAdapter =
             case 'response.output_item.added': {
               if (event.item.type === 'message') {
                 await onEvent({
+                  event: 'thread.message.created',
+                  data: serializeItemAsMessage({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    createdAt: dayjs().unix(),
+                    runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
+                  })
+                })
+
+                await onEvent({
                   event: 'thread.run.step.created',
                   data: serializeItemAsRunStep({
                     item: event.item,
@@ -156,18 +169,6 @@ export const responsesRunAdapter =
                     runId: responseCreatedResponse!.id,
                     status: 'in_progress',
                     completedAt: null,
-                  })
-                })
-
-                await onEvent({
-                  event: 'thread.message.created',
-                  data: serializeItemAsMessage({
-                    item: event.item,
-                    threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
-                    createdAt: dayjs().unix(),
-                    runId: responseCreatedResponse!.id,
-                    status: 'in_progress',
                   })
                 })
               } else if (event.item.type === 'function_call') {
@@ -185,6 +186,18 @@ export const responsesRunAdapter =
                 })
               } else if (event.item.type === 'image_generation_call') {
                 await onEvent({
+                  event: 'thread.message.created',
+                  data: serializeItemAsMessage({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    createdAt: dayjs().unix(),
+                    runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
+                  })
+                })
+
+                await onEvent({
                   event: 'thread.run.step.created',
                   data: serializeItemAsRunStep({
                     item: event.item,
@@ -198,14 +211,13 @@ export const responsesRunAdapter =
                 })
 
                 await onEvent({
-                  event: 'thread.message.created',
-                  data: serializeItemAsMessage({
+                  event: 'thread.run.step.created',
+                  data: serializeItemAsImageGenerationRunStep({
                     item: event.item,
-                    threadId,
                     openaiAssistant: await getOpenaiAssistant(),
-                    createdAt: dayjs().unix(),
+                    threadId,
                     runId: responseCreatedResponse!.id,
-                    status: 'in_progress',
+                    completedAt: null,
                   })
                 })
               }
@@ -252,6 +264,16 @@ export const responsesRunAdapter =
                   })
                 })
               } else if (event.item.type === 'image_generation_call') {
+                await onEvent({
+                  event: 'thread.run.step.completed',
+                  data: serializeItemAsImageGenerationRunStep({
+                    item: event.item,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    threadId,
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
+
                 await onEvent({
                   event: 'thread.run.step.completed',
                   data: serializeItemAsRunStep({
@@ -352,6 +374,7 @@ export const responsesRunAdapter =
                     type: 'image_url' as 'image_url',
                     image_url: {
                       url: `data:image/png;base64,${event.partial_image_b64}`,
+                      // url: `data:image/png;base64,truncated`,
                       detail: 'auto' as 'auto',
                     },
                   }],
@@ -360,7 +383,10 @@ export const responsesRunAdapter =
                   attachments: [],
                   status: 'in_progress' as 'in_progress',
                   metadata: {
-                    event: JSON.stringify(event),
+                    event: JSON.stringify({
+                      ...event,
+                      partial_image_b64: 'truncated',
+                    }),
                   },
                 },
               })
