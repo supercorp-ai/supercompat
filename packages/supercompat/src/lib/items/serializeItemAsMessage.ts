@@ -1,4 +1,3 @@
-import dayjs from 'dayjs'
 import { uid } from 'radash'
 import type OpenAI from 'openai'
 
@@ -8,30 +7,44 @@ const serializeContent = ({
   item,
 }: {
   item: ItemType
-}): OpenAI.Beta.Threads.Messages.TextContentBlock[] => {
-  if (item.type !== 'message') return []
-
-  return item.content.map((contentBlock) => {
-    if (contentBlock.type === 'input_text') {
-      return {
-        type: 'text' as 'text',
-        text: {
-          value: contentBlock.text,
-          annotations: [],
-        },
+}): OpenAI.Beta.Threads.Messages.MessageContent[] => {
+  if (item.type === 'message') {
+    return item.content.map((contentBlock) => {
+      if (contentBlock.type === 'input_text') {
+        return {
+          type: 'text' as 'text',
+          text: {
+            value: contentBlock.text,
+            annotations: [],
+          },
+        }
+      } else if (contentBlock.type === 'output_text') {
+        return {
+          type: 'text' as 'text',
+          text: {
+            value: contentBlock.text,
+            annotations: [],
+          },
+        }
       }
-    } else if (contentBlock.type === 'output_text') {
-      return {
-        type: 'text' as 'text',
-        text: {
-          value: contentBlock.text,
-          annotations: [],
-        },
-      }
-    }
 
-    return null
-  }).filter(Boolean) as OpenAI.Beta.Threads.Messages.TextContentBlock[]
+      return null
+    }).filter(Boolean) as OpenAI.Beta.Threads.Messages.TextContentBlock[]
+  } else if (item.type === 'image_generation_call') {
+    console.log({
+      item,
+    })
+
+    return [{
+      type: 'image_url' as 'image_url',
+      image_url: {
+        url: `data:image/${item.output_format};base64,${item.result}`,
+        detail: 'auto' as 'auto',
+      },
+    }]
+  } else {
+    return []
+  }
 }
 
 const serializeAttachments = ({
