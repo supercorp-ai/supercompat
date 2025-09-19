@@ -183,6 +183,31 @@ export const responsesRunAdapter =
                     runId: responseCreatedResponse!.id,
                   })
                 })
+              } else if (event.item.type === 'image_generation_call') {
+                await onEvent({
+                  event: 'thread.run.step.created',
+                  data: serializeItemAsRunStep({
+                    item: event.item,
+                    items: [],
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
+                    completedAt: null,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.message.created',
+                  data: serializeItemAsMessage({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    createdAt: dayjs().unix(),
+                    runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
+                  })
+                })
               }
 
               if (event.item.id) itemIds.push(event.item.id)
@@ -226,6 +251,28 @@ export const responsesRunAdapter =
                     runId: responseCreatedResponse!.id,
                   })
                 })
+              } else if (event.item.type === 'image_generation_call') {
+                await onEvent({
+                  event: 'thread.run.step.completed',
+                  data: serializeItemAsRunStep({
+                    item: event.item,
+                    items: [],
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.message.completed',
+                  data: serializeItemAsMessage({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    createdAt: dayjs().unix(),
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
               }
 
               break
@@ -262,6 +309,65 @@ export const responsesRunAdapter =
 
               break
             }
+
+            case 'response.image_generation_call.in_progress':
+            case 'response.image_generation_call.generating':
+              await onEvent({
+                event: 'thread.message.in_progress',
+                data: {
+                  id: event.item_id,
+                  object: 'thread.message' as 'thread.message',
+                  created_at: dayjs().unix(),
+                  thread_id: threadId,
+                  completed_at: null,
+                  incomplete_at: null,
+                  incomplete_details: null,
+                  role: 'assistant' as 'assistant',
+                  content: [],
+                  assistant_id: (await getOpenaiAssistant()).id,
+                  run_id: responseCreatedResponse!.id,
+                  attachments: [],
+                  status: 'in_progress' as 'in_progress',
+                  metadata: {
+                    event: JSON.stringify(event),
+                  },
+                },
+              })
+
+              break
+
+            case 'response.image_generation_call.partial_image': {
+              await onEvent({
+                event: 'thread.message.in_progress',
+                data: {
+                  id: event.item_id,
+                  object: 'thread.message' as 'thread.message',
+                  created_at: dayjs().unix(),
+                  thread_id: threadId,
+                  completed_at: null,
+                  incomplete_at: null,
+                  incomplete_details: null,
+                  role: 'assistant' as 'assistant',
+                  content: [{
+                    type: 'image_url' as 'image_url',
+                    image_url: {
+                      url: `data:image/png;base64,${event.partial_image_b64}`,
+                      detail: 'auto' as 'auto',
+                    },
+                  }],
+                  assistant_id: (await getOpenaiAssistant()).id,
+                  run_id: responseCreatedResponse!.id,
+                  attachments: [],
+                  status: 'in_progress' as 'in_progress',
+                  metadata: {
+                    event: JSON.stringify(event),
+                  },
+                },
+              })
+
+              break
+            }
+
             //
             // case 'response.function_call_arguments.done': {
             //   break

@@ -31,9 +31,7 @@ const serializeContent = ({
       return null
     }).filter(Boolean) as OpenAI.Beta.Threads.Messages.TextContentBlock[]
   } else if (item.type === 'image_generation_call') {
-    console.log({
-      item,
-    })
+    if (!item.result) return []
 
     return [{
       type: 'image_url' as 'image_url',
