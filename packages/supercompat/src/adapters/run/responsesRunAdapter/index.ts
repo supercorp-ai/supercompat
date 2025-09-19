@@ -6,6 +6,7 @@ import { serializeItemAsMessage } from '@/lib/items/serializeItemAsMessage'
 import { serializeItemAsRunStep } from '@/lib/items/serializeItemAsRunStep'
 import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveResponseItemsToConversationMetadata'
 import { serializeItemAsImageGenerationRunStep } from '@/lib/items/serializeItemAsImageGenerationRunStep'
+import { serializeItemAsWebSearchRunStep } from '@/lib/items/serializeItemAsWebSearchRunStep'
 
 const serializeToolCalls = ({
   toolCalls,
@@ -220,7 +221,45 @@ export const responsesRunAdapter =
                     completedAt: null,
                   })
                 })
+              } else if (event.item.type === 'web_search_call') {
+                await onEvent({
+                  event: 'thread.message.created',
+                  data: serializeItemAsMessage({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    createdAt: dayjs().unix(),
+                    runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.created',
+                  data: serializeItemAsRunStep({
+                    item: event.item,
+                    items: [],
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
+                    completedAt: null,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.created',
+                  data: serializeItemAsWebSearchRunStep({
+                    item: event.item,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    threadId,
+                    runId: responseCreatedResponse!.id,
+                    completedAt: null,
+                  })
+                })
               }
+
+              console.dir({ added: 1, event }, { depth: null })
 
               if (event.item.id) itemIds.push(event.item.id)
 
@@ -295,7 +334,41 @@ export const responsesRunAdapter =
                     runId: responseCreatedResponse!.id,
                   })
                 })
+              } else if (event.item.type === 'web_search_call') {
+                await onEvent({
+                  event: 'thread.run.step.completed',
+                  data: serializeItemAsWebSearchRunStep({
+                    item: event.item,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    threadId,
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.completed',
+                  data: serializeItemAsRunStep({
+                    item: event.item,
+                    items: [],
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.message.completed',
+                  data: serializeItemAsMessage({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    createdAt: dayjs().unix(),
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
               }
+
+              console.dir({ done: 1, event }, { depth: null })
 
               break
             }
@@ -400,6 +473,7 @@ export const responsesRunAdapter =
             // }
 
             default:
+              console.dir({ else: 1, event }, { depth: null })
               break
           }
         }
