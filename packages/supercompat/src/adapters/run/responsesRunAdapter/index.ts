@@ -7,6 +7,7 @@ import { serializeItemAsRunStep } from '@/lib/items/serializeItemAsRunStep'
 import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveResponseItemsToConversationMetadata'
 import { serializeItemAsImageGenerationRunStep } from '@/lib/items/serializeItemAsImageGenerationRunStep'
 import { serializeItemAsWebSearchRunStep } from '@/lib/items/serializeItemAsWebSearchRunStep'
+import { serializeItemAsMcpListToolsRunStep } from '@/lib/items/serializeItemAsMcpListToolsRunStep'
 
 const serializeToolCalls = ({
   toolCalls,
@@ -134,7 +135,7 @@ export const responsesRunAdapter =
                 data: {
                   id: event.item_id,
                   delta: {
-                    content: [{ type: 'text', index: event.output_index - 1, text: { value: event.delta } }],
+                    content: [{ type: 'text', index: event.content_index, text: { value: event.delta } }],
                   },
                 },
               } as OpenAI.Beta.AssistantStreamEvent.ThreadMessageDelta)
@@ -147,6 +148,7 @@ export const responsesRunAdapter =
             // }
             //
             case 'response.output_item.added': {
+              console.dir({ event }, { depth: null })
               if (event.item.type === 'message') {
                 await onEvent({
                   event: 'thread.message.created',
@@ -250,6 +252,42 @@ export const responsesRunAdapter =
                 await onEvent({
                   event: 'thread.run.step.created',
                   data: serializeItemAsWebSearchRunStep({
+                    item: event.item,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    threadId,
+                    runId: responseCreatedResponse!.id,
+                    completedAt: null,
+                  })
+                })
+              } else if (event.item.type === 'mcp_list_tools') {
+                await onEvent({
+                  event: 'thread.message.created',
+                  data: serializeItemAsMessage({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    createdAt: dayjs().unix(),
+                    runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.created',
+                  data: serializeItemAsRunStep({
+                    item: event.item,
+                    items: [],
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
+                    completedAt: null,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.created',
+                  data: serializeItemAsMcpListToolsRunStep({
                     item: event.item,
                     openaiAssistant: await getOpenaiAssistant(),
                     threadId,
@@ -338,6 +376,38 @@ export const responsesRunAdapter =
                 await onEvent({
                   event: 'thread.run.step.completed',
                   data: serializeItemAsWebSearchRunStep({
+                    item: event.item,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    threadId,
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.completed',
+                  data: serializeItemAsRunStep({
+                    item: event.item,
+                    items: [],
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.message.completed',
+                  data: serializeItemAsMessage({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    createdAt: dayjs().unix(),
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
+              } else if (event.item.type === 'mcp_list_tools') {
+                await onEvent({
+                  event: 'thread.run.step.completed',
+                  data: serializeItemAsMcpListToolsRunStep({
                     item: event.item,
                     openaiAssistant: await getOpenaiAssistant(),
                     threadId,

@@ -6,6 +6,7 @@ import { stepsRegexp } from '@/lib/steps/stepsRegexp'
 import { serializeItemAsRunStep } from '@/lib/items/serializeItemAsRunStep'
 import { serializeItemAsImageGenerationRunStep } from '@/lib/items/serializeItemAsImageGenerationRunStep'
 import { serializeItemAsWebSearchRunStep } from '@/lib/items/serializeItemAsWebSearchRunStep'
+import { serializeItemAsMcpListToolsRunStep } from '@/lib/items/serializeItemAsMcpListToolsRunStep'
 
 export const get = ({
   client,
@@ -83,6 +84,16 @@ export const get = ({
     } else if (item.type === 'web_search_call') {
       return [
         serializeItemAsWebSearchRunStep({
+          item,
+          openaiAssistant,
+          threadId,
+          runId: response.id,
+        }),
+        step,
+      ]
+    } else if (item.type === 'mcp_list_tools') {
+      return [
+        serializeItemAsMcpListToolsRunStep({
           item,
           openaiAssistant,
           threadId,
