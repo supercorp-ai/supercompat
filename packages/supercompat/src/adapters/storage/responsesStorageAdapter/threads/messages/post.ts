@@ -4,13 +4,12 @@ import { isArray } from 'radash'
 import type { RunAdapter } from '@/types'
 import { messagesRegexp } from '@/lib/messages/messagesRegexp'
 import { serializeItemAsMessage } from '@/lib/items/serializeItemAsMessage'
-import { uid } from 'radash'
 
 type MessageCreateResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Messages.Message>
 }
 
-const messageContentBlocks = ({
+const contentBlocksFromContent = ({
   content,
 }: {
   content: string | OpenAI.Beta.Threads.Messages.MessageContentPartParam[]
@@ -55,27 +54,47 @@ const messageContentBlocks = ({
   ]
 }
 
+const contentBlocksFromAttachments = ({
+  attachments,
+}: {
+  attachments: OpenAI.Beta.Threads.Messages.MessageCreateParams.Attachment[]
+}) => (
+  attachments.map((attachment) => ({
+    type: 'input_file' as const,
+    file_id: attachment.file_id,
+  }))
+)
+
+const messageContentBlocks = ({
+  content,
+  attachments,
+}: {
+  content: string | OpenAI.Beta.Threads.Messages.MessageContentPartParam[]
+  attachments: OpenAI.Beta.Threads.Messages.MessageCreateParams.Attachment[]
+}) => ([
+  ...contentBlocksFromContent({ content }),
+  ...contentBlocksFromAttachments({ attachments }),
+])
 export const post = ({
   runAdapter,
   createResponseItems,
 }: {
   runAdapter: RunAdapter
-  createResponseItems: OpenAI.Responses.ResponseItem[]
+  createResponseItems: OpenAI.Responses.ResponseInputItem[]
 }) => async (urlString: string, options: RequestInit & { body: string }): Promise<MessageCreateResponse> => {
   const url = new URL(urlString)
 
   const [, threadId] = url.pathname.match(new RegExp(messagesRegexp))!
 
   const body = JSON.parse(options.body)
-  const { role, content, metadata } = body
+  const { role, content, attachments = [] } = body
 
-  const item = {
-    id: `msg_${uid(24)}`,
-    status: 'in_progress' as const,
+  const item: OpenAI.Responses.ResponseInputItem = {
     type: "message" as const,
     role,
     content: messageContentBlocks({
       content,
+      attachments,
     }),
   }
 

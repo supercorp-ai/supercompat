@@ -12,7 +12,7 @@ const serializeContent = ({
     return item.content.map((contentBlock) => {
       if (contentBlock.type === 'input_text') {
         return {
-          type: 'text' as 'text',
+          type: 'text' as const,
           text: {
             value: contentBlock.text,
             annotations: [],
@@ -20,10 +20,18 @@ const serializeContent = ({
         }
       } else if (contentBlock.type === 'output_text') {
         return {
-          type: 'text' as 'text',
+          type: 'text' as const,
           text: {
             value: contentBlock.text,
             annotations: [],
+          },
+        }
+      } else if (contentBlock.type === 'input_image') {
+        return {
+          type: 'image_file' as const,
+          image_file: {
+            file_id: contentBlock.file_id,
+            detail: 'auto',
           },
         }
       }
@@ -34,10 +42,10 @@ const serializeContent = ({
     if (!item.result) return []
 
     return [{
-      type: 'image_url' as 'image_url',
+      type: 'image_url' as const,
       image_url: {
         url: `data:image/${item.output_format};base64,${item.result}`,
-        detail: 'auto' as 'auto',
+        detail: 'auto' as const,
       },
     }]
   } else {
@@ -49,9 +57,17 @@ const serializeAttachments = ({
   item,
 }: {
   item: ItemType
-}): OpenAI.Beta.Threads.Messages.Message['attachments'] => (
-  []
-)
+}): OpenAI.Beta.Threads.Messages.Message['attachments'] => {
+  if (item.type !== 'message') return []
+
+  const inputFiles = item.content.filter((contentBlock) => (
+    contentBlock.type === 'input_file' && contentBlock.file_id
+  )) as OpenAI.Responses.ResponseInputFile[]
+
+  return inputFiles.map((inputFile: OpenAI.Responses.ResponseInputFile) => ({
+    file_id: inputFile.file_id!,
+  }))
+}
 
 const serializeMetadata = ({
   item,
@@ -89,7 +105,7 @@ export const serializeItemAsMessage = ({
   status?: 'completed' | 'in_progress'
 }): OpenAI.Beta.Threads.Message => ({
   id: item.id || uid(24),
-  object: 'thread.message' as 'thread.message',
+  object: 'thread.message' as const,
   created_at: createdAt,
   thread_id: threadId,
   completed_at: null,

@@ -10,7 +10,7 @@ export const runs = ({
 }: {
   client: OpenAI
   runAdapter: RunAdapter
-  createResponseItems: OpenAI.Responses.ResponseItem[]
+  createResponseItems: OpenAI.Responses.ResponseInputItem[]
 }): { get: RequestHandler; post: RequestHandler } => ({
   get: get(),
   post: post({ client, createResponseItems, runAdapter }),

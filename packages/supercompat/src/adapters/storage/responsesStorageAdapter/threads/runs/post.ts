@@ -48,7 +48,7 @@ export const post = ({
 }: {
   client: OpenAI
   runAdapter: RunAdapterPartobClient
-  createResponseItems: OpenAI.Responses.ResponseItem[]
+  createResponseItems: OpenAI.Responses.ResponseInputItem[]
 }) => async (urlString: string, options: RequestInit & { body: string }): Promise<RunCreateResponse> => {
   const url = new URL(urlString)
   const [, threadId] = url.pathname.match(new RegExp(runsRegexp))!
@@ -72,6 +72,8 @@ export const post = ({
     ...(await runAdapter.getOpenaiAssistant()),
   }, body)
 
+
+  console.dir({ creating: 1, createResponseItems }, { depth: null })
 
   const response = await client.responses.create({
     conversation: threadId,

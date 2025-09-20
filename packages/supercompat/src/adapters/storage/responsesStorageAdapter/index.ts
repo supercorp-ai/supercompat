@@ -17,7 +17,7 @@ import { assistants } from './assistants'
 type MethodHandlers = { get?: RequestHandler; post?: RequestHandler }
 
 export const responsesStorageAdapter = (): ((args: StorageAdapterArgs) => { requestHandlers: Record<string, MethodHandlers> }) => {
-  const createResponseItems: OpenAI.Responses.ResponseItem[] = []
+  const createResponseItems: OpenAI.Responses.ResponseInputItem[] = []
 
   return ({ runAdapter, client }: StorageAdapterArgs) => ({
     requestHandlers: {
