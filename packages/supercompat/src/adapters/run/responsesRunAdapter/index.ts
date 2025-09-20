@@ -9,6 +9,7 @@ import { serializeItemAsImageGenerationRunStep } from '@/lib/items/serializeItem
 import { serializeItemAsWebSearchRunStep } from '@/lib/items/serializeItemAsWebSearchRunStep'
 import { serializeItemAsMcpListToolsRunStep } from '@/lib/items/serializeItemAsMcpListToolsRunStep'
 import { serializeItemAsMcpCallRunStep } from '@/lib/items/serializeItemAsMcpCallRunStep'
+import { serializeItemAsCodeInterpreterCallRunStep } from '@/lib/items/serializeItemAsCodeInterpreterCallRunStep'
 
 const serializeToolCalls = ({
   toolCalls,
@@ -54,6 +55,7 @@ export const responsesRunAdapter =
       let responseCreatedResponse: OpenAI.Responses.Response | null = null
       const toolCalls: Record<string, OpenAI.Responses.ResponseFunctionToolCall> = {}
       const mcpCalls: Record<string, OpenAI.Responses.ResponseItem.McpCall> = {}
+      const codeInterpreterCalls: Record<string, OpenAI.Responses.ResponseCodeInterpreterToolCall> = {}
 
       let itemIds: string[] = []
 
@@ -335,6 +337,44 @@ export const responsesRunAdapter =
                     completedAt: null,
                   })
                 })
+              } else if (event.item.type === 'code_interpreter_call') {
+                codeInterpreterCalls[event.item.id!] = event.item
+
+                await onEvent({
+                  event: 'thread.message.created',
+                  data: serializeItemAsMessage({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    createdAt: dayjs().unix(),
+                    runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.created',
+                  data: serializeItemAsRunStep({
+                    item: event.item,
+                    items: [],
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
+                    completedAt: null,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.created',
+                  data: serializeItemAsCodeInterpreterCallRunStep({
+                    item: event.item,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    threadId,
+                    runId: responseCreatedResponse!.id,
+                    completedAt: null,
+                  })
+                })
               }
 
               console.dir({ added: 1, event }, { depth: null })
@@ -480,6 +520,38 @@ export const responsesRunAdapter =
                 await onEvent({
                   event: 'thread.run.step.completed',
                   data: serializeItemAsMcpCallRunStep({
+                    item: event.item,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    threadId,
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.completed',
+                  data: serializeItemAsRunStep({
+                    item: event.item,
+                    items: [],
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.message.completed',
+                  data: serializeItemAsMessage({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    createdAt: dayjs().unix(),
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
+              } else if (event.item.type === 'code_interpreter_call') {
+                await onEvent({
+                  event: 'thread.run.step.completed',
+                  data: serializeItemAsCodeInterpreterCallRunStep({
                     item: event.item,
                     openaiAssistant: await getOpenaiAssistant(),
                     threadId,
