@@ -8,6 +8,7 @@ import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveRes
 import { serializeItemAsImageGenerationRunStep } from '@/lib/items/serializeItemAsImageGenerationRunStep'
 import { serializeItemAsWebSearchRunStep } from '@/lib/items/serializeItemAsWebSearchRunStep'
 import { serializeItemAsMcpListToolsRunStep } from '@/lib/items/serializeItemAsMcpListToolsRunStep'
+import { serializeItemAsMcpCallRunStep } from '@/lib/items/serializeItemAsMcpCallRunStep'
 
 const serializeToolCalls = ({
   toolCalls,
@@ -52,6 +53,7 @@ export const responsesRunAdapter =
     }) => {
       let responseCreatedResponse: OpenAI.Responses.Response | null = null
       const toolCalls: Record<string, OpenAI.Responses.ResponseFunctionToolCall> = {}
+      const mcpCalls: Record<string, OpenAI.Responses.ResponseItem.McpCall> = {}
 
       let itemIds: string[] = []
 
@@ -295,6 +297,44 @@ export const responsesRunAdapter =
                     completedAt: null,
                   })
                 })
+              } else if (event.item.type === 'mcp_call') {
+                mcpCalls[event.item.id!] = event.item
+
+                await onEvent({
+                  event: 'thread.message.created',
+                  data: serializeItemAsMessage({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    createdAt: dayjs().unix(),
+                    runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.created',
+                  data: serializeItemAsRunStep({
+                    item: event.item,
+                    items: [],
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
+                    completedAt: null,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.created',
+                  data: serializeItemAsMcpCallRunStep({
+                    item: event.item,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    threadId,
+                    runId: responseCreatedResponse!.id,
+                    completedAt: null,
+                  })
+                })
               }
 
               console.dir({ added: 1, event }, { depth: null })
@@ -436,6 +476,38 @@ export const responsesRunAdapter =
                     runId: responseCreatedResponse!.id,
                   })
                 })
+              } else if (event.item.type === 'mcp_call') {
+                await onEvent({
+                  event: 'thread.run.step.completed',
+                  data: serializeItemAsMcpCallRunStep({
+                    item: event.item,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    threadId,
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.completed',
+                  data: serializeItemAsRunStep({
+                    item: event.item,
+                    items: [],
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.message.completed',
+                  data: serializeItemAsMessage({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    createdAt: dayjs().unix(),
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
               }
 
               console.dir({ done: 1, event }, { depth: null })
@@ -462,6 +534,38 @@ export const responsesRunAdapter =
                           index: event.output_index,
                           function: {
                             name: toolCall.name,
+                            arguments: event.delta,
+                            output: null,
+                          },
+                        },
+                      ],
+                    },
+                  },
+                }
+              })
+
+              break
+            }
+
+            case 'response.mcp_call_arguments.delta': {
+              const mcpCall = mcpCalls[event.item_id]
+              if (!mcpCall) break
+
+              await onEvent({
+                event: 'thread.run.step.delta',
+                data: {
+                  id: `fc${event.item_id}`,
+                  object: 'thread.run.step.delta',
+                  delta: {
+                    step_details: {
+                      type: 'tool_calls',
+                      tool_calls: [
+                        {
+                          id: `ftc${mcpCall.id}`,
+                          type: 'function',
+                          index: event.output_index,
+                          function: {
+                            name: mcpCall.name,
                             arguments: event.delta,
                             output: null,
                           },

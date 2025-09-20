@@ -7,6 +7,7 @@ import { serializeItemAsRunStep } from '@/lib/items/serializeItemAsRunStep'
 import { serializeItemAsImageGenerationRunStep } from '@/lib/items/serializeItemAsImageGenerationRunStep'
 import { serializeItemAsWebSearchRunStep } from '@/lib/items/serializeItemAsWebSearchRunStep'
 import { serializeItemAsMcpListToolsRunStep } from '@/lib/items/serializeItemAsMcpListToolsRunStep'
+import { serializeItemAsMcpCallRunStep } from '@/lib/items/serializeItemAsMcpCallRunStep'
 
 export const get = ({
   client,
@@ -94,6 +95,16 @@ export const get = ({
     } else if (item.type === 'mcp_list_tools') {
       return [
         serializeItemAsMcpListToolsRunStep({
+          item,
+          openaiAssistant,
+          threadId,
+          runId: response.id,
+        }),
+        step,
+      ]
+    } else if (item.type === 'mcp_call') {
+      return [
+        serializeItemAsMcpCallRunStep({
           item,
           openaiAssistant,
           threadId,
