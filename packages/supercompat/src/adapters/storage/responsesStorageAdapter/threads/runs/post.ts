@@ -72,9 +72,6 @@ export const post = ({
     ...(await runAdapter.getOpenaiAssistant()),
   }, body)
 
-
-  console.dir({ creating: 1, createResponseItems }, { depth: null })
-
   const response = await client.responses.create({
     conversation: threadId,
     instructions,

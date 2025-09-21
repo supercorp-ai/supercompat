@@ -152,7 +152,6 @@ export const responsesRunAdapter =
             // }
             //
             case 'response.output_item.added': {
-              console.dir({ event }, { depth: null })
               if (event.item.type === 'message') {
                 await onEvent({
                   event: 'thread.message.created',
@@ -377,8 +376,6 @@ export const responsesRunAdapter =
                 })
               }
 
-              console.dir({ added: 1, event }, { depth: null })
-
               if (event.item.id) itemIds.push(event.item.id)
 
               break
@@ -582,8 +579,6 @@ export const responsesRunAdapter =
                 })
               }
 
-              console.dir({ done: 1, event }, { depth: null })
-
               break
             }
 
@@ -719,7 +714,6 @@ export const responsesRunAdapter =
             // }
 
             default:
-              console.dir({ else: 1, event }, { depth: null })
               break
           }
         }

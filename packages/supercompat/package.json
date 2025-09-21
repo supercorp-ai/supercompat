@@ -1,6 +1,6 @@
 {
   "name": "supercompat",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -31,7 +31,7 @@
     "@anthropic-ai/sdk": "^0.40.1",
     "@mistralai/mistralai": "^1.6.0",
     "@prisma/client": "^6.15.0",
-    "@superinterface/react": "^5.0.0-beta.0",
+    "@superinterface/react": "^5.0.0-beta.2",
     "@types/lodash": "^4.17.16",
     "groq-sdk": "^0.21.0",
     "humiris-ai": "^1.11.0",
