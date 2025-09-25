@@ -3,22 +3,16 @@ import { uid } from 'radash'
 import type OpenAI from 'openai'
 
 type RunStep = OpenAI.Beta.Threads.Runs.RunStep
-type FunctionToolCall = OpenAI.Beta.Threads.Runs.Steps.FunctionToolCall
-type ToolCallsStepDetails = OpenAI.Beta.Threads.Runs.Steps.ToolCallsStepDetails
 
-type ItemType = OpenAI.Conversations.ConversationItem | OpenAI.Responses.ResponseItem | OpenAI.Responses.ResponseFunctionToolCall
-
-export function serializeItemAsRunStep({
+export function serializeItemAsMessageCreationRunStep({
   item,
-  items,
   threadId,
   openaiAssistant,
   runId = `run_${uid(24)}`,
   status = 'completed',
   completedAt = dayjs().unix(),
 }: {
-  item: ItemType
-  items: Omit<ItemType, 'id'>[]
+  item: OpenAI.Conversations.ConversationItem | OpenAI.Responses.ResponseItem | OpenAI.Responses.ResponseFunctionToolCall
   threadId: string
   openaiAssistant: OpenAI.Beta.Assistants.Assistant
   runId?: string
@@ -59,37 +53,7 @@ export function serializeItemAsRunStep({
       // keep role if present (assistant/user/system), optional
       metadata: 'role' in item ? { role: (item as any).role } : {},
     }
-  }
-
-  if (item.type === 'function_call') {
-    const functionCallOutput = items.find((i) => (
-      i.type === 'function_call_output' &&
-      i.call_id === item.call_id
-    )) as OpenAI.Responses.ResponseFunctionToolCallOutputItem | undefined
-
-    // if (functionCallOutput) {
-      const toolCall: FunctionToolCall = {
-        id: item.call_id,
-        type: 'function',
-        function: {
-          name: item.name,
-          arguments: item.arguments,
-          output: functionCallOutput ? functionCallOutput.output : null,
-        },
-      }
-
-      return {
-        ...base,
-        type: 'tool_calls',
-        step_details: {
-          type: 'tool_calls',
-          tool_calls: [toolCall],
-        } satisfies ToolCallsStepDetails,
-      }
-    // }
-  }
-
-  if (item.type === 'image_generation_call') {
+  } else if (item.type === 'image_generation_call') {
     return {
       ...base,
       type: 'message_creation',
@@ -106,7 +70,6 @@ export function serializeItemAsRunStep({
     }
   }
 
-  // Fallback: treat unknown items as message_creation
   return {
     ...base,
     type: 'message_creation',

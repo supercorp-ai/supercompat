@@ -1,7 +1,8 @@
 import type { OpenAI } from 'openai'
 import type { RunAdapterPartobClient } from '@/types'
 import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
-import { serializeItemAsRunStep } from '@/lib/items/serializeItemAsRunStep'
+import { serializeItemAsFunctionCallRunStep } from '@/lib/items/serializeItemAsFunctionCallRunStep'
+import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsComputerCallRunStep'
 
 const serializeTools = ({
   tools,
@@ -19,17 +20,61 @@ const serializeTools = ({
   }
 }
 
-const getFunctionCallOutputItems = ({
+const computerCallOutput = ({
+  toolOutput,
+}: {
+  toolOutput: OpenAI.Beta.Threads.RunSubmitToolOutputsParams['tool_outputs'][number]
+}) => {
+  if (typeof toolOutput.output !== 'string') return { isComputerCallOutput: false }
+
+  let parsedOutput
+
+  try {
+    parsedOutput = JSON.parse(toolOutput.output)
+  } catch {
+    return { isComputerCallOutput: false }
+  }
+
+  if (typeof parsedOutput !== 'object' || parsedOutput === null) return { isComputerCallOutput: false }
+  if (parsedOutput.type !== 'computer_screenshot') return { isComputerCallOutput: false }
+
+  return {
+    isComputerCallOutput: true,
+    parsedOutput,
+  }
+}
+
+const getToolCallOutputItems = ({
   tool_outputs,
 }: {
   tool_outputs: OpenAI.Beta.Threads.RunSubmitToolOutputsParams['tool_outputs']
-}) => (
-  tool_outputs.map((toolOutput) => ({
-    type: 'function_call_output' as const,
-    call_id: toolOutput.tool_call_id,
-    output: toolOutput.output,
-  }))
-)
+}) => {
+  const functionCallOutputItems: Omit<OpenAI.Responses.ResponseFunctionToolCallOutputItem, 'id'>[] = []
+  const computerCallOutputItems: Omit<OpenAI.Responses.ResponseComputerToolCallOutputItem, 'id'>[] = []
+
+  tool_outputs.forEach((toolOutput) => {
+    const { isComputerCallOutput, parsedOutput } = computerCallOutput({ toolOutput })
+
+    if (isComputerCallOutput) {
+      computerCallOutputItems.push({
+        type: 'computer_call_output' as const,
+        call_id: toolOutput.tool_call_id!,
+        output: parsedOutput,
+      })
+    } else {
+      functionCallOutputItems.push({
+        type: 'function_call_output' as const,
+        call_id: toolOutput.tool_call_id!,
+        output: toolOutput.output ?? '',
+      })
+    }
+  })
+
+  return {
+    functionCallOutputItems,
+    computerCallOutputItems,
+  }
+}
 
 export const post = ({
   client,
@@ -48,7 +93,8 @@ export const post = ({
     stream,
   } = body
 
-  const functionCallOutputItems = getFunctionCallOutputItems({ tool_outputs })
+  const toolCallOutputItems = getToolCallOutputItems({ tool_outputs })
+  const input = [...toolCallOutputItems.functionCallOutputItems, ...toolCallOutputItems.computerCallOutputItems]
 
   const previousResponse = await client.responses.retrieve(runId)
 
@@ -56,38 +102,60 @@ export const post = ({
 
   const response = await client.responses.create({
     conversation: threadId,
-    input: functionCallOutputItems,
+    input,
     instructions: openaiAssistant.instructions,
     model: openaiAssistant.model,
     // metadata,
     stream,
     ...serializeTools({ tools: openaiAssistant.tools }),
-    // truncation: truncation_strategy.type,
+    ...(openaiAssistant.truncation_strategy ? { truncation: openaiAssistant.truncation_strategy.type } : {}),
     // text: response_format,
   })
 
   const readableStream = new ReadableStream({
     async start(controller) {
-      functionCallOutputItems.forEach((item) => {
-        const functionCallItem = previousResponse.output.find((i) => (
-          i.type === 'function_call' && i.call_id === item.call_id
-        ))
+      toolCallOutputItems.functionCallOutputItems.forEach((item) => {
+        const toolCallItem = previousResponse.output.find((i) => (
+          i.type === 'function_call' &&
+            i.call_id === item.call_id
+        )) as OpenAI.Responses.ResponseFunctionToolCall | undefined
 
-        if (!functionCallItem) {
+        if (!toolCallItem) {
           return
         }
 
         controller.enqueue(`data: ${JSON.stringify({
           event: 'thread.run.step.completed',
-          data: serializeItemAsRunStep({
-            item: functionCallItem,
-            items: functionCallOutputItems,
+          data: serializeItemAsFunctionCallRunStep({
+            item: toolCallItem,
+            items: toolCallOutputItems.functionCallOutputItems,
             threadId,
             openaiAssistant,
             runId,
           })
         })}\n\n`)
+      })
 
+      toolCallOutputItems.computerCallOutputItems.forEach((item) => {
+        const toolCallItem = previousResponse.output.find((i) => (
+          i.type === 'computer_call' &&
+            i.call_id === item.call_id
+        )) as OpenAI.Responses.ResponseComputerToolCall | undefined
+
+        if (!toolCallItem) {
+          return
+        }
+
+        controller.enqueue(`data: ${JSON.stringify({
+          event: 'thread.run.step.completed',
+          data: serializeItemAsComputerCallRunStep({
+            item: toolCallItem,
+            items: toolCallOutputItems.computerCallOutputItems,
+            threadId,
+            openaiAssistant,
+            runId,
+          })
+        })}\n\n`)
       })
 
       await runAdapter.handleRun({

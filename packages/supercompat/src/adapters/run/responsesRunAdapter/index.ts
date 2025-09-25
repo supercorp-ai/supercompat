@@ -3,27 +3,41 @@ import { uid } from 'radash'
 import type OpenAI from 'openai'
 import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
 import { serializeItemAsMessage } from '@/lib/items/serializeItemAsMessage'
-import { serializeItemAsRunStep } from '@/lib/items/serializeItemAsRunStep'
+import { serializeItemAsMessageCreationRunStep } from '@/lib/items/serializeItemAsMessageCreationRunStep'
 import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveResponseItemsToConversationMetadata'
 import { serializeItemAsImageGenerationRunStep } from '@/lib/items/serializeItemAsImageGenerationRunStep'
 import { serializeItemAsWebSearchRunStep } from '@/lib/items/serializeItemAsWebSearchRunStep'
 import { serializeItemAsMcpListToolsRunStep } from '@/lib/items/serializeItemAsMcpListToolsRunStep'
 import { serializeItemAsMcpCallRunStep } from '@/lib/items/serializeItemAsMcpCallRunStep'
 import { serializeItemAsCodeInterpreterCallRunStep } from '@/lib/items/serializeItemAsCodeInterpreterCallRunStep'
+import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsComputerCallRunStep'
 
 const serializeToolCalls = ({
   toolCalls,
 }: {
-  toolCalls: OpenAI.Responses.ResponseFunctionToolCall[]
+  toolCalls: OpenAI.Responses.ResponseFunctionToolCall[] | OpenAI.Responses.ResponseComputerToolCall[]
 }) => (
-  toolCalls.map((toolCall) => ({
-    id: toolCall.call_id,
-    type: 'function' as const,
-    function: {
-      name: toolCall.name,
-      arguments: toolCall.arguments,
-    },
-  }))
+  toolCalls.map((toolCall) => {
+    if (toolCall.type === 'function_call') {
+      return {
+        id: toolCall.call_id,
+        type: 'function' as const,
+        function: {
+          name: toolCall.name,
+          arguments: toolCall.arguments,
+        },
+      }
+    } else if (toolCall.type === 'computer_call') {
+      return {
+        id: toolCall.call_id,
+        type: 'computer_call' as const,
+        computer_call: {
+          action: toolCall.action,
+          pending_safety_checks: toolCall.pending_safety_checks,
+        },
+      }
+    }
+  }) as OpenAI.Beta.Threads.Runs.RequiredActionFunctionToolCall[]
 )
 
 export const responsesRunAdapter =
@@ -87,7 +101,7 @@ export const responsesRunAdapter =
             case 'response.completed': {
               itemIds = event.response.output.filter((o) => o.id).map((o) => o.id!)
 
-              const toolCalls = event.response.output.filter((o) => o.type === 'function_call') as OpenAI.Responses.ResponseFunctionToolCall[]
+              const toolCalls = event.response.output.filter((o) => o.type === 'function_call' || o.type === 'computer_call') as OpenAI.Responses.ResponseFunctionToolCall[] | OpenAI.Responses.ResponseComputerToolCall[]
 
               if (toolCalls.length > 0) {
                 await onEvent({
@@ -102,9 +116,11 @@ export const responsesRunAdapter =
                       required_action: {
                         type: 'submit_tool_outputs',
                         submit_tool_outputs: {
-                          tool_calls: serializeToolCalls({
-                            toolCalls,
-                          }),
+                          tool_calls: [
+                            ...serializeToolCalls({
+                              toolCalls,
+                            }),
+                          ],
                         },
                       },
                     }),
@@ -167,9 +183,8 @@ export const responsesRunAdapter =
 
                 await onEvent({
                   event: 'thread.run.step.created',
-                  data: serializeItemAsRunStep({
+                  data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
-                    items: [],
                     threadId,
                     openaiAssistant: await getOpenaiAssistant(),
                     runId: responseCreatedResponse!.id,
@@ -182,12 +197,45 @@ export const responsesRunAdapter =
 
                 await onEvent({
                   event: 'thread.run.step.created',
-                  data: serializeItemAsRunStep({
+                  data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
-                    items: [],
                     threadId,
                     openaiAssistant: await getOpenaiAssistant(),
                     runId: responseCreatedResponse!.id,
+                  })
+                })
+              } else if (event.item.type === 'computer_call') {
+                await onEvent({
+                  event: 'thread.message.created',
+                  data: serializeItemAsMessage({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    createdAt: dayjs().unix(),
+                    runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.created',
+                  data: serializeItemAsMessageCreationRunStep({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant(),
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.created',
+                  data: serializeItemAsComputerCallRunStep({
+                    item: event.item,
+                    items: [],
+                    openaiAssistant: await getOpenaiAssistant(),
+                    threadId,
+                    runId: responseCreatedResponse!.id,
+                    completedAt: null,
                   })
                 })
               } else if (event.item.type === 'image_generation_call') {
@@ -205,9 +253,8 @@ export const responsesRunAdapter =
 
                 await onEvent({
                   event: 'thread.run.step.created',
-                  data: serializeItemAsRunStep({
+                  data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
-                    items: [],
                     threadId,
                     openaiAssistant: await getOpenaiAssistant(),
                     runId: responseCreatedResponse!.id,
@@ -241,9 +288,8 @@ export const responsesRunAdapter =
 
                 await onEvent({
                   event: 'thread.run.step.created',
-                  data: serializeItemAsRunStep({
+                  data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
-                    items: [],
                     threadId,
                     openaiAssistant: await getOpenaiAssistant(),
                     runId: responseCreatedResponse!.id,
@@ -277,9 +323,8 @@ export const responsesRunAdapter =
 
                 await onEvent({
                   event: 'thread.run.step.created',
-                  data: serializeItemAsRunStep({
+                  data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
-                    items: [],
                     threadId,
                     openaiAssistant: await getOpenaiAssistant(),
                     runId: responseCreatedResponse!.id,
@@ -315,9 +360,8 @@ export const responsesRunAdapter =
 
                 await onEvent({
                   event: 'thread.run.step.created',
-                  data: serializeItemAsRunStep({
+                  data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
-                    items: [],
                     threadId,
                     openaiAssistant: await getOpenaiAssistant(),
                     runId: responseCreatedResponse!.id,
@@ -353,9 +397,8 @@ export const responsesRunAdapter =
 
                 await onEvent({
                   event: 'thread.run.step.created',
-                  data: serializeItemAsRunStep({
+                  data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
-                    items: [],
                     threadId,
                     openaiAssistant: await getOpenaiAssistant(),
                     runId: responseCreatedResponse!.id,
@@ -385,9 +428,8 @@ export const responsesRunAdapter =
               if (event.item.type === 'message') {
                 await onEvent({
                   event: 'thread.run.step.completed',
-                  data: serializeItemAsRunStep({
+                  data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
-                    items: [],
                     threadId,
                     openaiAssistant: await getOpenaiAssistant(),
                     runId: responseCreatedResponse!.id,
@@ -409,9 +451,8 @@ export const responsesRunAdapter =
 
                 await onEvent({
                   event: 'thread.run.step.in_progress',
-                  data: serializeItemAsRunStep({
+                  data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
-                    items: [],
                     threadId,
                     openaiAssistant: await getOpenaiAssistant(),
                     runId: responseCreatedResponse!.id,
@@ -430,9 +471,8 @@ export const responsesRunAdapter =
 
                 await onEvent({
                   event: 'thread.run.step.completed',
-                  data: serializeItemAsRunStep({
+                  data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
-                    items: [],
                     threadId,
                     openaiAssistant: await getOpenaiAssistant(),
                     runId: responseCreatedResponse!.id,
@@ -462,9 +502,8 @@ export const responsesRunAdapter =
 
                 await onEvent({
                   event: 'thread.run.step.completed',
-                  data: serializeItemAsRunStep({
+                  data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
-                    items: [],
                     threadId,
                     openaiAssistant: await getOpenaiAssistant(),
                     runId: responseCreatedResponse!.id,
@@ -494,9 +533,8 @@ export const responsesRunAdapter =
 
                 await onEvent({
                   event: 'thread.run.step.completed',
-                  data: serializeItemAsRunStep({
+                  data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
-                    items: [],
                     threadId,
                     openaiAssistant: await getOpenaiAssistant(),
                     runId: responseCreatedResponse!.id,
@@ -526,9 +564,8 @@ export const responsesRunAdapter =
 
                 await onEvent({
                   event: 'thread.run.step.completed',
-                  data: serializeItemAsRunStep({
+                  data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
-                    items: [],
                     threadId,
                     openaiAssistant: await getOpenaiAssistant(),
                     runId: responseCreatedResponse!.id,
@@ -558,9 +595,8 @@ export const responsesRunAdapter =
 
                 await onEvent({
                   event: 'thread.run.step.completed',
-                  data: serializeItemAsRunStep({
+                  data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
-                    items: [],
                     threadId,
                     openaiAssistant: await getOpenaiAssistant(),
                     runId: responseCreatedResponse!.id,

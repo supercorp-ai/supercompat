@@ -3,12 +3,14 @@ import pMap from 'p-map'
 import { last } from 'radash'
 import type { RunAdapter } from '@/types'
 import { stepsRegexp } from '@/lib/steps/stepsRegexp'
-import { serializeItemAsRunStep } from '@/lib/items/serializeItemAsRunStep'
+import { serializeItemAsMessageCreationRunStep } from '@/lib/items/serializeItemAsMessageCreationRunStep'
+import { serializeItemAsFunctionCallRunStep } from '@/lib/items/serializeItemAsFunctionCallRunStep'
 import { serializeItemAsImageGenerationRunStep } from '@/lib/items/serializeItemAsImageGenerationRunStep'
 import { serializeItemAsWebSearchRunStep } from '@/lib/items/serializeItemAsWebSearchRunStep'
 import { serializeItemAsMcpListToolsRunStep } from '@/lib/items/serializeItemAsMcpListToolsRunStep'
 import { serializeItemAsMcpCallRunStep } from '@/lib/items/serializeItemAsMcpCallRunStep'
 import { serializeItemAsCodeInterpreterCallRunStep } from '@/lib/items/serializeItemAsCodeInterpreterCallRunStep'
+import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsComputerCallRunStep'
 
 export const get = ({
   client,
@@ -33,46 +35,73 @@ export const get = ({
 
   const response = await client.responses.retrieve(runId)
 
-  const functionCalls = response.output.filter((item) => (
-    item.type === 'function_call'
-  ))
+  const functionCalls = response.output.filter((item) => item.type === 'function_call')
+  const computerCalls = response.output.filter((item) => item.type === 'computer_call')
 
-  const functionCallOutputsResponses = await pMap(functionCalls, async (functionCall) => {
+  const functionCallOutputsResponsesPromise = pMap(functionCalls, async (functionCall) => {
     const items = await client.conversations.items.list(threadId, {
       after: functionCall.id,
       order: 'asc',
     })
 
     return items.data.find((item) => (
-      item.type === 'function_call_output' && item.call_id === (functionCall as OpenAI.Responses.ResponseFunctionToolCall).call_id
+      item.type === 'function_call_output' &&
+      item.call_id === (functionCall as OpenAI.Responses.ResponseFunctionToolCall).call_id
     ))
   })
 
-  const functionCallOutputs = functionCallOutputsResponses.filter(Boolean) as OpenAI.Conversations.ConversationItem[]
+  const computerCallOutputsResponsesPromise = pMap(computerCalls, async (computerCall) => {
+    const items = await client.conversations.items.list(threadId, {
+      after: computerCall.id,
+      order: 'asc',
+    })
+
+    return items.data.find((item) => (
+      item.type === 'computer_call_output' &&
+      item.call_id === (computerCall as OpenAI.Responses.ResponseComputerToolCall).call_id
+    ))
+  })
+
+  const [functionCallOutputsResponses, computerCallOutputsResponses] = await Promise.all([
+    functionCallOutputsResponsesPromise,
+    computerCallOutputsResponsesPromise,
+  ])
+
+  const functionCallOutputs = functionCallOutputsResponses.filter(Boolean) as OpenAI.Responses.ResponseFunctionToolCallOutputItem[]
+  const computerCallOutputs = computerCallOutputsResponses.filter(Boolean) as OpenAI.Responses.ResponseComputerToolCallOutputItem[]
 
   const openaiAssistant = await runAdapter.getOpenaiAssistant()
 
   const data = response.output.flatMap((item) => {
-    const step = serializeItemAsRunStep({
+    const step = serializeItemAsMessageCreationRunStep({
       item,
-      items: functionCallOutputs,
       threadId,
       openaiAssistant,
       runId: response.id,
     });
 
     if (item.type === 'function_call') {
-      const synthCreation = {
-        id: `mc${item.id}`,
-        run_id: response.id,
-        status: 'completed',
-        completed_at: step.created_at,
-        step_details: {
-          type: 'message_creation',
-          message_creation: { message_id: item.id },
-        },
-      };
-      return [synthCreation, step];
+      return [
+        serializeItemAsFunctionCallRunStep({
+          item,
+          items: functionCallOutputs,
+          openaiAssistant,
+          threadId,
+          runId: response.id,
+        }),
+        step,
+      ]
+    } else if (item.type === 'computer_call') {
+      return [
+        serializeItemAsComputerCallRunStep({
+          item,
+          items: computerCallOutputs,
+          openaiAssistant,
+          threadId,
+          runId: response.id,
+        }),
+        step,
+      ]
     } else if (item.type === 'image_generation_call') {
       return [
         serializeItemAsImageGenerationRunStep({
