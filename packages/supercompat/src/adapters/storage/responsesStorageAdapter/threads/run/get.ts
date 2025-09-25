@@ -22,7 +22,7 @@ export const get = ({
 
   const data = serializeResponseAsRun({
     response,
-    assistantId: (await runAdapter.getOpenaiAssistant()).id,
+    assistantId: (await runAdapter.getOpenaiAssistant({ select: { id: true } })).id,
   })
 
   return new Response(JSON.stringify(data), {

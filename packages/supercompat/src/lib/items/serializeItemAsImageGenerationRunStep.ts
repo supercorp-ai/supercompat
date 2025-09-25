@@ -21,7 +21,7 @@ export const serializeItemAsImageGenerationRunStep = ({
   completedAt = dayjs().unix(),
 }: {
   item: OpenAI.Responses.ResponseItem.ImageGenerationCall
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  openaiAssistant: Pick<OpenAI.Beta.Assistants.Assistant, 'id'>
   threadId: string
   runId: string
   completedAt?: number | null

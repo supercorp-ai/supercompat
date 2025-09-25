@@ -109,7 +109,7 @@ export const post = ({
   // );
   //
 
-  const openaiAssistant = await runAdapter.getOpenaiAssistant()
+  const openaiAssistant = await runAdapter.getOpenaiAssistant({ select: { id: true } })
 
   return new Response(JSON.stringify(
     serializeItemAsMessage({

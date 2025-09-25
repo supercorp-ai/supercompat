@@ -14,7 +14,7 @@ export function serializeItemAsMessageCreationRunStep({
 }: {
   item: OpenAI.Conversations.ConversationItem | OpenAI.Responses.ResponseItem | OpenAI.Responses.ResponseFunctionToolCall
   threadId: string
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  openaiAssistant: Pick<OpenAI.Beta.Assistants.Assistant, 'id'>
   runId?: string
   status?: 'completed' | 'in_progress'
   completedAt?: number | null

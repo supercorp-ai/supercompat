@@ -53,7 +53,7 @@ export const get = ({
     computerCallOutputItems = items.data.filter((item) => item.type === 'computer_call_output') as OpenAI.Responses.ResponseComputerToolCallOutputItem[]
   }
 
-  const openaiAssistant = await runAdapter.getOpenaiAssistant()
+  const openaiAssistant = await runAdapter.getOpenaiAssistant({ select: { id: true } })
 
   const data = response.output.flatMap((item) => {
     const step = serializeItemAsMessageCreationRunStep({

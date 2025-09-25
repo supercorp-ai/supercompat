@@ -57,7 +57,7 @@ export const serializeItemAsCodeInterpreterCallRunStep = ({
   completedAt = dayjs().unix(),
 }: {
   item: OpenAI.Responses.ResponseCodeInterpreterToolCall
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  openaiAssistant: Pick<OpenAI.Beta.Assistants.Assistant, 'id'>
   threadId: string
   runId: string
   completedAt?: number | null

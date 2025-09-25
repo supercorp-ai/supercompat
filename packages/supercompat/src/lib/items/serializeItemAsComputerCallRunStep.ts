@@ -18,7 +18,7 @@ export const serializeItemAsComputerCallRunStep = ({
   item: OpenAI.Responses.ResponseComputerToolCall
   items: Omit<OpenAI.Responses.ResponseComputerToolCallOutputItem, 'id'>[]
   threadId: string
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  openaiAssistant: Pick<OpenAI.Beta.Assistants.Assistant, 'id'>
   runId?: string
   status?: 'completed' | 'in_progress'
   completedAt?: number | null

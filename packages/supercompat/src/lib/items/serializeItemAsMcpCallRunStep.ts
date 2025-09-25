@@ -21,7 +21,7 @@ export const serializeItemAsMcpCallRunStep = ({
   completedAt = dayjs().unix(),
 }: {
   item: OpenAI.Responses.ResponseItem.McpCall
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  openaiAssistant: Pick<OpenAI.Beta.Assistants.Assistant, 'id'>
   threadId: string
   runId: string
   completedAt?: number | null

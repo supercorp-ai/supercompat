@@ -21,7 +21,7 @@ export const serializeItemAsWebSearchRunStep = ({
   completedAt = dayjs().unix(),
 }: {
   item: OpenAI.Responses.ResponseFunctionWebSearch
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  openaiAssistant: Pick<OpenAI.Beta.Assistants.Assistant, 'id'>
   threadId: string
   runId: string
   completedAt?: number | null

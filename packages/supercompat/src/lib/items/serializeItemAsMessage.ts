@@ -99,7 +99,7 @@ export const serializeItemAsMessage = ({
 }: {
   item: ItemType
   threadId: string
-  openaiAssistant: OpenAI.Beta.Assistants.Assistant
+  openaiAssistant: Pick<OpenAI.Beta.Assistants.Assistant, 'id'>
   createdAt: number
   runId?: string | null
   status?: 'completed' | 'in_progress'

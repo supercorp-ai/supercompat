@@ -52,7 +52,7 @@ export const get = ({
     conversationCreatedAt: conversation.created_at,
   })
 
-  const openaiAssistant = await runAdapter.getOpenaiAssistant()
+  const openaiAssistant = await runAdapter.getOpenaiAssistant({ select: { id: true } })
 
   return new Response(JSON.stringify({
     data: timestampedItems.map(({ item, runId, assignedTimestamp }) => (

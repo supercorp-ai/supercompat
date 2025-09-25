@@ -12,6 +12,18 @@ import { serializeItemAsMcpCallRunStep } from '@/lib/items/serializeItemAsMcpCal
 import { serializeItemAsCodeInterpreterCallRunStep } from '@/lib/items/serializeItemAsCodeInterpreterCallRunStep'
 import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsComputerCallRunStep'
 
+type Args = {
+  select?: {
+    id?: boolean;
+  };
+}
+
+type NormalizedArgs = {
+  select: {
+    id: boolean;
+  };
+};
+
 const serializeToolCalls = ({
   toolCalls,
 }: {
@@ -44,14 +56,22 @@ export const responsesRunAdapter =
   ({
     getOpenaiAssistant: getDirectOpenaiAssistant,
   }: {
-    getOpenaiAssistant: () => Promise<OpenAI.Beta.Assistants.Assistant> | OpenAI.Beta.Assistants.Assistant
+    getOpenaiAssistant: (args?: Args) => Promise<OpenAI.Beta.Assistants.Assistant> | OpenAI.Beta.Assistants.Assistant | Pick<OpenAI.Beta.Assistants.Assistant, 'id'> | Promise<Pick<OpenAI.Beta.Assistants.Assistant, 'id'>>
   }) => {
     let cachedOpenaiAssistant: OpenAI.Beta.Assistants.Assistant | null = null
 
-    const getOpenaiAssistant = async () => {
+    const getOpenaiAssistant = async ({ select: { id = false } = {} }: Args = {}) => {
+      const args: NormalizedArgs = { select: { id } }
+
+      if (args.select.id) {
+        return {
+          id: (await getDirectOpenaiAssistant({ select: { id: true } })).id,
+        }
+      }
+
       if (cachedOpenaiAssistant) return cachedOpenaiAssistant
 
-      cachedOpenaiAssistant = await getDirectOpenaiAssistant()
+      cachedOpenaiAssistant = await getDirectOpenaiAssistant() as OpenAI.Beta.Assistants.Assistant
       return cachedOpenaiAssistant
     }
 
@@ -83,7 +103,7 @@ export const responsesRunAdapter =
                 event: 'thread.run.created',
                 data: serializeResponseAsRun({
                   response: event.response,
-                  assistantId: (await getOpenaiAssistant()).id,
+                  assistantId: (await getOpenaiAssistant({ select: { id: true } })).id,
                 }),
               })
               break
@@ -93,7 +113,7 @@ export const responsesRunAdapter =
                 event: 'thread.run.in_progress',
                 data: serializeResponseAsRun({
                   response: event.response,
-                  assistantId: (await getOpenaiAssistant()).id,
+                  assistantId: (await getOpenaiAssistant({ select: { id: true } })).id,
                 }),
               })
               break
@@ -109,7 +129,7 @@ export const responsesRunAdapter =
                   data: {
                     ...serializeResponseAsRun({
                       response: event.response,
-                      assistantId: (await getOpenaiAssistant()).id,
+                      assistantId: (await getOpenaiAssistant({ select: { id: true } })).id,
                     }),
                     ...({
                       status: 'requires_action',
@@ -131,7 +151,7 @@ export const responsesRunAdapter =
                   event: 'thread.run.completed',
                   data: serializeResponseAsRun({
                     response: event.response,
-                    assistantId: (await getOpenaiAssistant()).id,
+                    assistantId: (await getOpenaiAssistant({ select: { id: true } })).id,
                   }),
                 })
               }
@@ -143,7 +163,7 @@ export const responsesRunAdapter =
                 event: 'thread.run.failed',
                 data: serializeResponseAsRun({
                   response: event.response,
-                  assistantId: (await getOpenaiAssistant()).id,
+                  assistantId: (await getOpenaiAssistant({ select: { id: true } })).id,
                 }),
               })
               break
@@ -174,7 +194,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessage({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     createdAt: dayjs().unix(),
                     runId: responseCreatedResponse!.id,
                     status: 'in_progress',
@@ -186,7 +206,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     runId: responseCreatedResponse!.id,
                     status: 'in_progress',
                     completedAt: null,
@@ -200,7 +220,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     runId: responseCreatedResponse!.id,
                   })
                 })
@@ -210,7 +230,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessage({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     createdAt: dayjs().unix(),
                     runId: responseCreatedResponse!.id,
                     status: 'in_progress',
@@ -222,7 +242,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     runId: responseCreatedResponse!.id,
                   })
                 })
@@ -232,7 +252,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsComputerCallRunStep({
                     item: event.item,
                     items: [],
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     threadId,
                     runId: responseCreatedResponse!.id,
                     completedAt: null,
@@ -244,7 +264,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessage({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     createdAt: dayjs().unix(),
                     runId: responseCreatedResponse!.id,
                     status: 'in_progress',
@@ -256,7 +276,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     runId: responseCreatedResponse!.id,
                     status: 'in_progress',
                     completedAt: null,
@@ -267,7 +287,7 @@ export const responsesRunAdapter =
                   event: 'thread.run.step.created',
                   data: serializeItemAsImageGenerationRunStep({
                     item: event.item,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     threadId,
                     runId: responseCreatedResponse!.id,
                     completedAt: null,
@@ -279,7 +299,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessage({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     createdAt: dayjs().unix(),
                     runId: responseCreatedResponse!.id,
                     status: 'in_progress',
@@ -291,7 +311,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     runId: responseCreatedResponse!.id,
                     status: 'in_progress',
                     completedAt: null,
@@ -302,7 +322,7 @@ export const responsesRunAdapter =
                   event: 'thread.run.step.created',
                   data: serializeItemAsWebSearchRunStep({
                     item: event.item,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     threadId,
                     runId: responseCreatedResponse!.id,
                     completedAt: null,
@@ -314,7 +334,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessage({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     createdAt: dayjs().unix(),
                     runId: responseCreatedResponse!.id,
                     status: 'in_progress',
@@ -326,7 +346,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     runId: responseCreatedResponse!.id,
                     status: 'in_progress',
                     completedAt: null,
@@ -337,7 +357,7 @@ export const responsesRunAdapter =
                   event: 'thread.run.step.created',
                   data: serializeItemAsMcpListToolsRunStep({
                     item: event.item,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     threadId,
                     runId: responseCreatedResponse!.id,
                     completedAt: null,
@@ -351,7 +371,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessage({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     createdAt: dayjs().unix(),
                     runId: responseCreatedResponse!.id,
                     status: 'in_progress',
@@ -363,7 +383,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     runId: responseCreatedResponse!.id,
                     status: 'in_progress',
                     completedAt: null,
@@ -374,7 +394,7 @@ export const responsesRunAdapter =
                   event: 'thread.run.step.created',
                   data: serializeItemAsMcpCallRunStep({
                     item: event.item,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     threadId,
                     runId: responseCreatedResponse!.id,
                     completedAt: null,
@@ -388,7 +408,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessage({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     createdAt: dayjs().unix(),
                     runId: responseCreatedResponse!.id,
                     status: 'in_progress',
@@ -400,7 +420,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     runId: responseCreatedResponse!.id,
                     status: 'in_progress',
                     completedAt: null,
@@ -411,7 +431,7 @@ export const responsesRunAdapter =
                   event: 'thread.run.step.created',
                   data: serializeItemAsCodeInterpreterCallRunStep({
                     item: event.item,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     threadId,
                     runId: responseCreatedResponse!.id,
                     completedAt: null,
@@ -431,7 +451,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     runId: responseCreatedResponse!.id,
                   })
                 })
@@ -441,7 +461,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessage({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     createdAt: dayjs().unix(),
                     runId: responseCreatedResponse!.id,
                   })
@@ -454,7 +474,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     runId: responseCreatedResponse!.id,
                   })
                 })
@@ -463,7 +483,7 @@ export const responsesRunAdapter =
                   event: 'thread.run.step.completed',
                   data: serializeItemAsImageGenerationRunStep({
                     item: event.item,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     threadId,
                     runId: responseCreatedResponse!.id,
                   })
@@ -474,7 +494,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     runId: responseCreatedResponse!.id,
                   })
                 })
@@ -484,7 +504,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessage({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     createdAt: dayjs().unix(),
                     runId: responseCreatedResponse!.id,
                   })
@@ -494,7 +514,7 @@ export const responsesRunAdapter =
                   event: 'thread.run.step.completed',
                   data: serializeItemAsWebSearchRunStep({
                     item: event.item,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     threadId,
                     runId: responseCreatedResponse!.id,
                   })
@@ -505,7 +525,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     runId: responseCreatedResponse!.id,
                   })
                 })
@@ -515,7 +535,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessage({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     createdAt: dayjs().unix(),
                     runId: responseCreatedResponse!.id,
                   })
@@ -525,7 +545,7 @@ export const responsesRunAdapter =
                   event: 'thread.run.step.completed',
                   data: serializeItemAsMcpListToolsRunStep({
                     item: event.item,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     threadId,
                     runId: responseCreatedResponse!.id,
                   })
@@ -536,7 +556,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     runId: responseCreatedResponse!.id,
                   })
                 })
@@ -546,7 +566,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessage({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     createdAt: dayjs().unix(),
                     runId: responseCreatedResponse!.id,
                   })
@@ -556,7 +576,7 @@ export const responsesRunAdapter =
                   event: 'thread.run.step.completed',
                   data: serializeItemAsMcpCallRunStep({
                     item: event.item,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     threadId,
                     runId: responseCreatedResponse!.id,
                   })
@@ -567,7 +587,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     runId: responseCreatedResponse!.id,
                   })
                 })
@@ -577,7 +597,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessage({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     createdAt: dayjs().unix(),
                     runId: responseCreatedResponse!.id,
                   })
@@ -587,7 +607,7 @@ export const responsesRunAdapter =
                   event: 'thread.run.step.completed',
                   data: serializeItemAsCodeInterpreterCallRunStep({
                     item: event.item,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     threadId,
                     runId: responseCreatedResponse!.id,
                   })
@@ -598,7 +618,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     runId: responseCreatedResponse!.id,
                   })
                 })
@@ -608,7 +628,7 @@ export const responsesRunAdapter =
                   data: serializeItemAsMessage({
                     item: event.item,
                     threadId,
-                    openaiAssistant: await getOpenaiAssistant(),
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     createdAt: dayjs().unix(),
                     runId: responseCreatedResponse!.id,
                   })
@@ -696,7 +716,7 @@ export const responsesRunAdapter =
                   incomplete_details: null,
                   role: 'assistant' as 'assistant',
                   content: [],
-                  assistant_id: (await getOpenaiAssistant()).id,
+                  assistant_id: (await getOpenaiAssistant({ select: { id: true } })).id,
                   run_id: responseCreatedResponse!.id,
                   attachments: [],
                   status: 'in_progress' as 'in_progress',
@@ -728,7 +748,7 @@ export const responsesRunAdapter =
                       detail: 'auto' as 'auto',
                     },
                   }],
-                  assistant_id: (await getOpenaiAssistant()).id,
+                  assistant_id: (await getOpenaiAssistant({ select: { id: true } })).id,
                   run_id: responseCreatedResponse!.id,
                   attachments: [],
                   status: 'in_progress' as 'in_progress',
@@ -760,7 +780,7 @@ export const responsesRunAdapter =
             id: responseCreatedResponse?.id || `run_${uid(18)}`,
             object: 'thread.run',
             thread_id: threadId,
-            assistant_id: (await getOpenaiAssistant()).id,
+            assistant_id: (await getOpenaiAssistant({ select: { id: true } })).id,
             status: 'failed',
             failed_at: dayjs().unix(),
             last_error: {

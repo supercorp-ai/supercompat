@@ -13,7 +13,7 @@ export const get = ({
   return new Response(JSON.stringify({
     data: [await runAdapter.getOpenaiAssistant()],
     has_more: false,
-    last_id: (await runAdapter.getOpenaiAssistant()).id,
+    last_id: (await runAdapter.getOpenaiAssistant({ select: { id: true } })).id,
   }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
