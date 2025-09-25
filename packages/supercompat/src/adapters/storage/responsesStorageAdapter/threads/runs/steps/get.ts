@@ -1,5 +1,4 @@
 import type { OpenAI } from 'openai'
-import pMap from 'p-map'
 import { last } from 'radash'
 import type { RunAdapter } from '@/types'
 import { stepsRegexp } from '@/lib/steps/stepsRegexp'
@@ -35,40 +34,24 @@ export const get = ({
 
   const response = await client.responses.retrieve(runId)
 
-  const functionCalls = response.output.filter((item) => item.type === 'function_call')
-  const computerCalls = response.output.filter((item) => item.type === 'computer_call')
+  const latestToolCallItem = response.output.findLast((item) => (
+    item.type === 'function_call'
+    // item.type === 'computer_call'
+  ))
 
-  const functionCallOutputsResponsesPromise = pMap(functionCalls, async (functionCall) => {
+  let functionCallOutputItems: OpenAI.Responses.ResponseFunctionToolCallOutputItem[] = []
+  let computerCallOutputItems: OpenAI.Responses.ResponseComputerToolCallOutputItem[] = []
+
+  if (latestToolCallItem) {
     const items = await client.conversations.items.list(threadId, {
-      after: functionCall.id,
+      after: latestToolCallItem.id,
       order: 'asc',
+      limit: 20,
     })
 
-    return items.data.find((item) => (
-      item.type === 'function_call_output' &&
-      item.call_id === (functionCall as OpenAI.Responses.ResponseFunctionToolCall).call_id
-    ))
-  })
-
-  const computerCallOutputsResponsesPromise = pMap(computerCalls, async (computerCall) => {
-    const items = await client.conversations.items.list(threadId, {
-      after: computerCall.id,
-      order: 'asc',
-    })
-
-    return items.data.find((item) => (
-      item.type === 'computer_call_output' &&
-      item.call_id === (computerCall as OpenAI.Responses.ResponseComputerToolCall).call_id
-    ))
-  })
-
-  const [functionCallOutputsResponses, computerCallOutputsResponses] = await Promise.all([
-    functionCallOutputsResponsesPromise,
-    computerCallOutputsResponsesPromise,
-  ])
-
-  const functionCallOutputs = functionCallOutputsResponses.filter(Boolean) as OpenAI.Responses.ResponseFunctionToolCallOutputItem[]
-  const computerCallOutputs = computerCallOutputsResponses.filter(Boolean) as OpenAI.Responses.ResponseComputerToolCallOutputItem[]
+    functionCallOutputItems = items.data.filter((item) => item.type === 'function_call_output') as OpenAI.Responses.ResponseFunctionToolCallOutputItem[]
+    computerCallOutputItems = items.data.filter((item) => item.type === 'computer_call_output') as OpenAI.Responses.ResponseComputerToolCallOutputItem[]
+  }
 
   const openaiAssistant = await runAdapter.getOpenaiAssistant()
 
@@ -84,7 +67,7 @@ export const get = ({
       return [
         serializeItemAsFunctionCallRunStep({
           item,
-          items: functionCallOutputs,
+          items: functionCallOutputItems,
           openaiAssistant,
           threadId,
           runId: response.id,
@@ -95,7 +78,7 @@ export const get = ({
       return [
         serializeItemAsComputerCallRunStep({
           item,
-          items: computerCallOutputs,
+          items: computerCallOutputItems,
           openaiAssistant,
           threadId,
           runId: response.id,
