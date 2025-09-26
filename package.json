@@ -4,7 +4,7 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo run build --force -- --watch",
-    "lint": "turbo lint",
+    "lint": "turbo run lint --force",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "test": "npx tsx --tsconfig tsconfig.test.json --test \"packages/supercompat/tests/*.test.ts\"",
     "test:env": "npx env-cmd -f .env npm run test",

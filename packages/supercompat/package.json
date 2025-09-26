@@ -16,7 +16,8 @@
   "keywords": [],
   "license": "ISC",
   "scripts": {
-    "build": "tsup"
+    "build": "tsup",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
     "@paralleldrive/cuid2": "^2.2.2",
