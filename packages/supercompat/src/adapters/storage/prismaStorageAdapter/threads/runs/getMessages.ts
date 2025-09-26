@@ -1,9 +1,10 @@
-import type { PrismaClient } from '@prisma/client'
+import type { PrismaClient, Run as PrismaRun } from '@prisma/client'
 import { serializeMessage } from '../messages/serializeMessage'
 import { serializeRunStep } from './steps/serializeRunStep'
 import { serializeRun } from './serializeRun'
 import type { Run } from '@/types/prisma'
 import type { MessageWithRun } from '@/types'
+import { mapPrismaRun } from './mapPrismaRun'
 
 const getTake = ({
   run,
@@ -62,7 +63,7 @@ export const getMessages = ({
     ...serializeMessage({ message }),
     run: message.run
       ? {
-        ...serializeRun({ run: message.run }),
+        ...serializeRun({ run: mapPrismaRun(message.run as PrismaRun) }),
         runSteps: message.run.runSteps.map((runStep) => (
           serializeRunStep({ runStep })
         )),
