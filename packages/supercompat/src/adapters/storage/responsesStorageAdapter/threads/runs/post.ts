@@ -49,9 +49,13 @@ export const post = ({
   client: OpenAI
   runAdapter: RunAdapterWithAssistant
   createResponseItems: OpenAI.Responses.ResponseInputItem[]
-}) => async (urlString: string, options: RequestInit & { body: string }): Promise<RunCreateResponse> => {
+}) => async (urlString: string, options: RequestInit & { body?: string }): Promise<RunCreateResponse> => {
   const url = new URL(urlString)
   const [, threadId] = url.pathname.match(new RegExp(runsRegexp))!
+
+  if (typeof options.body !== 'string') {
+    throw new Error('Request body is required')
+  }
 
   const body = JSON.parse(options.body)
   const {

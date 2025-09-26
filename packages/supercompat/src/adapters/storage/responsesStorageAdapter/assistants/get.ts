@@ -1,15 +1,15 @@
 import type { RunAdapterWithAssistant } from '@/types'
 import type { OpenAI } from 'openai'
 
-type MessageCreateResponse = Response & {
-  json: () => Promise<ReturnType<OpenAI.Beta.Threads.Messages['create']>>
+type ListResponse = Response & {
+  json: () => Promise<ReturnType<OpenAI.Beta.Assistants['list']>>
 }
 
 export const get = ({
   runAdapter,
 }: {
   runAdapter: RunAdapterWithAssistant
-}) => async (urlString: string): Promise<MessageCreateResponse> => {
+}) => async (_urlString: string): Promise<ListResponse> => {
   return new Response(JSON.stringify({
     data: [await runAdapter.getOpenaiAssistant()],
     has_more: false,

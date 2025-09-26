@@ -6,7 +6,7 @@ export const assistants = ({
   runAdapter,
 }: {
   runAdapter: RunAdapterWithAssistant
-}): { post: RequestHandler } => ({
+}): { get: RequestHandler, post: RequestHandler } => ({
   get: get({ runAdapter }),
   post: post(),
 })

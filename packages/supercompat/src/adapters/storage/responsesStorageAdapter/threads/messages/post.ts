@@ -81,15 +81,19 @@ export const post = ({
 }: {
   runAdapter: RunAdapterWithAssistant
   createResponseItems: OpenAI.Responses.ResponseInputItem[]
-}) => async (urlString: string, options: RequestInit & { body: string }): Promise<MessageCreateResponse> => {
+}) => async (urlString: string, options: RequestInit & { body?: string }): Promise<MessageCreateResponse> => {
   const url = new URL(urlString)
 
   const [, threadId] = url.pathname.match(new RegExp(messagesRegexp))!
 
+  if (typeof options.body !== 'string') {
+    throw new Error('Request body is required')
+  }
+
   const body = JSON.parse(options.body)
   const { role, content, attachments = [] } = body
 
-  const item: OpenAI.Responses.ResponseInputItem = {
+  const item: OpenAI.Responses.ResponseInputItem.Message = {
     type: "message" as const,
     role,
     content: messageContentBlocks({

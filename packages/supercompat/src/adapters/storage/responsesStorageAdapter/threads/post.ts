@@ -9,7 +9,11 @@ export const post = ({
   client,
 }: {
   client: OpenAI
-}) => async (urlString: string, options: RequestInit & { body: string }): Promise<ThreadCreateResponse> => {
+}) => async (_urlString: string, options: RequestInit & { body?: string }): Promise<ThreadCreateResponse> => {
+  if (typeof options.body !== 'string') {
+    throw new Error('Request body is required')
+  }
+
   const body = JSON.parse(options.body)
 
   const messages = body.messages || []
