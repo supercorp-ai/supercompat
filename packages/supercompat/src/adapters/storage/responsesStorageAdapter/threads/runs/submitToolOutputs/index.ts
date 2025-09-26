@@ -1,14 +1,13 @@
 import type { OpenAI } from 'openai'
-import type { RunAdapter } from '@/types'
+import type { RequestHandler, RunAdapterWithAssistant } from '@/types'
 import { post } from './post'
-import type { RequestHandler } from '@/types'
 
 export const submitToolOutputs = ({
   client,
   runAdapter,
 }: {
   client: OpenAI
-  runAdapter: RunAdapter
+  runAdapter: RunAdapterWithAssistant
 }): { post: RequestHandler } => ({
   post: post({
     client,

@@ -1,5 +1,5 @@
 import type { OpenAI } from 'openai'
-import type { RunAdapter, RequestHandler } from '@/types'
+import type { RequestHandler, RunAdapterWithAssistant } from '@/types'
 import { get } from './get'
 // import { post } from './post'
 
@@ -8,7 +8,7 @@ export const run = ({
   runAdapter,
 }: {
   client: OpenAI
-  runAdapter: RunAdapter
+  runAdapter: RunAdapterWithAssistant
 }): { get: RequestHandler } => ({
   get: get({ client, runAdapter }),
   // post: post({ prisma, runAdapter }),

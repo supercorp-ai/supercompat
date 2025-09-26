@@ -1,5 +1,5 @@
 import type OpenAI from 'openai'
-import type { RunAdapter } from '@/types'
+import type { RunAdapterWithAssistant } from '@/types'
 import { assign } from 'radash'
 import { messagesRegexp } from '@/lib/messages/messagesRegexp'
 import { serializeItemAsMessage } from '@/lib/items/serializeItemAsMessage'
@@ -14,7 +14,7 @@ export const get = ({
   runAdapter,
 }: {
   client: OpenAI
-  runAdapter: RunAdapter
+  runAdapter: RunAdapterWithAssistant
 }) => async (urlString: string): Promise<MessageCreateResponse> => {
   const url = new URL(urlString)
 

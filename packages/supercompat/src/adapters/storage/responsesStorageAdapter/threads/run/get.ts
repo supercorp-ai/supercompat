@@ -1,5 +1,5 @@
 import type OpenAI from 'openai'
-import type { RunAdapter } from '@/types'
+import type { RunAdapterWithAssistant } from '@/types'
 import { runRegexp } from '@/lib/runs/runRegexp'
 import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
 
@@ -12,7 +12,7 @@ export const get = ({
   runAdapter,
 }: {
   client: OpenAI
-  runAdapter: RunAdapter
+  runAdapter: RunAdapterWithAssistant
 }) => async (urlString: string): Promise<GetResponse> => {
   const url = new URL(urlString)
 

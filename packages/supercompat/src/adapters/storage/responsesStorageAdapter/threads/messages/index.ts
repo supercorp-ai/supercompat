@@ -1,7 +1,7 @@
 import type { OpenAI } from 'openai'
 import { post } from './post'
 import { get } from './get'
-import type { RequestHandler, RunAdapter } from '@/types'
+import type { RequestHandler, RunAdapterWithAssistant } from '@/types'
 
 export const messages = ({
   client,
@@ -9,7 +9,7 @@ export const messages = ({
   createResponseItems,
 }: {
   client: OpenAI
-  runAdapter: RunAdapter
+  runAdapter: RunAdapterWithAssistant
   createResponseItems: OpenAI.Responses.ResponseInputItem[]
 }): { post: RequestHandler; get: RequestHandler } => ({
   post: post({ runAdapter, createResponseItems }),

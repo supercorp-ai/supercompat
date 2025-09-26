@@ -1,5 +1,5 @@
 import type { OpenAI } from 'openai'
-import type { RunAdapterPartobClient } from '@/types'
+import type { RunAdapterWithAssistant } from '@/types'
 import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
 import { serializeItemAsFunctionCallRunStep } from '@/lib/items/serializeItemAsFunctionCallRunStep'
 import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsComputerCallRunStep'
@@ -83,7 +83,7 @@ export const post = ({
   runAdapter,
 }: {
   client: OpenAI
-  runAdapter: RunAdapterPartobClient
+  runAdapter: RunAdapterWithAssistant
 }) => async (urlString: string, options: any) => {
   const url = new URL(urlString)
   const [, threadId, runId] = url.pathname.match(new RegExp(submitToolOutputsRegexp))!
