@@ -1,7 +1,6 @@
 import type OpenAI from 'openai'
 // @ts-ignore-next-line
 import type { Run } from '@prisma/client'
-import dayjs from 'dayjs'
 
 const serializeStatus = ({
   response,
@@ -37,10 +36,14 @@ const findPendingToolCalls = ({
   const completedCallIds = new Set(
     (response.output ?? [])
       .filter(
-        (item): item is OpenAI.Responses.ResponseFunctionToolCallOutputItem =>
+        (item) =>
+          // @ts-expect-error missing openai type
           item.type === 'function_call_output',
       )
-      .map((item) => item.call_id)
+    .map((item) => (
+      // @ts-expect-error missing openai type
+      item.call_id
+    ))
       .filter((id): id is string => Boolean(id)),
   )
 

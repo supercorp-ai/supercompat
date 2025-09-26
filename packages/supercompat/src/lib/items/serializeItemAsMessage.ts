@@ -44,6 +44,7 @@ const serializeContent = ({
     return [{
       type: 'image_url' as const,
       image_url: {
+        // @ts-expect-error bad openai types
         url: `data:image/${item.output_format};base64,${item.result}`,
         detail: 'auto' as const,
       },

@@ -32,6 +32,7 @@ export const serializeItemAsMcpCallRunStep = ({
     function: {
       name: item.name,
       arguments: item.arguments,
+      // @ts-expect-error compat
       server_label: item.server_label,
       output: item.output ?? item.error ?? null,
     },

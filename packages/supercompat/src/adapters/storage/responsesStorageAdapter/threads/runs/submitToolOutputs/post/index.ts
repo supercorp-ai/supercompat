@@ -110,6 +110,7 @@ export const post = ({
     // metadata,
     stream,
     ...serializeTools({ tools: openaiAssistant.tools }),
+    // @ts-expect-error compat
     ...(openaiAssistant.truncation_strategy ? { truncation: openaiAssistant.truncation_strategy.type } : {}),
     // text: response_format,
   })
