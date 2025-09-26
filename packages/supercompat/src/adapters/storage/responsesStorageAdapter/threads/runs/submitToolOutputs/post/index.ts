@@ -60,6 +60,8 @@ const getToolCallOutputItems = ({
         type: 'computer_call_output' as const,
         call_id: toolOutput.tool_call_id!,
         output: parsedOutput,
+        // @ts-expect-error compat
+        acknowledged_safety_checks: toolOutput.acknowledged_safety_checks ?? [],
       })
     } else {
       functionCallOutputItems.push({
