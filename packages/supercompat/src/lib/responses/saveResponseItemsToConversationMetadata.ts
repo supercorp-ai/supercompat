@@ -6,7 +6,7 @@ type ItemResponseEntry = { responseId: string; itemIds: string[] }
 type ConversationMetadata = Record<string, string>
 
 const BUCKET_PREFIX = 'responseItemsMap' // keys: responseItemsMap0..15
-const MAX_BUCKETS = 16 // total metadata key slots we’ll use
+const MAX_BUCKETS = 16 // OpenAI metadata key limit
 const MAX_VALUE_LENGTH = 512 // OpenAI metadata value limit
 
 function parseBucket({ value }: { value?: string }): ItemResponseEntry[] {
@@ -38,9 +38,11 @@ function listBucketIndices({ metadata }: { metadata: ConversationMetadata }): nu
 }
 
 // Flatten to FIFO (oldest → newest) list of pairs
-function parseAllPairs({ metadata }: { metadata: ConversationMetadata }): Array<{ responseId: string; itemId: string }> {
+type Pair = { responseId: string; itemId: string }
+
+function parseAllPairs({ metadata }: { metadata: ConversationMetadata }): Pair[] {
   const indices = listBucketIndices({ metadata })
-  const pairs: Array<{ responseId: string; itemId: string }> = []
+  const pairs: Pair[] = []
   for (const idx of indices) {
     const key = bucketKey({ index: idx })
     const entries = parseBucket({ value: metadata[key] })
@@ -53,54 +55,68 @@ function parseAllPairs({ metadata }: { metadata: ConversationMetadata }): Array<
   return pairs
 }
 
-// Pack pairs into up to 16 buckets of <=512 chars each
-function tryPackPairs({
-  baseMetadata,
-  pairs,
-}: {
-  baseMetadata: ConversationMetadata
-  pairs: Array<{ responseId: string; itemId: string }>
-}): { success: boolean; newMetadata: ConversationMetadata } {
-  const newBuckets: string[] = []
+function serializeNonBucketEntries({ entries }: { entries: Array<[string, string]> }): ConversationMetadata {
+  const result: ConversationMetadata = {}
+  for (const [key, value] of entries) {
+    result[key] = value
+  }
+  return result
+}
+
+function packIntoBuckets({ pairs, slots }: { pairs: Pair[]; slots: number }): string[] | undefined {
+  const buckets: string[] = []
   let currentEntries: ItemResponseEntry[] = []
 
   const flush = () => {
-    newBuckets.push(serializeBucket({ entries: currentEntries }))
+    if (currentEntries.length === 0) return true
+    const serialized = serializeBucket({ entries: currentEntries })
+    if (serialized.length > MAX_VALUE_LENGTH) return false
+    if (buckets.length >= slots) return false
+    buckets.push(serialized)
     currentEntries = []
+    return true
   }
 
   for (const { responseId, itemId } of pairs) {
-    const next = currentEntries.map((e) => ({ responseId: e.responseId, itemIds: [...e.itemIds] }))
-    const last = next[next.length - 1]
+    const candidateEntries = currentEntries.map((entry) => ({
+      responseId: entry.responseId,
+      itemIds: [...entry.itemIds],
+    }))
+    const last = candidateEntries.at(-1)
     if (last && last.responseId === responseId) {
       last.itemIds.push(itemId)
     } else {
-      next.push({ responseId, itemIds: [itemId] })
+      candidateEntries.push({ responseId, itemIds: [itemId] })
     }
 
-    const candidate = serializeBucket({ entries: next })
-    if (candidate.length <= MAX_VALUE_LENGTH) {
-      currentEntries = next
+    const serialized = serializeBucket({ entries: candidateEntries })
+    if (serialized.length <= MAX_VALUE_LENGTH) {
+      currentEntries = candidateEntries
       continue
     }
 
-    flush()
-    if (newBuckets.length >= MAX_BUCKETS) {
-      return { success: false, newMetadata: baseMetadata }
-    }
+    if (!flush()) return undefined
+
     currentEntries = [{ responseId, itemIds: [itemId] }]
+    if (serializeBucket({ entries: currentEntries }).length > MAX_VALUE_LENGTH) {
+      return undefined
+    }
   }
 
-  if (currentEntries.length > 0) flush()
+  if (!flush()) return undefined
 
-  const result: ConversationMetadata = {}
-  for (const [k, v] of Object.entries(baseMetadata)) {
-    if (!k.startsWith(BUCKET_PREFIX)) result[k] = v
+  return buckets
+}
+
+function metadataEquals(a: ConversationMetadata, b: ConversationMetadata): boolean {
+  const keysA = Object.keys(a)
+  const keysB = Object.keys(b)
+  if (keysA.length !== keysB.length) return false
+  for (const key of keysA) {
+    if (!Object.prototype.hasOwnProperty.call(b, key)) return false
+    if (a[key] !== b[key]) return false
   }
-  newBuckets.forEach((val, i) => {
-    if (val && val !== '[]') result[bucketKey({ index: i })] = val
-  })
-  return { success: true, newMetadata: result }
+  return true
 }
 
 export function appendItemIdsToConversationMetadata({
@@ -111,20 +127,45 @@ export function appendItemIdsToConversationMetadata({
   metadata?: ConversationMetadata
   responseId: string
   itemIds: string[]
-}): ConversationMetadata {
+}): { metadata: ConversationMetadata; changed: boolean } {
   const base = { ...(metadata || {}) }
-  const existing = parseAllPairs({ metadata: base })
-  const nextPairs = existing.concat(itemIds.map((id) => ({ responseId, itemId: id })))
+  const nonBucketEntries = Object.entries(base).filter(([key]) => !key.startsWith(BUCKET_PREFIX))
+  const availableSlots = Math.max(0, MAX_BUCKETS - nonBucketEntries.length)
+  const preservedNonBucket = serializeNonBucketEntries({ entries: nonBucketEntries })
 
-  let working = nextPairs
-  while (true) {
-    const { success, newMetadata } = tryPackPairs({ baseMetadata: base, pairs: working })
-    if (success) return newMetadata
-    if (working.length === 0) {
-      throw new Error('responseItemsMap: cannot pack even a single item into 16 buckets')
-    }
-    working = working.slice(1)
+  if (availableSlots <= 0) {
+    return { metadata: base, changed: false }
   }
+
+  const existingPairs = parseAllPairs({ metadata: base })
+  const incomingPairs: Pair[] = itemIds.map((id) => ({ responseId, itemId: id }))
+  const combinedPairs: Pair[] = existingPairs.concat(incomingPairs)
+
+  let retainedOldestFirst: Pair[] = []
+
+  for (let idx = combinedPairs.length - 1; idx >= 0; idx -= 1) {
+    const candidate = [combinedPairs[idx], ...retainedOldestFirst]
+    const buckets = packIntoBuckets({ pairs: candidate, slots: availableSlots })
+    if (buckets) {
+      retainedOldestFirst = candidate
+    }
+  }
+
+  const buckets = packIntoBuckets({ pairs: retainedOldestFirst, slots: availableSlots })
+  if (!buckets) {
+    const changed = !metadataEquals(base, preservedNonBucket)
+    return { metadata: changed ? preservedNonBucket : base, changed }
+  }
+
+  const rebuilt = { ...preservedNonBucket }
+  buckets.forEach((value, index) => {
+    if (value && value !== '[]') {
+      rebuilt[bucketKey({ index })] = value
+    }
+  })
+
+  const changed = !metadataEquals(base, rebuilt)
+  return { metadata: rebuilt, changed }
 }
 
 export async function saveResponseItemsToConversationMetadata({
@@ -139,10 +180,11 @@ export async function saveResponseItemsToConversationMetadata({
   itemIds: string[]
 }) {
   const conversation = await client.conversations.retrieve(threadId)
-  const updated = appendItemIdsToConversationMetadata({
+  const { metadata: updated, changed } = appendItemIdsToConversationMetadata({
     metadata: conversation.metadata as Record<string, string> | undefined,
     responseId,
     itemIds,
   })
+  if (!changed) return
   await client.conversations.update(threadId, { metadata: updated })
 }
