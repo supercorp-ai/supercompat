@@ -7,6 +7,7 @@ import { serializeRun } from './serializeRun'
 import { RunAdapterPartobClient } from '@/types'
 import { onEvent } from './onEvent'
 import { getMessages } from './getMessages'
+import type { Run } from '@/types/prisma'
 
 type RunCreateResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Run>
@@ -78,7 +79,7 @@ export const post = ({
       truncationStrategy: truncation_strategy,
       responseFormat: response_format,
     },
-  })
+  }) as Run
 
   const data = serializeRun({ run })
 
