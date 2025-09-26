@@ -1,6 +1,5 @@
-// @ts-ignore-next-line
 import type { PrismaClient, RunStep } from '@prisma/client'
-import { assign, last } from 'radash'
+import { assign } from 'radash'
 import { stepsRegexp } from '@/lib/steps/stepsRegexp'
 import { serializeRunStep } from './serializeRunStep'
 
@@ -28,7 +27,7 @@ export const get = ({
   const runStepsPlusOne = await prisma.runStep.findMany({
     where: { threadId, runId },
     take: pageSize + 1,
-    orderBy: { createdAt: order },
+    orderBy: { createdAt: order as 'asc' | 'desc' },
     ...(after && {
       skip: 1,
       cursor: { id: after },

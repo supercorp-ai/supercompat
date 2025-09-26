@@ -1,5 +1,5 @@
 import type { OpenAI } from 'openai'
-import { StorageAdapterArgs } from '@/types'
+import { StorageAdapterArgs, RunAdapterWithAssistant } from '@/types'
 import type { RequestHandler } from '@/types'
 import { messagesRegexp } from '@/lib/messages/messagesRegexp'
 import { runsRegexp } from '@/lib/runs/runsRegexp'
@@ -16,10 +16,14 @@ import { assistants } from './assistants'
 
 type MethodHandlers = { get?: RequestHandler; post?: RequestHandler }
 
-export const responsesStorageAdapter = (): ((args: StorageAdapterArgs) => { requestHandlers: Record<string, MethodHandlers> }) => {
+type ResponsesStorageAdapterArgs = StorageAdapterArgs & {
+  runAdapter: RunAdapterWithAssistant
+}
+
+export const responsesStorageAdapter = (): ((args: ResponsesStorageAdapterArgs) => { requestHandlers: Record<string, MethodHandlers> }) => {
   const createResponseItems: OpenAI.Responses.ResponseInputItem[] = []
 
-  return ({ runAdapter, client }: StorageAdapterArgs) => ({
+  return ({ runAdapter, client }: ResponsesStorageAdapterArgs) => ({
     requestHandlers: {
       '^/(?:v1|/?openai)/assistants$': assistants({ runAdapter }),
       '^/(?:v1|/?openai)/threads$': threads({ client }),

@@ -1,13 +1,13 @@
 import type { OpenAI } from 'openai'
 import { get } from './get'
-import type { RequestHandler, RunAdapter } from '@/types'
+import type { RequestHandler, RunAdapterWithAssistant } from '@/types'
 
 export const steps = ({
   client,
   runAdapter,
 }: {
   client: OpenAI
-  runAdapter: RunAdapter
+  runAdapter: RunAdapterWithAssistant
 }): { get: RequestHandler } => ({
   get: get({ client, runAdapter }),
 })

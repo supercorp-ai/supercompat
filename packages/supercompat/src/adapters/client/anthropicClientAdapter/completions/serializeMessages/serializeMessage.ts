@@ -21,7 +21,9 @@ export const serializeMessage = ({
         ...(message.tool_calls ?? []).map((toolCall) => ({
           type: 'tool_use',
           id: toolCall.id,
+          // @ts-expect-error todo
           name: toolCall.function.name,
+          // @ts-expect-error todo
           input: toolCall.function.arguments ? JSON.parse(toolCall.function.arguments) : {},
         })),
       ],

@@ -1,6 +1,6 @@
 import type OpenAI from 'openai'
-import type { PrismaClient } from '@prisma/client'
 import { RunStatus } from '@/types/prisma'
+import { $Enums, Prisma, type PrismaClient } from '@prisma/client'
 
 export const threadRunRequiresAction = ({
   prisma,
@@ -18,8 +18,10 @@ export const threadRunRequiresAction = ({
       id: event.data.id,
     },
     data: {
-      status: RunStatus.REQUIRES_ACTION,
-      requiredAction: event.data.required_action,
+      status: RunStatus.REQUIRES_ACTION as $Enums.RunStatus,
+      requiredAction: event.data.required_action != null
+        ? (event.data.required_action as unknown as Prisma.InputJsonValue)
+        : Prisma.JsonNull,
     },
   })
 }

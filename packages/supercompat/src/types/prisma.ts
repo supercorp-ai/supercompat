@@ -1,3 +1,5 @@
+import type { Prisma } from '@prisma/client'
+
 export enum RunStatus {
   QUEUED = "QUEUED",
   IN_PROGRESS = "IN_PROGRESS",
@@ -14,23 +16,22 @@ export type Run = {
   threadId: string
   assistantId: string
   status: RunStatus
-  requiredAction?: JSON
-  lastError?: JSON
+  requiredAction?: Prisma.JsonValue | null
+  lastError?: Prisma.JsonValue | null
   expiresAt: number
-  startedAt?: number
-  cancelledAt?: number
-  failedAt?: number
-  completedAt?: number
+  startedAt?: number | null
+  cancelledAt?: number | null
+  failedAt?: number | null
+  completedAt?: number | null
   model: string
   instructions: string
-  tools: JSON[]
-  fileIds: string[]
-  metadata?: JSON
-  usage?: JSON
-  truncationStrategy: JSON
-  responseFormat: JSON
-  createdAt: string
-  updatedAt: string
+  tools: Prisma.JsonValue[]
+  metadata?: Prisma.JsonValue | null
+  usage?: Prisma.JsonValue | null
+  truncationStrategy: Prisma.JsonValue
+  responseFormat: Prisma.JsonValue
+  createdAt: Date
+  updatedAt: Date
 }
 
 export enum MessageRole {
@@ -48,18 +49,18 @@ export type Message = {
   id: string
   threadId: string
   role: MessageRole
-  content: JSON[]
+  content: Prisma.JsonValue
   status: MessageStatus
   assistantId?: string
   runId?: string
-  completedAt?: string
-  incompleteAt?: string
-  incompleteDetails?: JSON
-  fileIds: string[]
-  metadata?: JSON
-  toolCalls?: JSON
-  createdAt: string
-  updatedAt: string
+  completedAt?: Date | null
+  incompleteAt?: Date | null
+  incompleteDetails?: Prisma.JsonValue | null
+  attachments: Prisma.JsonValue[]
+  metadata?: Prisma.JsonValue | null
+  toolCalls?: Prisma.JsonValue | null
+  createdAt: Date
+  updatedAt: Date
 }
 
 export enum RunStepType {
@@ -82,16 +83,16 @@ export type RunStep = {
   runId: string
   type: RunStepType
   status: RunStepStatus
-  stepDetails: JSON
-  lastError?: JSON
-  expiredAt?: number
-  cancelledAt?: number
-  failedAt?: number
-  completedAt?: number
-  metadata?: JSON
-  usage?: JSON
-  createdAt: string
-  updatedAt: string
+  stepDetails: Prisma.JsonValue
+  lastError?: Prisma.JsonValue | null
+  expiredAt?: number | null
+  cancelledAt?: number | null
+  failedAt?: number | null
+  completedAt?: number | null
+  metadata?: Prisma.JsonValue | null
+  usage?: Prisma.JsonValue | null
+  createdAt: Date
+  updatedAt: Date
 }
 
 export type MessageWithRun = Message & {

@@ -2,7 +2,11 @@ import type { PrismaClient } from '@prisma/client'
 import dayjs from 'dayjs'
 
 export const post = ({ prisma }: { prisma: PrismaClient }) =>
-  async (_url: string, options: RequestInit & { body: string }) => {
+  async (_url: string, options: RequestInit & { body?: string }) => {
+    if (!options.body) {
+      throw new Error('Request body is required')
+    }
+
     const body = JSON.parse(options.body)
     const { model, instructions } = body
 

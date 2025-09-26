@@ -1,0 +1,51 @@
+import { Prisma } from '@prisma/client'
+import type { Run as PrismaRun, RunStep as PrismaRunStep } from '@prisma/client'
+import {
+  RunStatus,
+  RunStepStatus,
+  RunStepType,
+  type Run,
+  type RunStep,
+} from '@/types/prisma'
+
+export const mapPrismaRun = (run: PrismaRun): Run => ({
+  id: run.id,
+  threadId: run.threadId,
+  assistantId: run.assistantId,
+  status: run.status as RunStatus,
+  requiredAction: run.requiredAction as Prisma.JsonValue | null,
+  lastError: run.lastError as Prisma.JsonValue | null,
+  expiresAt: run.expiresAt,
+  startedAt: run.startedAt ?? null,
+  cancelledAt: run.cancelledAt ?? null,
+  failedAt: run.failedAt ?? null,
+  completedAt: run.completedAt ?? null,
+  model: run.model,
+  instructions: run.instructions,
+  tools: run.tools as Prisma.JsonValue[],
+  metadata: run.metadata as Prisma.JsonValue | null,
+  usage: run.usage as Prisma.JsonValue | null,
+  truncationStrategy: run.truncationStrategy as Prisma.JsonValue,
+  responseFormat: run.responseFormat as Prisma.JsonValue,
+  createdAt: run.createdAt,
+  updatedAt: run.updatedAt,
+})
+
+export const mapPrismaRunStep = (runStep: PrismaRunStep): RunStep => ({
+  id: runStep.id,
+  threadId: runStep.threadId,
+  assistantId: runStep.assistantId,
+  runId: runStep.runId,
+  type: runStep.type as RunStepType,
+  status: runStep.status as RunStepStatus,
+  stepDetails: runStep.stepDetails as Prisma.JsonValue,
+  lastError: runStep.lastError as Prisma.JsonValue | null,
+  expiredAt: runStep.expiredAt ?? null,
+  cancelledAt: runStep.cancelledAt ?? null,
+  failedAt: runStep.failedAt ?? null,
+  completedAt: runStep.completedAt ?? null,
+  metadata: runStep.metadata as Prisma.JsonValue | null,
+  usage: runStep.usage as Prisma.JsonValue | null,
+  createdAt: runStep.createdAt,
+  updatedAt: runStep.updatedAt,
+})

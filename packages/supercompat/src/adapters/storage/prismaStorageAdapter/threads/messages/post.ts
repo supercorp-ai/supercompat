@@ -1,6 +1,6 @@
 import type OpenAI from 'openai'
 import { isArray } from 'radash'
-import type { PrismaClient } from '@prisma/client'
+import { Prisma, $Enums, type PrismaClient } from '@prisma/client'
 import { serializeMessage } from './serializeMessage'
 import { messagesRegexp } from '@/lib/messages/messagesRegexp'
 
@@ -44,10 +44,14 @@ export const post = ({
   prisma,
 }: {
   prisma: PrismaClient
-}) => async (urlString: string, options: RequestInit & { body: string }): Promise<MessageCreateResponse> => {
+}) => async (urlString: string, options: RequestInit & { body?: string }): Promise<MessageCreateResponse> => {
   const url = new URL(urlString)
 
   const [, threadId] = url.pathname.match(new RegExp(messagesRegexp))!
+
+  if (!options.body) {
+    throw new Error('Request body is required')
+  }
 
   const body = JSON.parse(options.body)
   const { role, content, metadata } = body
@@ -55,9 +59,9 @@ export const post = ({
   const message = await prisma.message.create({
     data: {
       threadId,
-      content: messageContentBlocks({ content }),
-      role: role === 'user' ? 'USER' : 'ASSISTANT',
-      metadata: metadata || {},
+      content: messageContentBlocks({ content }) as Prisma.InputJsonValue,
+      role: (role === 'user' ? 'USER' : 'ASSISTANT') as $Enums.MessageRole,
+      metadata: (metadata ?? {}) as Prisma.InputJsonValue,
     },
   })
 

@@ -4,7 +4,7 @@ import dayjs from 'dayjs'
 import { assign } from 'radash'
 import { runsRegexp } from '@/lib/runs/runsRegexp'
 import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
-import { RunAdapterPartobClient } from '@/types'
+import { RunAdapterWithAssistant } from '@/types'
 import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveResponseItemsToConversationMetadata'
 
 type RunCreateResponse = Response & {
@@ -47,11 +47,15 @@ export const post = ({
   createResponseItems,
 }: {
   client: OpenAI
-  runAdapter: RunAdapterPartobClient
+  runAdapter: RunAdapterWithAssistant
   createResponseItems: OpenAI.Responses.ResponseInputItem[]
-}) => async (urlString: string, options: RequestInit & { body: string }): Promise<RunCreateResponse> => {
+}) => async (urlString: string, options: RequestInit & { body?: string }): Promise<RunCreateResponse> => {
   const url = new URL(urlString)
   const [, threadId] = url.pathname.match(new RegExp(runsRegexp))!
+
+  if (typeof options.body !== 'string') {
+    throw new Error('Request body is required')
+  }
 
   const body = JSON.parse(options.body)
   const {

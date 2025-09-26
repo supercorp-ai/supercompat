@@ -34,11 +34,16 @@ export const serializeItemAsImageGenerationRunStep = ({
       arguments: '{}',
       output: JSON.stringify({
         status: item.status,
+        // @ts-expect-error bad openai types
         background: item.background,
+        // @ts-expect-error bad openai types
         output_format: item.output_format,
+        // @ts-expect-error bad openai types
         quality: item.quality,
         result: item.result,
+        // @ts-expect-error bad openai types
         size: item.size,
+        // @ts-expect-error bad openai types
         revised_prompt: item.revised_prompt,
       })
     },

@@ -1,7 +1,7 @@
 import { uid } from 'radash'
 import type OpenAI from 'openai'
 
-type ItemType = OpenAI.Conversations.ConversationItem | OpenAI.Responses.ResponseItem
+type ItemType = OpenAI.Conversations.ConversationItem | OpenAI.Responses.ResponseItem | OpenAI.Responses.ResponseInputItem.Message
 
 const serializeContent = ({
   item,
@@ -44,6 +44,7 @@ const serializeContent = ({
     return [{
       type: 'image_url' as const,
       image_url: {
+        // @ts-expect-error bad openai types
         url: `data:image/${item.output_format};base64,${item.result}`,
         detail: 'auto' as const,
       },
@@ -104,7 +105,7 @@ export const serializeItemAsMessage = ({
   runId?: string | null
   status?: 'completed' | 'in_progress'
 }): OpenAI.Beta.Threads.Message => ({
-  id: item.id || uid(24),
+  id: (item as any).id || uid(24),
   object: 'thread.message' as const,
   created_at: createdAt,
   thread_id: threadId,

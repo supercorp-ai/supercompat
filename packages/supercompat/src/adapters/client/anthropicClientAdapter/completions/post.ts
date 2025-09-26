@@ -47,17 +47,27 @@ export const post = ({
       async start(controller) {
         for await (const chunk of response) {
           if (chunk.type === 'content_block_delta') {
-            const delta = chunk.delta.type === 'input_json_delta' ? {
-              tool_calls: [
-                {
-                  index: 0,
-                  function: {
-                    arguments: chunk.delta.partial_json,
+            let delta: { tool_calls?: any; content?: string | null }
+
+            if (chunk.delta.type === 'input_json_delta') {
+              delta = {
+                tool_calls: [
+                  {
+                    index: 0,
+                    function: {
+                      arguments: chunk.delta.partial_json,
+                    },
                   },
-                },
-              ]
-            } : {
-              content: chunk.delta.text,
+                ],
+              }
+            } else if ('text' in chunk.delta) {
+              delta = {
+                content: chunk.delta.text,
+              }
+            } else {
+              delta = {
+                content: '',
+              }
             }
 
             const messageDelta = {
@@ -73,21 +83,31 @@ export const post = ({
 
             controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
           } else if (chunk.type === 'content_block_start') {
-            const delta = chunk.content_block.type === 'tool_use' ? {
-              content: null,
-              tool_calls: [
-                {
-                  index: 0,
-                  id: chunk.content_block.id,
-                  type: 'function',
-                  function: {
-                    name: chunk.content_block.name,
-                    arguments: '',
-                  }
-                }
-              ],
-            } : {
-              content: chunk.content_block.text,
+            let delta: { content: string | null; tool_calls?: any }
+
+            if (chunk.content_block.type === 'tool_use') {
+              delta = {
+                content: null,
+                tool_calls: [
+                  {
+                    index: 0,
+                    id: chunk.content_block.id,
+                    type: 'function',
+                    function: {
+                      name: chunk.content_block.name,
+                      arguments: '',
+                    },
+                  },
+                ],
+              }
+            } else if ('text' in chunk.content_block) {
+              delta = {
+                content: chunk.content_block.text,
+              }
+            } else {
+              delta = {
+                content: '',
+              }
             }
 
             const messageDelta = {

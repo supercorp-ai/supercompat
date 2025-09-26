@@ -1,5 +1,7 @@
-import { PrismaClient } from '@prisma/client'
+import type OpenAI from 'openai'
+import type { PrismaClient } from '@prisma/client'
 import dayjs from 'dayjs'
+import type { Run } from '@/types/prisma'
 
 export const updateRun = async ({
   prisma,
@@ -12,8 +14,9 @@ export const updateRun = async ({
   runId: string
   threadId: string
   onThreadRunStepCompleted?: ({ runStep }: { runStep: any }) => void
-  tool_outputs: any
+  tool_outputs: OpenAI.Beta.Threads.RunSubmitToolOutputsParams['tool_outputs']
 }) => (
+  // @ts-expect-error prisma transaction typing is broken
   prisma.$transaction(async (prisma: PrismaClient) => {
     const runSteps = await prisma.runStep.findMany({
       where: {
@@ -73,5 +76,5 @@ export const updateRun = async ({
         status: 'QUEUED',
       },
     })
-  })
+  }) as Promise<Run>
 )

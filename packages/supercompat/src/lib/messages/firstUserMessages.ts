@@ -3,8 +3,8 @@ import type OpenAI from 'openai'
 export const firstUserMessages = ({
   messages,
 }: {
-  messages: OpenAI.Chat.ChatCompletionMessageParam[]
-}): OpenAI.Chat.ChatCompletionMessageParam[] => {
+  messages: OpenAI.ChatCompletionMessageParam[]
+}): OpenAI.ChatCompletionMessageParam[] => {
   const firstMessage = messages[0]
   if (!firstMessage) return messages
 
@@ -13,7 +13,7 @@ export const firstUserMessages = ({
       {
         role: 'user',
         content: '-',
-      },
+      } as OpenAI.ChatCompletionMessageParam,
       ...messages,
     ]
   }

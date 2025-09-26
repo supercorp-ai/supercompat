@@ -1,6 +1,6 @@
 import type OpenAI from 'openai'
 import { MessageStatus, RunStepType } from '@/types/prisma'
-import type { PrismaClient } from '@prisma/client'
+import { $Enums, Prisma, type PrismaClient } from '@prisma/client'
 
 export const threadMessageCompleted = async ({
   prisma,
@@ -13,11 +13,13 @@ export const threadMessageCompleted = async ({
 }) => {
   controller.enqueue(event)
 
-  if (event.data.tool_calls) {
+  const toolCalls = (event.data as { tool_calls?: unknown }).tool_calls
+
+  if (toolCalls !== undefined) {
     const latestRunStep = await prisma.runStep.findFirst({
       where: {
         threadId: event.data.thread_id,
-        type: RunStepType.TOOL_CALLS,
+        type: RunStepType.TOOL_CALLS as $Enums.RunStepType,
       },
       orderBy: {
         createdAt: 'desc',
@@ -35,20 +37,23 @@ export const threadMessageCompleted = async ({
       data: {
         stepDetails: {
           type: 'tool_calls',
-          tool_calls: event.data.tool_calls,
-        },
+          tool_calls: toolCalls,
+        } as Prisma.InputJsonValue,
       },
     })
   }
-
   return prisma.message.update({
     where: {
       id: event.data.id,
     },
     data: {
-      status: MessageStatus.COMPLETED,
-      ...(event.data.content ? { content: event.data.content } : {}),
-      ...(event.data.tool_calls ? { toolCalls: event.data.tool_calls } : {}),
+      status: MessageStatus.COMPLETED as $Enums.MessageStatus,
+      ...(event.data.content
+        ? { content: event.data.content as unknown as Prisma.InputJsonValue }
+        : {}),
+      ...(toolCalls !== undefined
+        ? { toolCalls: toolCalls as Prisma.InputJsonValue }
+        : {}),
     },
   })
 }

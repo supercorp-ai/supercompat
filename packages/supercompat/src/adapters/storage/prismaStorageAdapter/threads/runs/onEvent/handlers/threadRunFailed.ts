@@ -1,6 +1,6 @@
 import type OpenAI from 'openai'
 import { RunStatus } from '@/types/prisma'
-import type { PrismaClient } from '@prisma/client'
+import { $Enums, Prisma, type PrismaClient } from '@prisma/client'
 
 export const threadRunFailed = ({
   prisma,
@@ -18,9 +18,11 @@ export const threadRunFailed = ({
       id: event.data.id,
     },
     data: {
-      status: RunStatus.FAILED,
+      status: RunStatus.FAILED as $Enums.RunStatus,
       failedAt: event.data.failed_at,
-      lastError: event.data.last_error,
+      lastError: event.data.last_error != null
+        ? (event.data.last_error as unknown as Prisma.InputJsonValue)
+        : Prisma.JsonNull,
     },
   })
 }

@@ -2,6 +2,8 @@ import type OpenAI from 'openai'
 import { MessageWithRun } from '@/types'
 import { isArray, isObject } from 'radash'
 
+type ToolCall = OpenAI.Beta.Threads.Runs.Steps.ToolCall
+
 const validToolCallContentTypes = [
   'image',
   'text',
@@ -40,7 +42,7 @@ const serializeToolCall = ({
   content: serializeToolContent({
     toolCall,
   }),
-})
+}) as OpenAI.ChatCompletionToolMessageParam
 
 const serializeMessageWithContent = ({
   message,
@@ -52,7 +54,7 @@ const serializeMessageWithContent = ({
     content: message.content as unknown as OpenAI.Beta.Threads.Messages.TextContentBlock[],
   }),
   ...(message?.metadata?.toolCalls ? { tool_calls: message.metadata.toolCalls } : {}),
-})
+}) as OpenAI.ChatCompletionMessageParam
 
 const serializeContent = ({
   content,
@@ -65,34 +67,33 @@ export const serializeMessage = ({
 }: {
   message: MessageWithRun
 }) => {
-  const result = [serializeMessageWithContent({ message })]
+  const result = [serializeMessageWithContent({ message })] as OpenAI.ChatCompletionMessageParam[]
 
   const run = message.run
 
   if (!run) return result
 
-  const messageToolCalls = message.metadata?.toolCalls || []
+  const messageToolCalls = (message.metadata?.toolCalls || []) as OpenAI.Beta.Threads.Runs.Steps.ToolCall[]
 
   messageToolCalls.forEach((tc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
     const runStep = run.runSteps.find((rs) => {
       if (rs.type !== 'tool_calls') return false
+      const stepDetails = rs.step_details as { tool_calls?: ToolCall[] }
+      if (!Array.isArray(stepDetails.tool_calls)) return false
 
-      return rs.step_details.tool_calls.some((rsTc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
-        if (rsTc.type !== 'function') return false
-
-        return rsTc.id === tc.id
-      })
+      return stepDetails.tool_calls.some((rsTc: ToolCall) => rsTc.type === 'function' && rsTc.id === tc.id)
     })
 
     if (!runStep) return
 
-    const toolCall = runStep.step_details.tool_calls.find((rsTc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
-      if (rsTc.type !== 'function') return false
+    const stepDetails = runStep.step_details as { tool_calls?: ToolCall[] }
+    if (!Array.isArray(stepDetails.tool_calls)) return
 
-      return rsTc.id === tc.id
-    })
+    const toolCall = stepDetails.tool_calls.find((rsTc: ToolCall) => rsTc.type === 'function' && rsTc.id === tc.id)
 
-    result.push(serializeToolCall({ toolCall }))
+    if (toolCall && toolCall.type === 'function') {
+      result.push(serializeToolCall({ toolCall }))
+    }
   })
 
   return result

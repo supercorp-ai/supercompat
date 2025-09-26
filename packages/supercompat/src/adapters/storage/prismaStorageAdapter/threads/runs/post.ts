@@ -7,6 +7,7 @@ import { serializeRun } from './serializeRun'
 import { RunAdapterPartobClient } from '@/types'
 import { onEvent } from './onEvent'
 import { getMessages } from './getMessages'
+import type { Run } from '@/types/prisma'
 
 type RunCreateResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Run>
@@ -18,9 +19,13 @@ export const post = ({
 }: {
   prisma: PrismaClient
   runAdapter: RunAdapterPartobClient
-}) => async (urlString: string, options: RequestInit & { body: string }): Promise<RunCreateResponse> => {
+}) => async (urlString: string, options: RequestInit & { body?: string }): Promise<RunCreateResponse> => {
   const url = new URL(urlString)
   const [, threadId] = url.pathname.match(new RegExp(runsRegexp))!
+
+  if (!options.body) {
+    throw new Error('No body provided')
+  }
 
   const body = JSON.parse(options.body)
   const { assistant_id, stream } = body
@@ -78,7 +83,7 @@ export const post = ({
       truncationStrategy: truncation_strategy,
       responseFormat: response_format,
     },
-  })
+  }) as Run
 
   const data = serializeRun({ run })
 
