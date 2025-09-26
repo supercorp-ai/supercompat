@@ -1,6 +1,6 @@
 import type OpenAI from 'openai'
 import { MessageStatus, RunStepType } from '@/types/prisma'
-import { $Enums, Prisma, type PrismaClient } from '@prisma/client'
+import type { Prisma, PrismaClient } from '@prisma/client'
 
 export const threadMessageCompleted = async ({
   prisma,
@@ -19,7 +19,7 @@ export const threadMessageCompleted = async ({
     const latestRunStep = await prisma.runStep.findFirst({
       where: {
         threadId: event.data.thread_id,
-        type: RunStepType.TOOL_CALLS as $Enums.RunStepType,
+        type: RunStepType.TOOL_CALLS,
       },
       orderBy: {
         createdAt: 'desc',
@@ -47,7 +47,7 @@ export const threadMessageCompleted = async ({
       id: event.data.id,
     },
     data: {
-      status: MessageStatus.COMPLETED as $Enums.MessageStatus,
+      status: MessageStatus.COMPLETED as Prisma.MessageUpdateInput['status'],
       ...(event.data.content
         ? { content: event.data.content as unknown as Prisma.InputJsonValue }
         : {}),

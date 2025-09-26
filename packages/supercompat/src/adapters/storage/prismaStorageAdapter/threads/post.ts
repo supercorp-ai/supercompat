@@ -1,5 +1,5 @@
 import type OpenAI from 'openai'
-import { $Enums, Prisma, type PrismaClient } from '@prisma/client'
+import type { Prisma, PrismaClient } from '@prisma/client'
 import dayjs from 'dayjs'
 import { serializeThread } from './serializeThread'
 
@@ -30,25 +30,23 @@ export const post = ({
 
   const initialCreatedAt = dayjs().subtract(messages.length, 'seconds')
 
-  const messageData = messages.map((message, index) => (
-    Prisma.validator<Prisma.MessageCreateWithoutThreadInput>()({
-      role: (message.role === 'user' ? 'USER' : 'ASSISTANT') as $Enums.MessageRole,
-      content: [
-        {
-          type: 'text',
-          text: {
-            annotations: [],
-            value: message.content,
-          },
+  const messageData = messages.map((message, index) => ({
+    role: message.role === 'user' ? 'USER' : 'ASSISTANT',
+    content: [
+      {
+        type: 'text',
+        text: {
+          annotations: [],
+          value: message.content,
         },
-      ] as Prisma.InputJsonValue,
-      attachments: (message.attachments ?? []) as Prisma.InputJsonValue[],
-      metadata: message.metadata as Prisma.InputJsonValue | undefined,
-      createdAt: initialCreatedAt.add(index, 'seconds').toDate(),
-    })
-  ))
+      },
+    ] as Prisma.InputJsonValue,
+    attachments: (message.attachments ?? []) as Prisma.InputJsonValue[],
+    metadata: message.metadata as Prisma.InputJsonValue | undefined,
+    createdAt: initialCreatedAt.add(index, 'seconds').toDate(),
+  })) satisfies Prisma.MessageCreateWithoutThreadInput[]
 
-  const threadData = Prisma.validator<Prisma.ThreadCreateInput>()({
+  const threadData = {
     metadata: metadataRecord as Prisma.InputJsonValue,
     assistant: {
       connect: {
@@ -58,7 +56,7 @@ export const post = ({
     messages: {
       create: messageData,
     },
-  })
+  } satisfies Prisma.ThreadCreateInput
 
   const thread = await prisma.thread.create({
     data: threadData,

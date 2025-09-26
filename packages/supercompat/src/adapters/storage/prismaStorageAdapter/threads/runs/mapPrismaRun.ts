@@ -1,5 +1,4 @@
-import { Prisma } from '@prisma/client'
-import type { Run as PrismaRun, RunStep as PrismaRunStep } from '@prisma/client'
+import type { Prisma, Run as PrismaRun, RunStep as PrismaRunStep } from '@prisma/client'
 import {
   RunStatus,
   RunStepStatus,

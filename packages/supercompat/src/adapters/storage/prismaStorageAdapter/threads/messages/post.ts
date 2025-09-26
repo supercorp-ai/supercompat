@@ -1,6 +1,6 @@
 import type OpenAI from 'openai'
 import { isArray } from 'radash'
-import { Prisma, $Enums, type PrismaClient } from '@prisma/client'
+import type { Prisma, PrismaClient } from '@prisma/client'
 import { serializeMessage } from './serializeMessage'
 import { messagesRegexp } from '@/lib/messages/messagesRegexp'
 
@@ -60,7 +60,7 @@ export const post = ({
     data: {
       threadId,
       content: messageContentBlocks({ content }) as Prisma.InputJsonValue,
-      role: (role === 'user' ? 'USER' : 'ASSISTANT') as $Enums.MessageRole,
+      role: (role === 'user' ? 'USER' : 'ASSISTANT') as Prisma.MessageCreateWithoutThreadInput['role'],
       metadata: (metadata ?? {}) as Prisma.InputJsonValue,
     },
   })
