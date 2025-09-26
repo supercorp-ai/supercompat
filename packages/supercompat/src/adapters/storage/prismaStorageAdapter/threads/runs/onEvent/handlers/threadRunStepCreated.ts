@@ -28,7 +28,7 @@ export const threadRunStepCreated = async ({
   prisma: PrismaClient
   event: OpenAI.Beta.AssistantStreamEvent.ThreadRunStepCreated
   controller: ReadableStreamDefaultController<OpenAI.Beta.AssistantStreamEvent.ThreadRunStepCreated>
-}): Promise<void> => {
+}): Promise<OpenAI.Beta.Threads.Runs.RunStep> => {
   const runStep = await prisma.runStep.create({
     data: {
       runId: event.data.run_id,
@@ -47,4 +47,6 @@ export const threadRunStepCreated = async ({
     ...event,
     data: serializedRunStep,
   } as OpenAI.Beta.AssistantStreamEvent.ThreadRunStepCreated)
+
+  return serializedRunStep
 }
