@@ -14,6 +14,7 @@ export const updateRun = async ({
   onThreadRunStepCompleted?: ({ runStep }: { runStep: any }) => void
   tool_outputs: any
 }) => (
+  // @ts-expect-error prisma transaction typing is broken
   prisma.$transaction(async (prisma: PrismaClient) => {
     const runSteps = await prisma.runStep.findMany({
       where: {
