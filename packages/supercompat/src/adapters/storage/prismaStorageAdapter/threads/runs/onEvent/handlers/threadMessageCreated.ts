@@ -1,6 +1,6 @@
 import type OpenAI from 'openai'
-import { MessageStatus } from '@/types/prisma'
-import type { PrismaClient } from '@prisma/client'
+import { MessageRole, MessageStatus } from '@/types/prisma'
+import { $Enums, Prisma, type PrismaClient } from '@prisma/client'
 import { serializeMessage } from '../../../messages/serializeMessage'
 
 const status = (event: OpenAI.Beta.AssistantStreamEvent.ThreadMessageCreated) => {
@@ -23,11 +23,13 @@ export const threadMessageCreated = async ({
   const message = await prisma.message.create({
     data: {
       threadId: event.data.thread_id,
-      content: event.data.content as unknown as OpenAI.Beta.Threads.Messages.TextContentBlock[],
-      role: event.data.role === 'assistant' ? 'ASSISTANT' : 'USER',
+      content: event.data.content as unknown as Prisma.InputJsonValue,
+      role: (event.data.role === 'assistant'
+        ? MessageRole.ASSISTANT
+        : MessageRole.USER) as $Enums.MessageRole,
       assistantId: event.data.assistant_id,
       runId: event.data.run_id,
-      status: status(event),
+      status: status(event) as $Enums.MessageStatus,
     },
   })
 
