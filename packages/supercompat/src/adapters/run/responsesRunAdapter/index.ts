@@ -55,8 +55,10 @@ const serializeToolCalls = ({
 export const responsesRunAdapter =
   ({
     getOpenaiAssistant: getDirectOpenaiAssistant,
+    waitUntil = <T>(p: Promise<T>) => p.then(() => {})
   }: {
     getOpenaiAssistant: (args?: Args) => Promise<OpenAI.Beta.Assistants.Assistant> | OpenAI.Beta.Assistants.Assistant | Pick<OpenAI.Beta.Assistants.Assistant, 'id'> | Promise<Pick<OpenAI.Beta.Assistants.Assistant, 'id'>>
+    waitUntil?: <T>(p: Promise<T>) => void | Promise<void>
   }) => {
     let cachedOpenaiAssistant: OpenAI.Beta.Assistants.Assistant | null = null
 
@@ -790,14 +792,18 @@ export const responsesRunAdapter =
           } as any,
         })
       } finally {
-        if (responseCreatedResponse?.id && itemIds.length > 0) {
-          await saveResponseItemsToConversationMetadata({
-            client,
-            threadId,
-            responseId: responseCreatedResponse.id,
-            itemIds,
-          })
-        }
+        waitUntil(new Promise(async (resolve) => {
+          if (responseCreatedResponse?.id && itemIds.length > 0) {
+            await saveResponseItemsToConversationMetadata({
+              client,
+              threadId,
+              responseId: responseCreatedResponse.id,
+              itemIds,
+            })
+          }
+
+          resolve(true)
+        }))
       }
     }
 
