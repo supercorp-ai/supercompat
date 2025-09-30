@@ -10,6 +10,7 @@ import { serializeItemAsMcpListToolsRunStep } from '@/lib/items/serializeItemAsM
 import { serializeItemAsMcpCallRunStep } from '@/lib/items/serializeItemAsMcpCallRunStep'
 import { serializeItemAsCodeInterpreterCallRunStep } from '@/lib/items/serializeItemAsCodeInterpreterCallRunStep'
 import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsComputerCallRunStep'
+import { serializeItemAsReasoningRunStep } from '@/lib/items/serializeItemAsReasoningRunStep'
 
 export const get = ({
   client,
@@ -79,6 +80,16 @@ export const get = ({
         serializeItemAsComputerCallRunStep({
           item,
           items: computerCallOutputItems,
+          openaiAssistant,
+          threadId,
+          runId: response.id,
+        }),
+        step,
+      ]
+    } else if (item.type === 'reasoning') {
+      return [
+        serializeItemAsReasoningRunStep({
+          item,
           openaiAssistant,
           threadId,
           runId: response.id,

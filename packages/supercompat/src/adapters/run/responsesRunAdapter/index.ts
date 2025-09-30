@@ -11,6 +11,7 @@ import { serializeItemAsMcpListToolsRunStep } from '@/lib/items/serializeItemAsM
 import { serializeItemAsMcpCallRunStep } from '@/lib/items/serializeItemAsMcpCallRunStep'
 import { serializeItemAsCodeInterpreterCallRunStep } from '@/lib/items/serializeItemAsCodeInterpreterCallRunStep'
 import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsComputerCallRunStep'
+import { serializeItemAsReasoningRunStep } from '@/lib/items/serializeItemAsReasoningRunStep'
 
 type Args = {
   select?: {
@@ -295,6 +296,41 @@ export const responsesRunAdapter =
                     completedAt: null,
                   })
                 })
+              } else if (event.item.type === 'reasoning') {
+                await onEvent({
+                  event: 'thread.message.created',
+                  data: serializeItemAsMessage({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
+                    createdAt: dayjs().unix(),
+                    runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.created',
+                  data: serializeItemAsMessageCreationRunStep({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
+                    runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
+                    completedAt: null,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.created',
+                  data: serializeItemAsReasoningRunStep({
+                    item: event.item,
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
+                    threadId,
+                    runId: responseCreatedResponse!.id,
+                    completedAt: null,
+                  })
+                })
               } else if (event.item.type === 'web_search_call') {
                 await onEvent({
                   event: 'thread.message.created',
@@ -484,6 +520,37 @@ export const responsesRunAdapter =
                 await onEvent({
                   event: 'thread.run.step.completed',
                   data: serializeItemAsImageGenerationRunStep({
+                    item: event.item,
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
+                    threadId,
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.run.step.completed',
+                  data: serializeItemAsMessageCreationRunStep({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
+
+                await onEvent({
+                  event: 'thread.message.completed',
+                  data: serializeItemAsMessage({
+                    item: event.item,
+                    threadId,
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
+                    createdAt: dayjs().unix(),
+                    runId: responseCreatedResponse!.id,
+                  })
+                })
+              } else if (event.item.type === 'reasoning') {
+                await onEvent({
+                  event: 'thread.run.step.completed',
+                  data: serializeItemAsReasoningRunStep({
                     item: event.item,
                     openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     threadId,
