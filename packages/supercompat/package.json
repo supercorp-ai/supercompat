@@ -1,6 +1,6 @@
 {
   "name": "supercompat",
-  "version": "3.6.1",
+  "version": "3.7.0",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -19,12 +19,14 @@
     "build": "tsup",
     "lint": "tsc --noEmit"
   },
+  "peerDependencies": {
+    "openai": "*"
+  },
   "dependencies": {
     "@paralleldrive/cuid2": "^2.2.2",
     "dayjs": "^1.11.18",
     "deepmerge-ts": "^7.1.5",
     "lodash": "^4.17.21",
-    "openai": "^5.23.0",
     "radash": "^12.1.1",
     "ts-deepmerge": "^7.0.3"
   },
@@ -37,6 +39,7 @@
     "groq-sdk": "^0.21.0",
     "humiris-ai": "^1.11.0",
     "prisma": "^6.15.0",
+    "openai": "^6.0.1",
     "tsup": "^8.4.0",
     "undici": "^7.15.0"
   }

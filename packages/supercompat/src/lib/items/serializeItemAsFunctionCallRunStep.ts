@@ -6,6 +6,19 @@ type RunStep = OpenAI.Beta.Threads.Runs.RunStep
 type FunctionToolCall = OpenAI.Beta.Threads.Runs.Steps.FunctionToolCall
 type ToolCallsStepDetails = OpenAI.Beta.Threads.Runs.Steps.ToolCallsStepDetails
 
+const serializeFunctionCallOutput = ({
+  functionCallOutput,
+}: {
+  functionCallOutput: OpenAI.Responses.ResponseFunctionToolCallOutputItem | undefined
+}) => {
+  if (!functionCallOutput) return null
+  if (typeof functionCallOutput.output === 'string') {
+    return functionCallOutput.output
+  }
+
+  return JSON.stringify(functionCallOutput.output)
+}
+
 export const serializeItemAsFunctionCallRunStep = ({
   item,
   items,
@@ -54,7 +67,7 @@ export const serializeItemAsFunctionCallRunStep = ({
     function: {
       name: item.name,
       arguments: item.arguments,
-      output: functionCallOutput ? functionCallOutput.output : null,
+      output: serializeFunctionCallOutput({ functionCallOutput }),
     },
   }
 
