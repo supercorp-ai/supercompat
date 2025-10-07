@@ -12,7 +12,7 @@ const getTake = ({
   run: Run
 }) => {
   // @ts-ignore-next-line
-  if (run.truncationStrategy.type === 'auto') {
+  if (['auto', 'disabled'].includes(run.truncationStrategy.type)) {
     return null
   }
 

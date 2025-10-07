@@ -78,6 +78,18 @@ const getToolCallOutputItems = ({
   }
 }
 
+const truncation = ({
+  openaiAssistant,
+}: {
+  openaiAssistant: any
+}) => {
+  if (openaiAssistant.truncation_strategy?.type === 'disabled') {
+    return 'disabled'
+  }
+
+  return 'auto'
+}
+
 export const post = ({
   client,
   runAdapter,
@@ -110,8 +122,7 @@ export const post = ({
     // metadata,
     stream,
     ...serializeTools({ tools: openaiAssistant.tools }),
-    // @ts-expect-error compat
-    ...(openaiAssistant.truncation_strategy ? { truncation: openaiAssistant.truncation_strategy.type } : {}),
+    truncation: truncation({ openaiAssistant }),
     // text: response_format,
   })
 

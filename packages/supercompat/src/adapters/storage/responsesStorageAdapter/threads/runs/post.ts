@@ -27,6 +27,19 @@ const serializeTools = ({
   }
 }
 
+const truncation = ({
+  truncation_strategy,
+}: {
+  truncation_strategy: OpenAI.Beta.Threads.Runs.RunCreateParams['truncation_strategy']
+}) => {
+  // @ts-expect-error compat
+  if (truncation_strategy.type === 'disabled') {
+    return 'disabled'
+  }
+
+  return 'auto'
+}
+
 const defaultAssistant = {
   model: '',
   instructions: '',
@@ -83,7 +96,7 @@ export const post = ({
     metadata,
     stream,
     ...serializeTools({ tools }),
-    truncation: truncation_strategy.type,
+    truncation: truncation({ truncation_strategy }),
     text: {
       format: response_format,
     },
