@@ -4,7 +4,7 @@ import type OpenAI from 'openai'
 import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
 import { serializeItemAsMessage } from '@/lib/items/serializeItemAsMessage'
 import { serializeItemAsMessageCreationRunStep } from '@/lib/items/serializeItemAsMessageCreationRunStep'
-import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveResponseItemsToConversationMetadata'
+import { createMetadataSaver } from '@/lib/responses/saveResponseItemsToConversationMetadata'
 import { serializeItemAsImageGenerationRunStep } from '@/lib/items/serializeItemAsImageGenerationRunStep'
 import { serializeItemAsWebSearchRunStep } from '@/lib/items/serializeItemAsWebSearchRunStep'
 import { serializeItemAsMcpListToolsRunStep } from '@/lib/items/serializeItemAsMcpListToolsRunStep'
@@ -94,13 +94,20 @@ export const responsesRunAdapter =
       const mcpCalls: Record<string, OpenAI.Responses.ResponseItem.McpCall> = {}
       const codeInterpreterCalls: Record<string, OpenAI.Responses.ResponseCodeInterpreterToolCall> = {}
 
-      let itemIds: string[] = []
+      let metadataSaver: ReturnType<typeof createMetadataSaver> | null = null
 
       try {
         for await (const event of response as AsyncIterable<OpenAI.Responses.ResponseStreamEvent>) {
           switch (event.type) {
             case 'response.created':
               responseCreatedResponse = event.response
+
+              // Initialize metadata saver
+              metadataSaver = createMetadataSaver({
+                client,
+                threadId,
+                responseId: event.response.id,
+              })
 
               await onEvent({
                 event: 'thread.run.created',
@@ -122,7 +129,11 @@ export const responsesRunAdapter =
               break
 
             case 'response.completed': {
-              itemIds = event.response.output.filter((o) => o.id).map((o) => o.id!)
+              // Add all final output items to metadata saver
+              const finalItemIds = event.response.output.filter((o) => o.id).map((o) => o.id!)
+              if (metadataSaver && finalItemIds.length > 0) {
+                metadataSaver.add(finalItemIds)
+              }
 
               const toolCalls = event.response.output.filter((o) => o.type === 'function_call' || o.type === 'computer_call') as OpenAI.Responses.ResponseFunctionToolCall[] | OpenAI.Responses.ResponseComputerToolCall[]
 
@@ -477,7 +488,10 @@ export const responsesRunAdapter =
                 })
               }
 
-              if (event.item.id) itemIds.push(event.item.id)
+              // Save item to metadata as soon as it's added
+              if (event.item.id && metadataSaver) {
+                metadataSaver.add([event.item.id])
+              }
 
               break
             }
@@ -860,13 +874,8 @@ export const responsesRunAdapter =
         })
       } finally {
         waitUntil(new Promise(async (resolve) => {
-          if (responseCreatedResponse?.id && itemIds.length > 0) {
-            await saveResponseItemsToConversationMetadata({
-              client,
-              threadId,
-              responseId: responseCreatedResponse.id,
-              itemIds,
-            })
+          if (metadataSaver) {
+            await metadataSaver.flush()
           }
 
           resolve(true)

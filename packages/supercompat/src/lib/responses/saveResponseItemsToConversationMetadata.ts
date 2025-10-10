@@ -1,4 +1,5 @@
 import type OpenAI from 'openai'
+import pDebounce from 'p-debounce'
 
 /* ======================= responseItemsMap helpers ======================= */
 
@@ -185,6 +186,81 @@ export async function saveResponseItemsToConversationMetadata({
     responseId,
     itemIds,
   })
+
   if (!changed) return
-  await client.conversations.update(threadId, { metadata: updated })
+
+  // Retry logic for rate limiting
+  let retryCount = 0
+  const MAX_RETRIES = 3
+
+  const attemptUpdate = async (): Promise<void> => {
+    try {
+      await client.conversations.update(threadId, { metadata: updated })
+    } catch (error: any) {
+      if (error?.status === 429 && retryCount < MAX_RETRIES) {
+        retryCount++
+        const backoffMs = Math.min(1000 * 2 ** (retryCount - 1), 5000)
+        await new Promise(resolve => setTimeout(resolve, backoffMs))
+        return attemptUpdate()
+      }
+      throw error
+    }
+  }
+
+  await attemptUpdate()
+}
+
+/* ======================= Streaming metadata saver ======================= */
+
+export const createMetadataSaver = ({
+  client,
+  threadId,
+  responseId,
+}: {
+  client: OpenAI
+  threadId: string
+  responseId: string
+}) => {
+  const allItemIds = new Set<string>()
+  let hasPendingChanges = false
+
+  const save = async () => {
+    if (!hasPendingChanges) return
+
+    try {
+      await saveResponseItemsToConversationMetadata({
+        client,
+        threadId,
+        responseId,
+        itemIds: Array.from(allItemIds).sort(),
+      })
+      hasPendingChanges = false
+    } catch (error: any) {
+      console.error('Failed to save conversation metadata:', error?.message || error)
+    }
+  }
+
+  // Prevent concurrent saves - returns same promise if already saving
+  const saveOnce = pDebounce.promise(save)
+
+  // Debounce to batch rapid additions
+  const debouncedSave = pDebounce(saveOnce, 500)
+
+  return {
+    add: (itemIds: string[]) => {
+      if (itemIds.length === 0) return
+
+      itemIds.forEach(id => allItemIds.add(id))
+      hasPendingChanges = true
+
+      debouncedSave()
+    },
+
+    flush: async () => {
+      // Keep saving until all changes are persisted
+      while (hasPendingChanges) {
+        await saveOnce()
+      }
+    },
+  }
 }
