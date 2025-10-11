@@ -6,7 +6,8 @@ const serializeStatus = ({
 }: {
   item: OpenAI.Responses.ResponseItem.ImageGenerationCall
 }) => {
-  if (item.status === 'generating') {
+  // OpenAI bug: status is 'generating' even when it is done
+  if (item.status === 'generating' || item.result !== null) {
     return 'in_progress' as const
   }
 
