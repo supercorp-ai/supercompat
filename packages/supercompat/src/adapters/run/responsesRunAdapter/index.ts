@@ -281,6 +281,7 @@ export const responsesRunAdapter =
                     openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     threadId,
                     runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
                     completedAt: null,
                   })
                 })

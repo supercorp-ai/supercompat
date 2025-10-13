@@ -24,12 +24,14 @@ export const serializeItemAsImageGenerationRunStep = ({
   threadId,
   runId,
   completedAt = dayjs().unix(),
+  status = serializeStatus({ item }),
 }: {
   item: OpenAI.Responses.ResponseItem.ImageGenerationCall
   openaiAssistant: Pick<OpenAI.Beta.Assistants.Assistant, 'id'>
   threadId: string
   runId: string
   completedAt?: number | null
+  status?: 'completed' | 'in_progress' | 'failed'
 }) => {
   const toolCall: OpenAI.Beta.Threads.Runs.Steps.FunctionToolCall = {
     id: `ftc${item.id}`,
@@ -61,7 +63,7 @@ export const serializeItemAsImageGenerationRunStep = ({
     assistant_id: openaiAssistant.id,
     thread_id: threadId,
     run_id: runId,
-    status: serializeStatus({ item }),
+    status,
     last_error: null,
     expired_at: null,
     cancelled_at: null,
