@@ -98,13 +98,13 @@ export const get = ({
       ]
     } else if (item.type === 'image_generation_call') {
       return [
+        step,
         serializeItemAsImageGenerationRunStep({
           item,
           openaiAssistant,
           threadId,
           runId: response.id,
         }),
-        step,
       ]
     } else if (item.type === 'web_search_call') {
       return [

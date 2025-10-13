@@ -276,23 +276,23 @@ export const responsesRunAdapter =
 
                 await onEvent({
                   event: 'thread.run.step.created',
-                  data: serializeItemAsMessageCreationRunStep({
+                  data: serializeItemAsImageGenerationRunStep({
                     item: event.item,
-                    threadId,
                     openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
+                    threadId,
                     runId: responseCreatedResponse!.id,
-                    status: 'in_progress',
                     completedAt: null,
                   })
                 })
 
                 await onEvent({
                   event: 'thread.run.step.created',
-                  data: serializeItemAsImageGenerationRunStep({
+                  data: serializeItemAsMessageCreationRunStep({
                     item: event.item,
-                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     threadId,
+                    openaiAssistant: await getOpenaiAssistant({ select: { id: true } }),
                     runId: responseCreatedResponse!.id,
+                    status: 'in_progress',
                     completedAt: null,
                   })
                 })
