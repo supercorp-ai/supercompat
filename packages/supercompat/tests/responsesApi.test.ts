@@ -375,6 +375,8 @@ test('responsesStorageAdapter streams without tool', async (t) => {
       finalText = maybeText.trim().toLowerCase()
       break
     }
+
+    await new Promise((r) => setTimeout(r, 200))
   }
 
   assert.ok(finalText.length > 0, 'Should receive a non-empty assistant reply')

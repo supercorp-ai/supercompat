@@ -27,7 +27,6 @@
     "dayjs": "^1.11.18",
     "deepmerge-ts": "^7.1.5",
     "lodash": "^4.17.21",
-    "p-debounce": "^5.0.0",
     "radash": "^12.1.1",
     "ts-deepmerge": "^7.0.3"
   },
@@ -39,8 +38,8 @@
     "@types/lodash": "^4.17.20",
     "groq-sdk": "^0.21.0",
     "humiris-ai": "^1.11.0",
-    "openai": "^6.0.1",
     "prisma": "^6.15.0",
+    "openai": "^6.0.1",
     "tsup": "^8.4.0",
     "undici": "^7.15.0"
   }
