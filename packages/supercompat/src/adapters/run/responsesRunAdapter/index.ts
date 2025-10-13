@@ -94,7 +94,7 @@ export const responsesRunAdapter =
       const mcpCalls: Record<string, OpenAI.Responses.ResponseItem.McpCall> = {}
       const codeInterpreterCalls: Record<string, OpenAI.Responses.ResponseCodeInterpreterToolCall> = {}
 
-      let metadataSaver: Awaited<ReturnType<typeof createMetadataSaver>> | null = null
+      let metadataSaver: ReturnType<typeof createMetadataSaver> | null = null
 
       try {
         for await (const event of response as AsyncIterable<OpenAI.Responses.ResponseStreamEvent>) {
@@ -102,8 +102,8 @@ export const responsesRunAdapter =
             case 'response.created':
               responseCreatedResponse = event.response
 
-              // Initialize metadata saver (fetch metadata once)
-              metadataSaver = await createMetadataSaver({
+              // Initialize metadata saver
+              metadataSaver = createMetadataSaver({
                 client,
                 threadId,
                 responseId: event.response.id,

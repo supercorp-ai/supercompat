@@ -10,7 +10,7 @@ const BUCKET_PREFIX = 'responseItemsMap' // keys: responseItemsMap0..15
 const MAX_BUCKETS = 16 // OpenAI metadata key limit
 const MAX_VALUE_LENGTH = 512 // OpenAI metadata value limit
 
-const parseBucket = ({ value }: { value?: string }): ItemResponseEntry[] => {
+function parseBucket({ value }: { value?: string }): ItemResponseEntry[] {
   if (!value || value === '[]') return []
   try {
     const arr = JSON.parse(value)
@@ -20,15 +20,15 @@ const parseBucket = ({ value }: { value?: string }): ItemResponseEntry[] => {
   }
 }
 
-const serializeBucket = ({ entries }: { entries: ItemResponseEntry[] }): string => {
+function serializeBucket({ entries }: { entries: ItemResponseEntry[] }): string {
   return JSON.stringify(entries)
 }
 
-const bucketKey = ({ index }: { index: number }): string => {
+function bucketKey({ index }: { index: number }): string {
   return `${BUCKET_PREFIX}${index}`
 }
 
-const listBucketIndices = ({ metadata }: { metadata: ConversationMetadata }): number[] => {
+function listBucketIndices({ metadata }: { metadata: ConversationMetadata }): number[] {
   return Object.keys(metadata)
     .map((k) => {
       const m = new RegExp(`^${BUCKET_PREFIX}(\\d+)$`).exec(k)
@@ -41,7 +41,7 @@ const listBucketIndices = ({ metadata }: { metadata: ConversationMetadata }): nu
 // Flatten to FIFO (oldest → newest) list of pairs
 type Pair = { responseId: string; itemId: string }
 
-const parseAllPairs = ({ metadata }: { metadata: ConversationMetadata }): Pair[] => {
+function parseAllPairs({ metadata }: { metadata: ConversationMetadata }): Pair[] {
   const indices = listBucketIndices({ metadata })
   const pairs: Pair[] = []
   for (const idx of indices) {
@@ -56,7 +56,7 @@ const parseAllPairs = ({ metadata }: { metadata: ConversationMetadata }): Pair[]
   return pairs
 }
 
-const serializeNonBucketEntries = ({ entries }: { entries: Array<[string, string]> }): ConversationMetadata => {
+function serializeNonBucketEntries({ entries }: { entries: Array<[string, string]> }): ConversationMetadata {
   const result: ConversationMetadata = {}
   for (const [key, value] of entries) {
     result[key] = value
@@ -64,7 +64,7 @@ const serializeNonBucketEntries = ({ entries }: { entries: Array<[string, string
   return result
 }
 
-const packIntoBuckets = ({ pairs, slots }: { pairs: Pair[]; slots: number }): string[] | undefined => {
+function packIntoBuckets({ pairs, slots }: { pairs: Pair[]; slots: number }): string[] | undefined {
   const buckets: string[] = []
   let currentEntries: ItemResponseEntry[] = []
 
@@ -109,7 +109,7 @@ const packIntoBuckets = ({ pairs, slots }: { pairs: Pair[]; slots: number }): st
   return buckets
 }
 
-const metadataEquals = (a: ConversationMetadata, b: ConversationMetadata): boolean => {
+function metadataEquals(a: ConversationMetadata, b: ConversationMetadata): boolean {
   const keysA = Object.keys(a)
   const keysB = Object.keys(b)
   if (keysA.length !== keysB.length) return false
@@ -120,7 +120,7 @@ const metadataEquals = (a: ConversationMetadata, b: ConversationMetadata): boole
   return true
 }
 
-export const appendItemIdsToConversationMetadata = ({
+export function appendItemIdsToConversationMetadata({
   metadata,
   responseId,
   itemIds,
@@ -128,7 +128,7 @@ export const appendItemIdsToConversationMetadata = ({
   metadata?: ConversationMetadata
   responseId: string
   itemIds: string[]
-}): { metadata: ConversationMetadata; changed: boolean } => {
+}): { metadata: ConversationMetadata; changed: boolean } {
   const base = { ...(metadata || {}) }
   const nonBucketEntries = Object.entries(base).filter(([key]) => !key.startsWith(BUCKET_PREFIX))
   const availableSlots = Math.max(0, MAX_BUCKETS - nonBucketEntries.length)
@@ -169,36 +169,50 @@ export const appendItemIdsToConversationMetadata = ({
   return { metadata: rebuilt, changed }
 }
 
-export const saveResponseItemsToConversationMetadata = async ({
+export async function saveResponseItemsToConversationMetadata({
   client,
   threadId,
   responseId,
   itemIds,
-  cachedMetadata,
 }: {
   client: OpenAI
   threadId: string
   responseId: string
   itemIds: string[]
-  cachedMetadata?: ConversationMetadata
-}) => {
-  // Use cached metadata if provided, otherwise fetch
-  const metadata = cachedMetadata ?? (await client.conversations.retrieve(threadId)).metadata as Record<string, string> | undefined
-
+}) {
+  const conversation = await client.conversations.retrieve(threadId)
   const { metadata: updated, changed } = appendItemIdsToConversationMetadata({
-    metadata,
+    metadata: conversation.metadata as Record<string, string> | undefined,
     responseId,
     itemIds,
   })
 
   if (!changed) return
 
-  await client.conversations.update(threadId, { metadata: updated })
+  // Retry logic for rate limiting
+  let retryCount = 0
+  const MAX_RETRIES = 3
+
+  const attemptUpdate = async (): Promise<void> => {
+    try {
+      await client.conversations.update(threadId, { metadata: updated })
+    } catch (error: any) {
+      if (error?.status === 429 && retryCount < MAX_RETRIES) {
+        retryCount++
+        const backoffMs = Math.min(1000 * 2 ** (retryCount - 1), 5000)
+        await new Promise(resolve => setTimeout(resolve, backoffMs))
+        return attemptUpdate()
+      }
+      throw error
+    }
+  }
+
+  await attemptUpdate()
 }
 
 /* ======================= Streaming metadata saver ======================= */
 
-export const createMetadataSaver = async ({
+export const createMetadataSaver = ({
   client,
   threadId,
   responseId,
@@ -207,10 +221,6 @@ export const createMetadataSaver = async ({
   threadId: string
   responseId: string
 }) => {
-  // Fetch metadata once at initialization
-  const conversation = await client.conversations.retrieve(threadId)
-  const cachedMetadata = conversation.metadata as ConversationMetadata | undefined
-
   const allItemIds = new Set<string>()
   let hasPendingChanges = false
 
@@ -223,7 +233,6 @@ export const createMetadataSaver = async ({
         threadId,
         responseId,
         itemIds: Array.from(allItemIds).sort(),
-        cachedMetadata,
       })
       hasPendingChanges = false
     } catch (error: any) {
