@@ -28,7 +28,7 @@ type NormalizedArgs = {
 const serializeToolCalls = ({
   toolCalls,
 }: {
-  toolCalls: OpenAI.Responses.ResponseFunctionToolCall[] | OpenAI.Responses.ResponseComputerToolCall[]
+  toolCalls: Array<OpenAI.Responses.ResponseFunctionToolCall | OpenAI.Responses.ResponseComputerToolCall>
 }) => (
   toolCalls.map((toolCall) => {
     if (toolCall.type === 'function_call') {
@@ -90,6 +90,7 @@ export const responsesRunAdapter =
       onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
     }) => {
       let responseCreatedResponse: OpenAI.Responses.Response | null = null
+      let responseCompletedResponse: OpenAI.Responses.Response | null = null
       const toolCalls: Record<string, OpenAI.Responses.ResponseFunctionToolCall> = {}
       const mcpCalls: Record<string, OpenAI.Responses.ResponseItem.McpCall> = {}
       const codeInterpreterCalls: Record<string, OpenAI.Responses.ResponseCodeInterpreterToolCall> = {}
@@ -122,42 +123,8 @@ export const responsesRunAdapter =
               break
 
             case 'response.completed': {
+              responseCompletedResponse = event.response
               itemIds = event.response.output.filter((o) => o.id).map((o) => o.id!)
-
-              const toolCalls = event.response.output.filter((o) => o.type === 'function_call' || o.type === 'computer_call') as OpenAI.Responses.ResponseFunctionToolCall[] | OpenAI.Responses.ResponseComputerToolCall[]
-
-              if (toolCalls.length > 0) {
-                await onEvent({
-                  event: 'thread.run.requires_action',
-                  data: {
-                    ...serializeResponseAsRun({
-                      response: event.response,
-                      assistantId: (await getOpenaiAssistant({ select: { id: true } })).id,
-                    }),
-                    ...({
-                      status: 'requires_action',
-                      required_action: {
-                        type: 'submit_tool_outputs',
-                        submit_tool_outputs: {
-                          tool_calls: [
-                            ...serializeToolCalls({
-                              toolCalls,
-                            }),
-                          ],
-                        },
-                      },
-                    }),
-                  }
-                })
-              } else {
-                await onEvent({
-                  event: 'thread.run.completed',
-                  data: serializeResponseAsRun({
-                    response: event.response,
-                    assistantId: (await getOpenaiAssistant({ select: { id: true } })).id,
-                  }),
-                })
-              }
               break
             }
 
@@ -841,6 +808,38 @@ export const responsesRunAdapter =
 
             default:
               break
+          }
+        }
+        if (responseCompletedResponse) {
+          const toolCalls = (responseCompletedResponse.output ?? []).filter(
+            (o): o is OpenAI.Responses.ResponseFunctionToolCall | OpenAI.Responses.ResponseComputerToolCall =>
+              o.type === 'function_call' || o.type === 'computer_call',
+          )
+
+          const serializedRun = serializeResponseAsRun({
+            response: responseCompletedResponse,
+            assistantId: (await getOpenaiAssistant({ select: { id: true } })).id,
+          })
+
+          if (toolCalls.length > 0) {
+            await onEvent({
+              event: 'thread.run.requires_action',
+              data: {
+                ...serializedRun,
+                status: 'requires_action',
+                required_action: {
+                  type: 'submit_tool_outputs',
+                  submit_tool_outputs: {
+                    tool_calls: serializeToolCalls({ toolCalls }),
+                  },
+                },
+              },
+            })
+          } else {
+            await onEvent({
+              event: 'thread.run.completed',
+              data: serializedRun,
+            })
           }
         }
       } catch (e: any) {

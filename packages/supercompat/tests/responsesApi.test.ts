@@ -257,6 +257,121 @@ test('responsesRunAdapter streams tool calls via OpenAI', async () => {
   // assert.ok(finalText.includes('70'))
 })
 
+test('responsesRunAdapter handles multiple simultaneous tool calls', async (t) => {
+  const realOpenAI = new OpenAI({
+    apiKey,
+    ...(process.env.HTTPS_PROXY
+      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+      : {}),
+  })
+
+  const tools = [
+    {
+      type: 'function',
+      function: {
+        name: 'get_city_weather',
+        description: 'Get the current weather in a given city.',
+        parameters: {
+          type: 'object',
+          properties: {
+            city: { type: 'string' },
+          },
+          required: ['city'],
+        },
+      },
+    },
+  ] as OpenAI.Beta.AssistantTool[]
+
+  const openaiAssistant = {
+    id: 'multi-tool-assistant',
+    object: 'assistant' as const,
+    model: 'gpt-4.1-mini',
+    instructions:
+      'Call get_city_weather for every city requested before responding.',
+    description: null,
+    name: 'Multi Tool Assistant',
+    metadata: {},
+    tools,
+    created_at: dayjs().unix(),
+  }
+
+  const client = supercompat({
+    client: openaiClientAdapter({ openai: realOpenAI }),
+    runAdapter: responsesRunAdapter({
+      getOpenaiAssistant: () => openaiAssistant,
+    }),
+    storage: responsesStorageAdapter(),
+  })
+
+  const thread = await client.beta.threads.create()
+
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content:
+      'Please get the current weather for San Francisco and New York City. Call the tool for both cities before replying.',
+  })
+
+  const run = await client.beta.threads.runs.create(thread.id, {
+    assistant_id: openaiAssistant.id,
+    stream: true,
+    instructions:
+      'Call get_city_weather for every requested city before answering.',
+    tools,
+  })
+
+  let requiresActionEvent:
+    | OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
+    | undefined
+  for await (const event of run) {
+    if (event.event === 'thread.run.requires_action') {
+      requiresActionEvent = event as OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
+      break
+    }
+  }
+
+  assert.ok(requiresActionEvent, 'Run should require tool outputs')
+
+  const toolCalls =
+    requiresActionEvent!.data.required_action?.submit_tool_outputs.tool_calls ??
+    []
+  assert.ok(toolCalls.length >= 2, 'Expected at least two tool calls')
+
+  const toolOutputs = toolCalls.map((toolCall) => {
+    const parsedArgs = JSON.parse(toolCall.function.arguments ?? '{}')
+    return {
+      tool_call_id: toolCall.id,
+      output: JSON.stringify({
+        city: parsedArgs.city ?? 'unknown',
+        temperature_f: 70,
+        conditions: 'sunny',
+      }),
+    }
+  })
+
+  const submit = await client.beta.threads.runs.submitToolOutputs(
+    requiresActionEvent!.data.id,
+    {
+      thread_id: thread.id,
+      stream: true,
+      tool_outputs: toolOutputs,
+    },
+  )
+
+  for await (const _event of submit) {
+    // drain
+  }
+
+  const messagesAfter = await client.beta.threads.messages.list(thread.id)
+  const assistantMessage = messagesAfter.data
+    .filter((m) => m.role === 'assistant')
+    .at(-1)
+
+  assert.ok(
+    assistantMessage,
+    'Expected an assistant message after submitting tool outputs',
+  )
+})
+
 test('responsesStorageAdapter works with polling', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
