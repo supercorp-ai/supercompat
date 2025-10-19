@@ -6,6 +6,7 @@ import { alternatingMessages } from '@/lib/messages/alternatingMessages'
 import { firstUserMessages } from '@/lib/messages/firstUserMessages'
 import { serializeTools } from './serializeTools'
 import { serializeMessages } from './serializeMessages'
+import { serializeBetas } from './serializeBetas'
 
 export const post = ({
   anthropic,
@@ -28,6 +29,9 @@ export const post = ({
 
   const resultOptions = {
     ...omit(body, ['response_format']),
+    ...serializeBetas({
+      tools: body.tools,
+    }),
     stream: body.stream ? isEmpty(body.tools) : false,
     system,
     messages: serializeMessages({
