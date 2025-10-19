@@ -250,7 +250,19 @@ export const completionsRunAdapter = () => {
         },
       })
 
-      if (isEmpty(message.toolCalls)) {
+      const messageToolCalls = (message.toolCalls ??
+        []) as OpenAI.Beta.Threads.Runs.Steps.ToolCall[]
+
+      const functionToolCalls = messageToolCalls.filter(
+        (toolCall): toolCall is OpenAI.Beta.Threads.Runs.Steps.FunctionToolCall =>
+          toolCall.type === 'function'
+      )
+
+      const pendingFunctionToolCalls = functionToolCalls.filter(
+        (toolCall) => !toolCall.function?.output
+      )
+
+      if (isEmpty(pendingFunctionToolCalls)) {
         return onEvent({
           event: 'thread.run.completed',
           data: {
@@ -261,6 +273,16 @@ export const completionsRunAdapter = () => {
         })
       }
 
+      const requiredToolCalls: OpenAI.Beta.Threads.Runs.RequiredActionFunctionToolCall[] =
+        pendingFunctionToolCalls.map((toolCall) => ({
+          id: toolCall.id,
+          type: 'function',
+          function: {
+            name: toolCall.function?.name ?? '',
+            arguments: toolCall.function?.arguments ?? '',
+          },
+        }))
+
       return onEvent({
         event: 'thread.run.requires_action',
         data: {
@@ -269,7 +291,7 @@ export const completionsRunAdapter = () => {
           required_action: {
             type: 'submit_tool_outputs',
             submit_tool_outputs: {
-              tool_calls: message.toolCalls,
+              tool_calls: requiredToolCalls,
             },
           },
         },
