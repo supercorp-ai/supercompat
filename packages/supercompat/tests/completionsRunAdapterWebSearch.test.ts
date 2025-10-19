@@ -127,6 +127,24 @@ test('completions run adapter auto-completes Anthropics server web search tool c
                 type: 'function',
                 function: {
                   name: 'web_search',
+                  arguments: '',
+                },
+              },
+            ],
+          },
+        },
+      ],
+    }
+    yield {
+      choices: [
+        {
+          delta: {
+            tool_calls: [
+              {
+                index: 0,
+                id: 'srvtoolu_123',
+                type: 'function',
+                function: {
                   arguments: '{"query":"claude shannon"}',
                 },
               },
@@ -242,6 +260,15 @@ test('completions run adapter auto-completes Anthropics server web search tool c
   )
   assert.ok(completedEvent)
 
+  const stepCompletedEvent = events.find(
+    (event) => event.event === 'thread.run.step.completed'
+  ) as OpenAI.Beta.AssistantStreamEvent.ThreadRunStepCompleted | undefined
+  assert.ok(stepCompletedEvent)
+  assert.equal(stepCompletedEvent.data.status, 'completed')
+  assert.ok(
+    (stepCompletedEvent.data.step_details as any)?.tool_calls?.[0]?.function
+  )
+
   const messageCompletedEvent = events.find(
     (event) => event.event === 'thread.message.completed'
   ) as OpenAI.Beta.AssistantStreamEvent.ThreadMessageCompleted | undefined
@@ -252,8 +279,13 @@ test('completions run adapter auto-completes Anthropics server web search tool c
     (messageCompletedEvent.data as any).toolCalls?.[0]
   assert.ok(toolCall)
   assert.ok(toolCall.function?.output)
+  assert.equal(toolCall.function.arguments, '{"query":"claude shannon"}')
   const parsedOutput = JSON.parse(toolCall.function.output!)
   assert.ok(Array.isArray(parsedOutput.content))
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(parsedOutput, 'tool_use_id'),
+    false
+  )
   const firstResult = parsedOutput.content[0] as Record<string, unknown>
   assert.equal(firstResult?.type, 'web_search_result')
 })

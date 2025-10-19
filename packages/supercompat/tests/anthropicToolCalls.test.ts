@@ -181,6 +181,8 @@ test('completions run adapter surfaces anthropic web search tool calls', async (
   )
 
   assert.ok(toolStep)
+  assert.equal(toolStep.status, 'completed')
+  assert.ok(toolStep.completed_at)
   const webSearchToolCall = toolStep.step_details?.tool_calls[0]
   assert.ok(webSearchToolCall)
   assert.equal(webSearchToolCall.type, 'function')
@@ -188,9 +190,17 @@ test('completions run adapter surfaces anthropic web search tool calls', async (
     webSearchToolCall.function?.name,
     'web_search'
   )
+  const toolArguments = webSearchToolCall.function?.arguments ?? ''
+  assert.ok(toolArguments.length > 0)
+  const normalizedArgs = toolArguments.toLowerCase()
+  assert.ok(normalizedArgs.includes('query'))
   assert.ok(webSearchToolCall.function?.output)
   const parsedOutput = JSON.parse(webSearchToolCall.function!.output!)
   assert.ok(Array.isArray(parsedOutput.content))
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(parsedOutput, 'tool_use_id'),
+    false
+  )
   const firstResult = parsedOutput.content[0] as Record<string, unknown>
   assert.equal(firstResult?.type, 'web_search_result')
 

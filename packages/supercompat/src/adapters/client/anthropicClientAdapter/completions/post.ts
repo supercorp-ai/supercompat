@@ -105,10 +105,6 @@ export const post = ({
                 ],
               }
             } else if (chunk.content_block.type === 'server_tool_use') {
-              const inputPayload =
-                // @ts-ignore - anthropic typing gap
-                chunk.content_block.input ?? {}
-
               delta = {
                 content: null,
                 tool_calls: [
@@ -118,23 +114,29 @@ export const post = ({
                     type: 'function',
                     function: {
                       name: chunk.content_block.name as string,
-                      arguments: JSON.stringify(inputPayload),
+                      arguments: '',
                     },
                   },
                 ],
               }
             } else if (chunk.content_block.type === 'web_search_tool_result') {
+              const outputPayload = {
+                content: chunk.content_block.content ?? [],
+              }
+              const toolCallId =
+                ((chunk.content_block as unknown as { tool_use_id?: string })
+                  .tool_use_id ??
+                  (chunk.content_block as unknown as { id?: string }).id) ?? ''
+
               delta = {
                 content: null,
                 tool_calls: [
                   {
                     index: 0,
-                    id: chunk.content_block.tool_use_id,
+                    id: toolCallId,
                     type: 'function',
                     function: {
-                      output: JSON.stringify({
-                        content: chunk.content_block.content,
-                      }),
+                      output: JSON.stringify(outputPayload),
                     },
                   },
                 ],

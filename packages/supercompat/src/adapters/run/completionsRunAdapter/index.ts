@@ -263,6 +263,21 @@ export const completionsRunAdapter = () => {
       )
 
       if (isEmpty(pendingFunctionToolCalls)) {
+        if (toolCallsRunStep) {
+          toolCallsRunStep = await onEvent({
+            event: 'thread.run.step.completed',
+            data: {
+              ...toolCallsRunStep,
+              status: 'completed',
+              completed_at: dayjs().unix(),
+              step_details: {
+                type: 'tool_calls',
+                tool_calls: currentToolCalls ?? [],
+              },
+            },
+          })
+        }
+
         return onEvent({
           event: 'thread.run.completed',
           data: {

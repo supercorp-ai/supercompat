@@ -4,6 +4,7 @@ import { threadRunCompleted } from './threadRunCompleted'
 import { threadRunRequiresAction } from './threadRunRequiresAction'
 import { threadRunStepCreated } from './threadRunStepCreated'
 import { threadRunStepDelta } from './threadRunStepDelta'
+import { threadRunStepCompleted } from './threadRunStepCompleted'
 import { threadMessageCreated } from './threadMessageCreated'
 import { threadMessageDelta } from './threadMessageDelta'
 import { threadMessageCompleted } from './threadMessageCompleted'
@@ -15,6 +16,7 @@ export const handlers = {
   'thread.run.requires_action': threadRunRequiresAction,
   'thread.run.step.created': threadRunStepCreated,
   'thread.run.step.delta': threadRunStepDelta,
+  'thread.run.step.completed': threadRunStepCompleted,
   'thread.message.created': threadMessageCreated,
   'thread.message.delta': threadMessageDelta,
   'thread.message.completed': threadMessageCompleted,
