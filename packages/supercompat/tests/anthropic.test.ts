@@ -37,7 +37,7 @@ test('supercompat can run via Anthropic', async () => {
   })
 
   const assistant = await client.beta.assistants.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: 'claude-sonnet-4-5',
     instructions: 'You are a helpful assistant.',
   })
 

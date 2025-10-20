@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, type TestContext } from 'node:test'
 import { strict as assert } from 'node:assert'
 import Anthropic from '@anthropic-ai/sdk'
 import type OpenAI from 'openai'
@@ -54,7 +54,7 @@ test('completions run adapter surfaces anthropic tool calls', async () => {
   ]
 
   const assistant = await client.beta.assistants.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: 'claude-sonnet-4-5',
     instructions: 'Use the get_current_weather and then answer the message.',
     tools,
   })
@@ -71,7 +71,7 @@ test('completions run adapter surfaces anthropic tool calls', async () => {
   const run = await client.beta.threads.runs.create(thread.id, {
     assistant_id: assistant.id,
     instructions: 'Use the get_current_weather and then answer the message.',
-    model: 'claude-haiku-4-5-20251001',
+    model: 'claude-sonnet-4-5',
     tools,
     stream: true,
     truncation_strategy: {
@@ -147,7 +147,7 @@ test('completions run adapter surfaces anthropic web search tool calls', async (
   ] as unknown as OpenAI.Beta.AssistantTool[]
 
   const assistant = await client.beta.assistants.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: 'claude-sonnet-4-5',
     instructions:
       'You are a helpful assistant that must call the web_search tool before responding.',
     tools,
@@ -206,3 +206,108 @@ test('completions run adapter surfaces anthropic web search tool calls', async (
 
   await prisma.$disconnect()
 })
+
+test(
+  'completions run adapter surfaces anthropic code execution tool calls',
+  async (t: TestContext) => {
+    const prisma = new PrismaClient()
+    const anthropic = new Anthropic({
+      apiKey: anthropicKey,
+      ...(process.env.HTTPS_PROXY
+        ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+        : {}),
+    })
+
+    const client = supercompat({
+      client: anthropicClientAdapter({ anthropic }),
+      storage: prismaStorageAdapter({ prisma }),
+      runAdapter: completionsRunAdapter(),
+    })
+
+    const tools = [
+      {
+        type: 'code_execution_20250825',
+        code_execution_20250825: { name: 'code_execution' },
+      },
+    ] as unknown as OpenAI.Beta.AssistantTool[]
+
+    try {
+      const assistant = await client.beta.assistants.create({
+        model: 'claude-sonnet-4-5',
+        instructions:
+          'You are a helpful assistant. Use the code_execution tool to run Python when asked.',
+        tools,
+      })
+
+      const thread = await prisma.thread.create({
+        data: { assistantId: assistant.id },
+      })
+
+      await client.beta.threads.messages.create(thread.id, {
+        role: 'user',
+        content:
+          'Use the code_execution tool to calculate the first 3 Fibonacci numbers in Python.',
+      })
+
+      const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+        assistant_id: assistant.id,
+        tools,
+        instructions:
+          'Always call the code_execution tool first, then summarize the output.',
+      })
+
+      if (run.status !== 'completed') {
+        assert.fail(`Run did not complete successfully: ${run.status}`)
+      }
+
+      const steps = await client.beta.threads.runs.steps.list(run.id, {
+        thread_id: thread.id,
+      })
+
+      const toolStep = steps.data.find(
+        (step) => step.step_details?.type === 'tool_calls'
+      )
+
+      assert.ok(toolStep)
+      assert.equal(toolStep.status, 'completed')
+      assert.ok(toolStep.completed_at)
+      const codeExecutionToolCall = toolStep.step_details?.tool_calls?.[0]
+      assert.ok(codeExecutionToolCall)
+      assert.equal(codeExecutionToolCall.type, 'function')
+      assert.equal(codeExecutionToolCall.function?.name, 'code_execution')
+      assert.ok(codeExecutionToolCall.function?.arguments)
+      assert.ok(codeExecutionToolCall.function?.output)
+
+      const parsedOutput = JSON.parse(
+        codeExecutionToolCall.function!.output!
+      ) as Record<string, unknown>
+      assert.equal(
+        Object.prototype.hasOwnProperty.call(parsedOutput, 'tool_use_id'),
+        false
+      )
+
+      const messages = await client.beta.threads.messages.list(thread.id)
+      const assistantMessage = messages.data
+        .filter((m) => m.role === 'assistant')
+        .at(-1)
+
+      assert.ok(assistantMessage?.metadata?.toolCalls?.[0])
+    } catch (error: any) {
+      if (
+        error?.message &&
+        /(code[_ -]?execution|beta|permission)/i.test(error.message)
+      ) {
+        await prisma.$disconnect()
+        t.skip(
+          `Skipping: Anthropic code execution tool not available (${error.message})`
+        )
+        return
+      }
+
+      await prisma.$disconnect()
+      throw error
+    }
+
+    await prisma.$disconnect()
+  }
+)

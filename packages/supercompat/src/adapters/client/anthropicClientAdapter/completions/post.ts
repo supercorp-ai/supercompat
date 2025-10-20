@@ -43,6 +43,10 @@ export const post = ({
     }),
   }
 
+  console.dir({
+    resultOptions,
+  }, { depth: null })
+
   if (body.stream) {
     // @ts-ignore-next-line
     const response = await anthropic.messages.stream(resultOptions)
@@ -127,6 +131,42 @@ export const post = ({
                 ((chunk.content_block as unknown as { tool_use_id?: string })
                   .tool_use_id ??
                   (chunk.content_block as unknown as { id?: string }).id) ?? ''
+
+              delta = {
+                content: null,
+                tool_calls: [
+                  {
+                    index: 0,
+                    id: toolCallId,
+                    type: 'function',
+                    function: {
+                      output: JSON.stringify(outputPayload),
+                    },
+                  },
+                ],
+              }
+            } else if (chunk.content_block.type === 'code_execution_tool_result') {
+              const toolCallId =
+                ((chunk.content_block as unknown as { tool_use_id?: string })
+                  .tool_use_id ??
+                  (chunk.content_block as unknown as { id?: string }).id) ?? ''
+
+              const {
+                tool_use_id: _toolUseId,
+                type: _type,
+                id: _id,
+                ...rest
+              } = chunk.content_block as unknown as Record<string, unknown>
+
+              const outputPayload =
+                Object.keys(rest).length > 0
+                  ? rest
+                  : {
+                      content:
+                        (chunk.content_block as unknown as {
+                          content?: unknown
+                        }).content ?? {},
+                    }
 
               delta = {
                 content: null,
