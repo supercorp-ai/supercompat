@@ -29,10 +29,11 @@ export const post = ({
 
   const resultOptions = {
     ...omit(body, ['response_format']),
+    model: body.model,
     ...serializeBetas({
       tools: body.tools,
     }),
-    stream: body.stream ? isEmpty(body.tools) : false,
+    stream: body.stream,
     system,
     messages: serializeMessages({
       messages: chatMessages,
@@ -43,13 +44,9 @@ export const post = ({
     }),
   }
 
-  console.dir({
-    resultOptions,
-  }, { depth: null })
-
-  if (body.stream) {
+  if (resultOptions.stream) {
     // @ts-ignore-next-line
-    const response = await anthropic.messages.stream(resultOptions)
+    const response = await anthropic.beta.messages.create(resultOptions)
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -94,6 +91,9 @@ export const post = ({
             let delta: { content: string | null; tool_calls?: any }
 
             if (chunk.content_block.type === 'tool_use') {
+              const toolName = chunk.content_block.name as string
+              const normalizedToolName = toolName === 'computer' ? 'computer_call' : toolName
+
               delta = {
                 content: null,
                 tool_calls: [
@@ -102,7 +102,7 @@ export const post = ({
                     id: chunk.content_block.id,
                     type: 'function',
                     function: {
-                      name: chunk.content_block.name as string,
+                      name: normalizedToolName,
                       arguments: '',
                     },
                   },
@@ -145,7 +145,11 @@ export const post = ({
                   },
                 ],
               }
-            } else if (chunk.content_block.type === 'code_execution_tool_result') {
+            } else if (
+              chunk.content_block.type === 'code_execution_tool_result' ||
+              chunk.content_block.type === 'bash_code_execution_tool_result' ||
+              chunk.content_block.type === 'python_code_execution_tool_result'
+            ) {
               const toolCallId =
                 ((chunk.content_block as unknown as { tool_use_id?: string })
                   .tool_use_id ??

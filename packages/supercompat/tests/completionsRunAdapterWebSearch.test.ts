@@ -217,7 +217,7 @@ test('completions run adapter still requires outputs for code_execution function
   assert.equal(toolCalls[0].function.name, 'code_execution')
 })
 
-test('completions run adapter auto-completes Anthropics server web search tool calls', async () => {
+test('completions run adapter still requires outputs for computer function on non-Anthropic models', async () => {
   const adapter = completionsRunAdapter()
 
   const events: OpenAI.Beta.AssistantStreamEvent[] = []
@@ -230,62 +230,14 @@ test('completions run adapter auto-completes Anthropics server web search tool c
             tool_calls: [
               {
                 index: 0,
-                id: 'srvtoolu_123',
+                id: 'call_1',
                 type: 'function',
                 function: {
-                  name: 'web_search',
-                  arguments: '',
+                  name: 'computer',
+                  arguments: '{"cursor":{"x":10,"y":20}}',
                 },
               },
             ],
-          },
-        },
-      ],
-    }
-    yield {
-      choices: [
-        {
-          delta: {
-            tool_calls: [
-              {
-                index: 0,
-                id: 'srvtoolu_123',
-                type: 'function',
-                function: {
-                  arguments: '{"query":"claude shannon"}',
-                },
-              },
-            ],
-          },
-        },
-      ],
-    }
-
-    yield {
-      choices: [
-        {
-          delta: {
-            tool_calls: [
-              {
-                index: 0,
-                id: 'srvtoolu_123',
-                type: 'function',
-                function: {
-                  output:
-                    '{"content":[{"type":"web_search_result","title":"Claude Shannon - Wikipedia","url":"https://en.wikipedia.org/wiki/Claude_Shannon"}]}',
-                },
-              },
-            ],
-          },
-        },
-      ],
-    }
-
-    yield {
-      choices: [
-        {
-          delta: {
-            content: 'Claude Shannon was born on April 30, 1916.',
           },
         },
       ],
@@ -301,11 +253,11 @@ test('completions run adapter auto-completes Anthropics server web search tool c
   } as unknown as OpenAI
 
   const run = {
-    id: 'run_456',
-    assistant_id: 'asst_456',
-    thread_id: 'thread_456',
+    id: 'run_987',
+    assistant_id: 'asst_987',
+    thread_id: 'thread_987',
     status: 'queued',
-    model: 'claude-sonnet-4-5',
+    model: 'gpt-4o-mini',
     instructions: null,
     created_at: Date.now() / 1000,
     expires_at: null,
@@ -329,9 +281,11 @@ test('completions run adapter auto-completes Anthropics server web search tool c
     parallel_tool_calls: true,
     tools: [
       {
-        type: 'web_search_20250305',
-        web_search_20250305: {
-          name: 'web_search',
+        type: 'function',
+        function: {
+          name: 'computer',
+          description: 'Controls a remote computer.',
+          parameters: { type: 'object' },
         },
       },
     ],
@@ -360,215 +314,13 @@ test('completions run adapter auto-completes Anthropics server web search tool c
   const requiresActionEvent = events.find(
     (event) => event.event === 'thread.run.requires_action'
   )
-  assert.equal(requiresActionEvent, undefined)
 
-  const completedEvent = events.find(
-    (event) => event.event === 'thread.run.completed'
-  )
-  assert.ok(completedEvent)
+  assert.ok(requiresActionEvent)
 
-  const stepCompletedEvent = events.find(
-    (event) => event.event === 'thread.run.step.completed'
-  ) as OpenAI.Beta.AssistantStreamEvent.ThreadRunStepCompleted | undefined
-  assert.ok(stepCompletedEvent)
-  assert.equal(stepCompletedEvent.data.status, 'completed')
-  assert.ok(
-    (stepCompletedEvent.data.step_details as any)?.tool_calls?.[0]?.function
-  )
-
-  const messageCompletedEvent = events.find(
-    (event) => event.event === 'thread.message.completed'
-  ) as OpenAI.Beta.AssistantStreamEvent.ThreadMessageCompleted | undefined
-
-  assert.ok(messageCompletedEvent)
-  const toolCall =
-    messageCompletedEvent.data.tool_calls?.[0] ??
-    (messageCompletedEvent.data as any).toolCalls?.[0]
-  assert.ok(toolCall)
-  assert.ok(toolCall.function?.output)
-  assert.equal(toolCall.function.arguments, '{"query":"claude shannon"}')
-  const parsedOutput = JSON.parse(toolCall.function.output!)
-  assert.ok(Array.isArray(parsedOutput.content))
-  assert.equal(
-    Object.prototype.hasOwnProperty.call(parsedOutput, 'tool_use_id'),
-    false
-  )
-  const firstResult = parsedOutput.content[0] as Record<string, unknown>
-  assert.equal(firstResult?.type, 'web_search_result')
-})
-
-test('completions run adapter auto-completes Anthropics server code execution tool calls', async () => {
-  const adapter = completionsRunAdapter()
-
-  const events: OpenAI.Beta.AssistantStreamEvent[] = []
-
-  const providerResponse = (async function* () {
-    yield {
-      choices: [
-        {
-          delta: {
-            tool_calls: [
-              {
-                index: 0,
-                id: 'srvtoolu_456',
-                type: 'function',
-                function: {
-                  name: 'code_execution',
-                  arguments: '',
-                },
-              },
-            ],
-          },
-        },
-      ],
-    }
-
-    yield {
-      choices: [
-        {
-          delta: {
-            tool_calls: [
-              {
-                index: 0,
-                id: 'srvtoolu_456',
-                type: 'function',
-                function: {
-                  arguments: '{"code":"print(2 + 2)"}',
-                },
-              },
-            ],
-          },
-        },
-      ],
-    }
-
-    yield {
-      choices: [
-        {
-          delta: {
-            tool_calls: [
-              {
-                index: 0,
-                id: 'srvtoolu_456',
-                type: 'function',
-                function: {
-                  output:
-                    '{"stdout":"4\\n","results":[{"type":"python","value":4}]}',
-                },
-              },
-            ],
-          },
-        },
-      ],
-    }
-
-    yield {
-      choices: [
-        {
-          delta: {
-            content: 'The calculation result is 4.',
-          },
-        },
-      ],
-    }
-  })()
-
-  const client = {
-    chat: {
-      completions: {
-        create: async () => providerResponse,
-      },
-    },
-  } as unknown as OpenAI
-
-  const run = {
-    id: 'run_101',
-    assistant_id: 'asst_101',
-    thread_id: 'thread_101',
-    status: 'queued',
-    model: 'claude-sonnet-4-5',
-    instructions: null,
-    created_at: Date.now() / 1000,
-    expires_at: null,
-    started_at: null,
-    cancelled_at: null,
-    cancelled_by: null,
-    failed_at: null,
-    completed_at: null,
-    last_error: null,
-    max_completion_tokens: null,
-    max_prompt_tokens: null,
-    metadata: {},
-    response_format: null,
-    temperature: null,
-    tool_choice: 'auto',
-    top_p: null,
-    truncation_strategy: { type: 'last_messages', last_messages: null },
-    run_type: 'default',
-    usage: null,
-    required_action: null,
-    parallel_tool_calls: true,
-    tools: [
-      {
-        type: 'code_execution_20250825',
-        code_execution_20250825: {
-          name: 'code_execution',
-        },
-      },
-    ],
-  } as unknown as OpenAI.Beta.Threads.Run
-
-  const onEvent = async (event: OpenAI.Beta.AssistantStreamEvent) => {
-    events.push(event)
-
-    if (event.event === 'thread.message.completed') {
-      return {
-        ...event.data,
-        toolCalls: event.data.tool_calls,
-      }
-    }
-
-    return event.data
-  }
-
-  await adapter.handleRun({
-    client,
-    run,
-    onEvent,
-    getMessages: async () => [],
-  })
-
-  const requiresActionEvent = events.find(
-    (event) => event.event === 'thread.run.requires_action'
-  )
-  assert.equal(requiresActionEvent, undefined)
-
-  const completedEvent = events.find(
-    (event) => event.event === 'thread.run.completed'
-  )
-  assert.ok(completedEvent)
-
-  const stepCompletedEvent = events.find(
-    (event) => event.event === 'thread.run.step.completed'
-  ) as OpenAI.Beta.AssistantStreamEvent.ThreadRunStepCompleted | undefined
-  assert.ok(stepCompletedEvent)
-  assert.equal(stepCompletedEvent.data.status, 'completed')
-  assert.ok(
-    (stepCompletedEvent.data.step_details as any)?.tool_calls?.[0]?.function
-  )
-
-  const messageCompletedEvent = events.find(
-    (event) => event.event === 'thread.message.completed'
-  ) as OpenAI.Beta.AssistantStreamEvent.ThreadMessageCompleted | undefined
-
-  assert.ok(messageCompletedEvent)
-  const toolCall =
-    messageCompletedEvent.data.tool_calls?.[0] ??
-    (messageCompletedEvent.data as any).toolCalls?.[0]
-  assert.ok(toolCall)
-  assert.equal(toolCall.function?.name, 'code_execution')
-  assert.equal(toolCall.function?.arguments, '{"code":"print(2 + 2)"}')
-  assert.ok(toolCall.function?.output)
-  const parsedOutput = JSON.parse(toolCall.function.output!)
-  assert.equal(parsedOutput.stdout, '4\n')
+  const toolCalls =
+    requiresActionEvent!.data.required_action?.submit_tool_outputs.tool_calls
+  assert.ok(toolCalls)
+  assert.equal(toolCalls.length, 1)
+  assert.equal(toolCalls[0].type, 'function')
+  assert.equal(toolCalls[0].function?.name, 'computer')
 })

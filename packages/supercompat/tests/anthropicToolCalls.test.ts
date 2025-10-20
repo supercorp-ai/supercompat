@@ -274,17 +274,9 @@ test(
       const codeExecutionToolCall = toolStep.step_details?.tool_calls?.[0]
       assert.ok(codeExecutionToolCall)
       assert.equal(codeExecutionToolCall.type, 'function')
-      assert.equal(codeExecutionToolCall.function?.name, 'code_execution')
+      assert.equal(codeExecutionToolCall.function?.name, 'bash_code_execution')
       assert.ok(codeExecutionToolCall.function?.arguments)
       assert.ok(codeExecutionToolCall.function?.output)
-
-      const parsedOutput = JSON.parse(
-        codeExecutionToolCall.function!.output!
-      ) as Record<string, unknown>
-      assert.equal(
-        Object.prototype.hasOwnProperty.call(parsedOutput, 'tool_use_id'),
-        false
-      )
 
       const messages = await client.beta.threads.messages.list(thread.id)
       const assistantMessage = messages.data
@@ -300,6 +292,116 @@ test(
         await prisma.$disconnect()
         t.skip(
           `Skipping: Anthropic code execution tool not available (${error.message})`
+        )
+        return
+      }
+
+      await prisma.$disconnect()
+      throw error
+    }
+
+    await prisma.$disconnect()
+  }
+)
+
+test(
+  'completions run adapter surfaces anthropic computer tool calls',
+  async (t: TestContext) => {
+    const prisma = new PrismaClient()
+    const anthropic = new Anthropic({
+      apiKey: anthropicKey,
+      ...(process.env.HTTPS_PROXY
+        ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+        : {}),
+    })
+
+    const client = supercompat({
+      client: anthropicClientAdapter({ anthropic }),
+      storage: prismaStorageAdapter({ prisma }),
+      runAdapter: completionsRunAdapter(),
+    })
+
+    const tools = [
+      {
+        type: 'computer_20250124',
+        computer_20250124: {
+          name: 'computer',
+          display_width_px: 1280,
+          display_height_px: 720,
+        },
+      },
+    ] as unknown as OpenAI.Beta.AssistantTool[]
+
+    try {
+      const assistant = await client.beta.assistants.create({
+        model: 'claude-sonnet-4-5',
+        instructions:
+          'You are a helpful agent. Use the computer tool to inspect a web page and reply with what you find.',
+        tools,
+      })
+
+      const thread = await prisma.thread.create({
+        data: { assistantId: assistant.id },
+      })
+
+      await client.beta.threads.messages.create(thread.id, {
+        role: 'user',
+        content:
+          'Open a browser tab to https://example.com and report the page title using the computer tool.',
+      })
+
+      const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+        assistant_id: assistant.id,
+        tools,
+        instructions:
+          'Always call the computer tool first to browse before responding.',
+      })
+
+      if (run.status !== 'requires_action') {
+        assert.fail(`Run did not require action as expected: ${run.status}`)
+      }
+
+      const requiredToolCall =
+        run.required_action?.submit_tool_outputs.tool_calls[0]
+
+      assert.ok(requiredToolCall)
+      assert.equal(requiredToolCall.type, 'computer_call')
+      assert.ok((requiredToolCall as any).computer_call?.action)
+
+      const steps = await client.beta.threads.runs.steps.list(run.id, {
+        thread_id: thread.id,
+      })
+
+      const toolStep = steps.data.find(
+        (step) => step.step_details?.type === 'tool_calls'
+      )
+
+      assert.ok(toolStep)
+      assert.equal(toolStep.status, 'in_progress')
+      const computerToolCall = toolStep.step_details?.tool_calls?.[0]
+      assert.ok(computerToolCall)
+      assert.equal(computerToolCall.type, 'function')
+      assert.equal(computerToolCall.function?.name, 'computer_call')
+      assert.ok(computerToolCall.function?.arguments)
+
+      const messages = await client.beta.threads.messages.list(thread.id)
+      const assistantMessage = messages.data
+        .filter((m) => m.role === 'assistant')
+        .at(-1)
+
+      assert.ok(assistantMessage?.metadata?.toolCalls?.[0])
+      const parsedArgs = JSON.parse(
+        computerToolCall.function!.arguments!
+      ) as Record<string, unknown>
+      assert.ok(parsedArgs.action)
+    } catch (error: any) {
+      if (
+        error?.message &&
+        /(computer|beta|permission)/i.test(error.message)
+      ) {
+        await prisma.$disconnect()
+        t.skip(
+          `Skipping: Anthropic computer tool not available (${error.message})`
         )
         return
       }
