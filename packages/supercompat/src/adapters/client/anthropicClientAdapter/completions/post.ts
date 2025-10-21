@@ -58,6 +58,14 @@ export const post = ({
         const normalizedComputerCalls = new Set<string>()
         let nextToolCallIndex = 0
 
+        const parseJson = (value: string) => {
+          try {
+            return JSON.parse(value)
+          } catch {
+            return undefined
+          }
+        }
+
         const getOrCreateIndexForToolUseId = (toolUseId?: string) => {
           if (!toolUseId) {
             return 0
@@ -90,6 +98,52 @@ export const post = ({
           toolUseIdArgumentBuffer.set(toolUseId, '')
         }
 
+        const getToolUseIdFromBlock = (block: any) => {
+          if (!block || typeof block !== 'object') return undefined
+
+          if (typeof block.tool_use_id === 'string') {
+            return block.tool_use_id
+          }
+
+          if (typeof block.id === 'string') {
+            return block.id
+          }
+
+          return undefined
+        }
+
+        const emitNormalizedToolCall = ({
+          normalized,
+          toolCallIndex,
+          chunkIndex,
+        }: {
+          normalized: Record<string, unknown>
+          toolCallIndex: number
+          chunkIndex: number
+        }) => {
+          const messageDelta = {
+            id: `chatcmpl-${uid(29)}`,
+            object: 'chat.completion.chunk',
+            choices: [
+              {
+                index: chunkIndex,
+                delta: {
+                  tool_calls: [
+                    {
+                      index: toolCallIndex,
+                      function: {
+                        arguments: JSON.stringify(normalized),
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          }
+
+          controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
+        }
+
         const getOrCreateIndexForBlock = (blockIndex?: number) => {
           if (typeof blockIndex !== 'number') {
             return 0
@@ -109,36 +163,18 @@ export const post = ({
             if (toolUseId && computerToolUseIds.has(toolUseId) && !normalizedComputerCalls.has(toolUseId)) {
               const buffered = toolUseIdArgumentBuffer.get(toolUseId) ?? ''
 
-              try {
-                const parsed = buffered ? JSON.parse(buffered) : undefined
-                if (parsed !== undefined) {
-                  const normalized = normalizeComputerToolCallPayload(parsed)
-                  const index = getOrCreateIndexForToolUseId(toolUseId)
+              const parsed = buffered ? parseJson(buffered) : undefined
+              if (parsed !== undefined) {
+                const normalized = normalizeComputerToolCallPayload(parsed)
+                const toolCallIndex = getOrCreateIndexForToolUseId(toolUseId)
+                const chunkIndex = typeof chunk.index === 'number' ? chunk.index : 0
 
-                  const messageDelta = {
-                    id: `chatcmpl-${uid(29)}`,
-                    object: 'chat.completion.chunk',
-                    choices: [
-                      {
-                        index: typeof chunk.index === 'number' ? chunk.index : 0,
-                        delta: {
-                          tool_calls: [
-                            {
-                              index,
-                              function: {
-                                arguments: JSON.stringify(normalized),
-                              },
-                            },
-                          ],
-                        },
-                      },
-                    ],
-                  }
-
-                  controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
-                }
-              } catch {
-                // ignore parsing errors; leave arguments as-is
+                emitNormalizedToolCall({
+                  normalized,
+                  toolCallIndex,
+                  chunkIndex,
+                })
+                normalizedComputerCalls.add(toolUseId)
               }
             }
 
@@ -170,35 +206,18 @@ export const post = ({
                 toolUseIdArgumentBuffer.set(toolUseId, updated)
 
                 if (!normalizedComputerCalls.has(toolUseId)) {
-                  try {
-                    const parsed = JSON.parse(updated)
+                  const parsed = parseJson(updated)
+                  if (parsed !== undefined) {
                     const normalized = normalizeComputerToolCallPayload(parsed)
-                    const index = getOrCreateIndexForToolUseId(toolUseId)
+                    const toolCallIndex = getOrCreateIndexForToolUseId(toolUseId)
+                    const chunkIndex = typeof chunk.index === 'number' ? chunk.index : 0
 
-                    const messageDelta = {
-                      id: `chatcmpl-${uid(29)}`,
-                      object: 'chat.completion.chunk',
-                      choices: [
-                        {
-                          index: typeof chunk.index === 'number' ? chunk.index : 0,
-                          delta: {
-                            tool_calls: [
-                              {
-                                index,
-                                function: {
-                                  arguments: JSON.stringify(normalized),
-                                },
-                              },
-                            ],
-                          },
-                        },
-                      ],
-                    }
-
-                    controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
+                    emitNormalizedToolCall({
+                      normalized,
+                      toolCallIndex,
+                      chunkIndex,
+                    })
                     normalizedComputerCalls.add(toolUseId)
-                  } catch {
-                    // wait for more chunks
                   }
                 }
 
@@ -306,10 +325,7 @@ export const post = ({
               const outputPayload = {
                 content: chunk.content_block.content ?? [],
               }
-              const toolCallId =
-                ((chunk.content_block as unknown as { tool_use_id?: string })
-                  .tool_use_id ??
-                  (chunk.content_block as unknown as { id?: string }).id) ?? ''
+              const toolCallId = getToolUseIdFromBlock(chunk.content_block) ?? ''
               const index = getOrCreateIndexForToolUseId(toolCallId)
               assignBlockToToolUse({
                 blockIndex: chunk.index,
@@ -334,10 +350,7 @@ export const post = ({
                 (chunk.content_block as any).type
               )
             ) {
-              const toolCallId =
-                ((chunk.content_block as unknown as { tool_use_id?: string })
-                  .tool_use_id ??
-                  (chunk.content_block as unknown as { id?: string }).id) ?? ''
+              const toolCallId = getToolUseIdFromBlock(chunk.content_block) ?? ''
 
               const {
                 tool_use_id: _toolUseId,
