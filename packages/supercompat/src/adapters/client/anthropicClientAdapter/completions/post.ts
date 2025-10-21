@@ -7,6 +7,7 @@ import { firstUserMessages } from '@/lib/messages/firstUserMessages'
 import { serializeTools } from './serializeTools'
 import { serializeMessages } from './serializeMessages'
 import { serializeBetas } from './serializeBetas'
+import { normalizeComputerToolCallPayload } from '../normalizeComputerToolCallPayload'
 
 export const post = ({
   anthropic,
@@ -52,6 +53,8 @@ export const post = ({
       async start(controller) {
         const blockIndexToToolUseId = new Map<number, string>()
         const toolUseIdToIndex = new Map<string, number>()
+        const toolUseIdToName = new Map<string, string>()
+        const toolUseIdArgumentBuffer = new Map<string, string>()
         let nextToolCallIndex = 0
 
         const getOrCreateIndexForToolUseId = (toolUseId?: string) => {
@@ -89,9 +92,55 @@ export const post = ({
 
         for await (const chunk of response) {
           if (chunk.type === 'content_block_stop') {
+            const toolUseId =
+              typeof chunk.index === 'number'
+                ? blockIndexToToolUseId.get(chunk.index)
+                : undefined
+            const toolName = toolUseId ? toolUseIdToName.get(toolUseId) : undefined
+
+            if (toolUseId && toolName === 'computer') {
+              const buffered = toolUseIdArgumentBuffer.get(toolUseId) ?? ''
+
+              try {
+                const parsed = JSON.parse(buffered || '{}')
+                const normalized = normalizeComputerToolCallPayload(parsed)
+                const index = getOrCreateIndexForToolUseId(toolUseId)
+
+                const messageDelta = {
+                  id: `chatcmpl-${uid(29)}`,
+                  object: 'chat.completion.chunk',
+                  choices: [
+                    {
+                      index: chunk.index,
+                      delta: {
+                        tool_calls: [
+                          {
+                            index,
+                            function: {
+                              arguments: JSON.stringify(normalized),
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                }
+
+                controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
+              } catch {
+                // ignore parsing errors; leave arguments as-is
+              }
+            }
+
+            if (toolUseId) {
+              toolUseIdArgumentBuffer.delete(toolUseId)
+              toolUseIdToName.delete(toolUseId)
+            }
+
             if (typeof chunk.index === 'number') {
               blockIndexToToolUseId.delete(chunk.index)
             }
+
             continue
           }
 
@@ -99,6 +148,23 @@ export const post = ({
             let delta: { tool_calls?: any; content?: string | null }
 
             if (chunk.delta.type === 'input_json_delta') {
+              const toolUseId =
+                typeof chunk.index === 'number'
+                  ? blockIndexToToolUseId.get(chunk.index)
+                  : undefined
+
+              if (toolUseId) {
+                const existing = toolUseIdArgumentBuffer.get(toolUseId) ?? ''
+                toolUseIdArgumentBuffer.set(
+                  toolUseId,
+                  `${existing}${chunk.delta.partial_json ?? ''}`
+                )
+              }
+
+              if (toolUseId && toolUseIdToName.get(toolUseId) === 'computer') {
+                continue
+              }
+
               const index = getOrCreateIndexForBlock(chunk.index)
 
               delta = {
@@ -144,6 +210,10 @@ export const post = ({
                 blockIndex: chunk.index,
                 toolUseId: chunk.content_block.id,
               })
+              toolUseIdToName.set(chunk.content_block.id, toolName)
+              if (!toolUseIdArgumentBuffer.has(chunk.content_block.id)) {
+                toolUseIdArgumentBuffer.set(chunk.content_block.id, '')
+              }
 
               delta = {
                 content: null,
@@ -165,6 +235,10 @@ export const post = ({
                 blockIndex: chunk.index,
                 toolUseId: chunk.content_block.id,
               })
+              toolUseIdToName.set(chunk.content_block.id, chunk.content_block.name as string)
+              if (!toolUseIdArgumentBuffer.has(chunk.content_block.id)) {
+                toolUseIdArgumentBuffer.set(chunk.content_block.id, '')
+              }
 
               delta = {
                 content: null,
@@ -306,8 +380,26 @@ export const post = ({
       // @ts-ignore-next-line
       const data = await anthropic.messages.create(resultOptions)
 
+      const normalizedContent = Array.isArray(data?.content)
+        ? data.content.map((block: any) => {
+            if (block?.type === 'tool_use' && block?.name === 'computer') {
+              return {
+                ...block,
+                input: normalizeComputerToolCallPayload(block.input ?? {}),
+              }
+            }
+
+            return block
+          })
+        : data?.content
+
+      const normalizedData = {
+        ...data,
+        ...(normalizedContent ? { content: normalizedContent } : {}),
+      }
+
       return new Response(JSON.stringify({
-        data,
+        data: normalizedData,
       }), {
         status: 200,
         headers: {

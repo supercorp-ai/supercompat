@@ -366,7 +366,10 @@ test(
 
       assert.ok(requiredToolCall)
       assert.equal(requiredToolCall.type, 'computer_call')
-      assert.ok((requiredToolCall as any).computer_call?.action)
+      const computerCall = (requiredToolCall as any).computer_call
+      assert.ok(computerCall)
+      assert.equal(typeof computerCall.action, 'object')
+      assert.equal(typeof computerCall.action?.type, 'string')
 
       const steps = await client.beta.threads.runs.steps.list(run.id, {
         thread_id: thread.id,
@@ -393,7 +396,8 @@ test(
       const parsedArgs = JSON.parse(
         computerToolCall.function!.arguments!
       ) as Record<string, unknown>
-      assert.ok(parsedArgs.action)
+      assert.equal(typeof parsedArgs.action, 'object')
+      assert.equal(typeof parsedArgs.action?.type, 'string')
     } catch (error: any) {
       if (
         error?.message &&
