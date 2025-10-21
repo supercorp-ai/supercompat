@@ -35,7 +35,7 @@ const toolCallsData = ({
   if (!prevToolCalls) {
     return delta.tool_calls.map((tc: any) => ({
       id: uid(24),
-      type: 'function',
+      type: tc.type ?? 'function',
       ...omit(tc, ['index']),
     }))
   }
@@ -208,7 +208,7 @@ export const completionsRunAdapter = () => {
                   type: 'tool_calls',
                   tool_calls: delta.tool_calls.map((tc: any) => ({
                     id: uid(24),
-                    type: 'function',
+                    type: tc.type ?? 'function',
                     ...tc,
                   })),
                 },
@@ -250,7 +250,34 @@ export const completionsRunAdapter = () => {
         },
       })
 
-      if (isEmpty(message.toolCalls)) {
+      const messageToolCalls = (message.toolCalls ??
+        []) as OpenAI.Beta.Threads.Runs.Steps.ToolCall[]
+
+      const functionToolCalls = messageToolCalls.filter(
+        (toolCall): toolCall is OpenAI.Beta.Threads.Runs.Steps.FunctionToolCall =>
+          toolCall.type === 'function'
+      )
+
+      const pendingFunctionToolCalls = functionToolCalls.filter(
+        (toolCall) => !toolCall.function?.output
+      )
+
+      if (isEmpty(pendingFunctionToolCalls)) {
+        if (toolCallsRunStep) {
+          toolCallsRunStep = await onEvent({
+            event: 'thread.run.step.completed',
+            data: {
+              ...toolCallsRunStep,
+              status: 'completed',
+              completed_at: dayjs().unix(),
+              step_details: {
+                type: 'tool_calls',
+                tool_calls: currentToolCalls ?? [],
+              },
+            },
+          })
+        }
+
         return onEvent({
           event: 'thread.run.completed',
           data: {
@@ -261,6 +288,56 @@ export const completionsRunAdapter = () => {
         })
       }
 
+      type RequiredToolCall =
+        | OpenAI.Beta.Threads.Runs.RequiredActionFunctionToolCall
+        | {
+            id: string
+            type: 'computer_call'
+            computer_call: {
+              action: any
+              pending_safety_checks: any[]
+            }
+          }
+
+      const requiredToolCalls: RequiredToolCall[] = pendingFunctionToolCalls.map(
+        (toolCall) => {
+          const args = toolCall.function?.arguments ?? ''
+
+          if (toolCall.function?.name === 'computer_call') {
+            let parsedArguments: any = {}
+            try {
+              parsedArguments = JSON.parse(args || '{}')
+            } catch {
+              parsedArguments = {}
+            }
+
+            const computerCall = {
+              action:
+                parsedArguments?.action ?? parsedArguments ?? {},
+              pending_safety_checks:
+                Array.isArray(parsedArguments?.pending_safety_checks)
+                  ? parsedArguments.pending_safety_checks
+                  : [],
+            }
+
+            return {
+              id: toolCall.id,
+              type: 'computer_call',
+              computer_call: computerCall,
+            }
+          }
+
+          return {
+            id: toolCall.id,
+            type: 'function',
+            function: {
+              name: toolCall.function?.name ?? '',
+              arguments: args,
+            },
+          }
+        }
+      )
+
       return onEvent({
         event: 'thread.run.requires_action',
         data: {
@@ -269,7 +346,7 @@ export const completionsRunAdapter = () => {
           required_action: {
             type: 'submit_tool_outputs',
             submit_tool_outputs: {
-              tool_calls: message.toolCalls,
+              tool_calls: requiredToolCalls as any,
             },
           },
         },

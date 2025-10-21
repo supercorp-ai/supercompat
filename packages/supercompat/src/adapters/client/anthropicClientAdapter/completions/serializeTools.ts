@@ -16,6 +16,10 @@ export const serializeTools = ({
       }
     }
 
-    return tool
+    return {
+      type: tool.type,
+      // @ts-ignore-next-line
+      ...(tool[tool.type] || {}),
+    }
   })
 )

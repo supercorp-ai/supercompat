@@ -31,7 +31,7 @@
     "ts-deepmerge": "^7.0.3"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.40.1",
+    "@anthropic-ai/sdk": "^0.67.0",
     "@mistralai/mistralai": "^1.6.0",
     "@prisma/client": "^6.15.0",
     "@superinterface/react": "^5.0.0",
