@@ -50,15 +50,61 @@ export const post = ({
 
     const stream = new ReadableStream({
       async start(controller) {
+        const blockIndexToToolUseId = new Map<number, string>()
+        const toolUseIdToIndex = new Map<string, number>()
+        let nextToolCallIndex = 0
+
+        const getOrCreateIndexForToolUseId = (toolUseId?: string) => {
+          if (!toolUseId) {
+            return 0
+          }
+
+          if (!toolUseIdToIndex.has(toolUseId)) {
+            toolUseIdToIndex.set(toolUseId, nextToolCallIndex++)
+          }
+
+          return toolUseIdToIndex.get(toolUseId) ?? 0
+        }
+
+        const assignBlockToToolUse = ({
+          blockIndex,
+          toolUseId,
+        }: {
+          blockIndex?: number
+          toolUseId?: string
+        }) => {
+          if (typeof blockIndex === 'number' && toolUseId) {
+            blockIndexToToolUseId.set(blockIndex, toolUseId)
+          }
+        }
+
+        const getOrCreateIndexForBlock = (blockIndex?: number) => {
+          if (typeof blockIndex !== 'number') {
+            return 0
+          }
+
+          const toolUseId = blockIndexToToolUseId.get(blockIndex)
+          return getOrCreateIndexForToolUseId(toolUseId)
+        }
+
         for await (const chunk of response) {
+          if (chunk.type === 'content_block_stop') {
+            if (typeof chunk.index === 'number') {
+              blockIndexToToolUseId.delete(chunk.index)
+            }
+            continue
+          }
+
           if (chunk.type === 'content_block_delta') {
             let delta: { tool_calls?: any; content?: string | null }
 
             if (chunk.delta.type === 'input_json_delta') {
+              const index = getOrCreateIndexForBlock(chunk.index)
+
               delta = {
                 tool_calls: [
                   {
-                    index: 0,
+                    index,
                     function: {
                       arguments: chunk.delta.partial_json,
                     },
@@ -93,12 +139,17 @@ export const post = ({
             if (chunk.content_block.type === 'tool_use') {
               const toolName = chunk.content_block.name as string
               const normalizedToolName = toolName === 'computer' ? 'computer_call' : toolName
+              const index = getOrCreateIndexForToolUseId(chunk.content_block.id)
+              assignBlockToToolUse({
+                blockIndex: chunk.index,
+                toolUseId: chunk.content_block.id,
+              })
 
               delta = {
                 content: null,
                 tool_calls: [
                   {
-                    index: 0,
+                    index,
                     id: chunk.content_block.id,
                     type: 'function',
                     function: {
@@ -109,11 +160,17 @@ export const post = ({
                 ],
               }
             } else if (chunk.content_block.type === 'server_tool_use') {
+              const index = getOrCreateIndexForToolUseId(chunk.content_block.id)
+              assignBlockToToolUse({
+                blockIndex: chunk.index,
+                toolUseId: chunk.content_block.id,
+              })
+
               delta = {
                 content: null,
                 tool_calls: [
                   {
-                    index: 0,
+                    index,
                     id: chunk.content_block.id,
                     type: 'function',
                     function: {
@@ -131,12 +188,17 @@ export const post = ({
                 ((chunk.content_block as unknown as { tool_use_id?: string })
                   .tool_use_id ??
                   (chunk.content_block as unknown as { id?: string }).id) ?? ''
+              const index = getOrCreateIndexForToolUseId(toolCallId)
+              assignBlockToToolUse({
+                blockIndex: chunk.index,
+                toolUseId: toolCallId,
+              })
 
               delta = {
                 content: null,
                 tool_calls: [
                   {
-                    index: 0,
+                    index,
                     id: toolCallId,
                     type: 'function',
                     function: {
@@ -161,6 +223,11 @@ export const post = ({
                 id: _id,
                 ...rest
               } = chunk.content_block as unknown as Record<string, unknown>
+              const index = getOrCreateIndexForToolUseId(toolCallId)
+              assignBlockToToolUse({
+                blockIndex: chunk.index,
+                toolUseId: toolCallId,
+              })
 
               const outputPayload =
                 Object.keys(rest).length > 0
@@ -176,7 +243,7 @@ export const post = ({
                 content: null,
                 tool_calls: [
                   {
-                    index: 0,
+                    index,
                     id: toolCallId,
                     type: 'function',
                     function: {
