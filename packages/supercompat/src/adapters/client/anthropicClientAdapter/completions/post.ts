@@ -330,9 +330,9 @@ export const post = ({
                 ],
               }
             } else if (
-              chunk.content_block.type === 'code_execution_tool_result' ||
-              chunk.content_block.type === 'bash_code_execution_tool_result' ||
-              chunk.content_block.type === 'python_code_execution_tool_result'
+              ['code_execution_tool_result', 'bash_code_execution_tool_result', 'python_code_execution_tool_result'].includes(
+                (chunk.content_block as any).type
+              )
             ) {
               const toolCallId =
                 ((chunk.content_block as unknown as { tool_use_id?: string })
