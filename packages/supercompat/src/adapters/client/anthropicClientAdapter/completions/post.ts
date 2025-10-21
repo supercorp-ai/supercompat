@@ -53,8 +53,9 @@ export const post = ({
       async start(controller) {
         const blockIndexToToolUseId = new Map<number, string>()
         const toolUseIdToIndex = new Map<string, number>()
-        const toolUseIdToName = new Map<string, string>()
         const toolUseIdArgumentBuffer = new Map<string, string>()
+        const computerToolUseIds = new Set<string>()
+        const normalizedComputerCalls = new Set<string>()
         let nextToolCallIndex = 0
 
         const getOrCreateIndexForToolUseId = (toolUseId?: string) => {
@@ -81,6 +82,14 @@ export const post = ({
           }
         }
 
+        const markComputerToolUse = (toolUseId?: string) => {
+          if (!toolUseId) return
+
+          computerToolUseIds.add(toolUseId)
+          normalizedComputerCalls.delete(toolUseId)
+          toolUseIdArgumentBuffer.set(toolUseId, '')
+        }
+
         const getOrCreateIndexForBlock = (blockIndex?: number) => {
           if (typeof blockIndex !== 'number') {
             return 0
@@ -96,37 +105,38 @@ export const post = ({
               typeof chunk.index === 'number'
                 ? blockIndexToToolUseId.get(chunk.index)
                 : undefined
-            const toolName = toolUseId ? toolUseIdToName.get(toolUseId) : undefined
 
-            if (toolUseId && toolName === 'computer') {
+            if (toolUseId && computerToolUseIds.has(toolUseId) && !normalizedComputerCalls.has(toolUseId)) {
               const buffered = toolUseIdArgumentBuffer.get(toolUseId) ?? ''
 
               try {
-                const parsed = JSON.parse(buffered || '{}')
-                const normalized = normalizeComputerToolCallPayload(parsed)
-                const index = getOrCreateIndexForToolUseId(toolUseId)
+                const parsed = buffered ? JSON.parse(buffered) : undefined
+                if (parsed !== undefined) {
+                  const normalized = normalizeComputerToolCallPayload(parsed)
+                  const index = getOrCreateIndexForToolUseId(toolUseId)
 
-                const messageDelta = {
-                  id: `chatcmpl-${uid(29)}`,
-                  object: 'chat.completion.chunk',
-                  choices: [
-                    {
-                      index: chunk.index,
-                      delta: {
-                        tool_calls: [
-                          {
-                            index,
-                            function: {
-                              arguments: JSON.stringify(normalized),
+                  const messageDelta = {
+                    id: `chatcmpl-${uid(29)}`,
+                    object: 'chat.completion.chunk',
+                    choices: [
+                      {
+                        index: typeof chunk.index === 'number' ? chunk.index : 0,
+                        delta: {
+                          tool_calls: [
+                            {
+                              index,
+                              function: {
+                                arguments: JSON.stringify(normalized),
+                              },
                             },
-                          },
-                        ],
+                          ],
+                        },
                       },
-                    },
-                  ],
-                }
+                    ],
+                  }
 
-                controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
+                  controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
+                }
               } catch {
                 // ignore parsing errors; leave arguments as-is
               }
@@ -134,7 +144,8 @@ export const post = ({
 
             if (toolUseId) {
               toolUseIdArgumentBuffer.delete(toolUseId)
-              toolUseIdToName.delete(toolUseId)
+              computerToolUseIds.delete(toolUseId)
+              normalizedComputerCalls.delete(toolUseId)
             }
 
             if (typeof chunk.index === 'number') {
@@ -153,16 +164,53 @@ export const post = ({
                   ? blockIndexToToolUseId.get(chunk.index)
                   : undefined
 
+              if (toolUseId && computerToolUseIds.has(toolUseId)) {
+                const existing = toolUseIdArgumentBuffer.get(toolUseId) ?? ''
+                const updated = `${existing}${chunk.delta.partial_json ?? ''}`
+                toolUseIdArgumentBuffer.set(toolUseId, updated)
+
+                if (!normalizedComputerCalls.has(toolUseId)) {
+                  try {
+                    const parsed = JSON.parse(updated)
+                    const normalized = normalizeComputerToolCallPayload(parsed)
+                    const index = getOrCreateIndexForToolUseId(toolUseId)
+
+                    const messageDelta = {
+                      id: `chatcmpl-${uid(29)}`,
+                      object: 'chat.completion.chunk',
+                      choices: [
+                        {
+                          index: typeof chunk.index === 'number' ? chunk.index : 0,
+                          delta: {
+                            tool_calls: [
+                              {
+                                index,
+                                function: {
+                                  arguments: JSON.stringify(normalized),
+                                },
+                              },
+                            ],
+                          },
+                        },
+                      ],
+                    }
+
+                    controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
+                    normalizedComputerCalls.add(toolUseId)
+                  } catch {
+                    // wait for more chunks
+                  }
+                }
+
+                continue
+              }
+
               if (toolUseId) {
                 const existing = toolUseIdArgumentBuffer.get(toolUseId) ?? ''
                 toolUseIdArgumentBuffer.set(
                   toolUseId,
                   `${existing}${chunk.delta.partial_json ?? ''}`
                 )
-              }
-
-              if (toolUseId && toolUseIdToName.get(toolUseId) === 'computer') {
-                continue
               }
 
               const index = getOrCreateIndexForBlock(chunk.index)
@@ -210,8 +258,9 @@ export const post = ({
                 blockIndex: chunk.index,
                 toolUseId: chunk.content_block.id,
               })
-              toolUseIdToName.set(chunk.content_block.id, toolName)
-              if (!toolUseIdArgumentBuffer.has(chunk.content_block.id)) {
+              if (normalizedToolName === 'computer_call') {
+                markComputerToolUse(chunk.content_block.id)
+              } else if (!toolUseIdArgumentBuffer.has(chunk.content_block.id)) {
                 toolUseIdArgumentBuffer.set(chunk.content_block.id, '')
               }
 
@@ -235,7 +284,6 @@ export const post = ({
                 blockIndex: chunk.index,
                 toolUseId: chunk.content_block.id,
               })
-              toolUseIdToName.set(chunk.content_block.id, chunk.content_block.name as string)
               if (!toolUseIdArgumentBuffer.has(chunk.content_block.id)) {
                 toolUseIdArgumentBuffer.set(chunk.content_block.id, '')
               }

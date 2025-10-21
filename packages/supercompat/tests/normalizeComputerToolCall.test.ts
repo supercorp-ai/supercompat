@@ -100,3 +100,17 @@ test('normalizeComputerToolCallPayload converts wait with duration', () => {
   assert.equal(result.action.type, 'wait')
   assert.equal(result.action.duration_ms, 1500)
 })
+
+test('normalizeComputerToolCallPayload parses stringified payloads', () => {
+  const payload = JSON.stringify({
+    action: 'key',
+    text: 'ctrl+shift+t',
+    pending_safety_checks: ['foo'],
+  })
+
+  const result = normalizeComputerToolCallPayload(payload)
+
+  assert.equal(result.action.type, 'keypress')
+  assert.deepEqual(result.action.keys, ['ctrl', 'shift', 't'])
+  assert.deepEqual(result.pending_safety_checks, ['foo'])
+})

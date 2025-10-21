@@ -354,21 +354,35 @@ const normalizeActionString = (
 
 const normalizeAction = (payload: any): Record<string, unknown> => {
   if (payload && typeof payload === 'object') {
-    if (payload.action && typeof payload.action === 'object' && typeof payload.action.type === 'string') {
-      return payload.action
+    let rawAction = (payload as any).action
+
+    if (typeof rawAction === 'string') {
+      const parsedAction = parseJson(rawAction)
+      if (parsedAction && typeof parsedAction === 'object') {
+        rawAction = parsedAction
+      }
     }
 
-    if (typeof payload.action === 'string') {
+    if (rawAction && typeof rawAction === 'object' && typeof rawAction.type === 'string') {
+      return rawAction as Record<string, unknown>
+    }
+
+    if (typeof rawAction === 'string') {
       const details = omit(payload, ['action', 'pending_safety_checks', 'status'])
-      return normalizeActionString(payload.action, details)
+      return normalizeActionString(rawAction, details)
     }
 
-    if (typeof payload.type === 'string') {
-      return payload
+    if (typeof (payload as any).type === 'string') {
+      return payload as Record<string, unknown>
     }
   }
 
   if (typeof payload === 'string') {
+    const parsed = parseJson(payload)
+    if (parsed && typeof parsed === 'object') {
+      return normalizeAction(parsed)
+    }
+
     return { type: payload }
   }
 
@@ -379,11 +393,29 @@ const normalizeAction = (payload: any): Record<string, unknown> => {
 }
 
 export const normalizeComputerToolCallPayload = (payload: any) => {
-  const pendingSafetyChecks = Array.isArray(payload?.pending_safety_checks)
-    ? payload.pending_safety_checks
+  let normalizedPayload = payload
+  if (typeof payload === 'string') {
+    const parsed = parseJson(payload)
+    if (parsed !== undefined) {
+      normalizedPayload = parsed
+    }
+  }
+
+  let pendingSafetyChecksRaw =
+    normalizedPayload && typeof normalizedPayload === 'object'
+      ? (normalizedPayload as any).pending_safety_checks
+      : undefined
+
+  if (typeof pendingSafetyChecksRaw === 'string') {
+    const parsed = parseJson(pendingSafetyChecksRaw)
+    pendingSafetyChecksRaw = Array.isArray(parsed) ? parsed : []
+  }
+
+  const pendingSafetyChecks = Array.isArray(pendingSafetyChecksRaw)
+    ? pendingSafetyChecksRaw
     : []
 
-  const normalizedAction = normalizeAction(payload)
+  const normalizedAction = normalizeAction(normalizedPayload)
 
   const result: {
     action: Record<string, unknown>
@@ -394,9 +426,16 @@ export const normalizeComputerToolCallPayload = (payload: any) => {
     pending_safety_checks: pendingSafetyChecks,
   }
 
-  if (payload && typeof payload === 'object' && 'status' in payload) {
-    result.status = payload.status
+  if (normalizedPayload && typeof normalizedPayload === 'object' && 'status' in normalizedPayload) {
+    result.status = (normalizedPayload as any).status
   }
 
   return result
+}
+const parseJson = (value: string) => {
+  try {
+    return JSON.parse(value)
+  } catch {
+    return undefined
+  }
 }
