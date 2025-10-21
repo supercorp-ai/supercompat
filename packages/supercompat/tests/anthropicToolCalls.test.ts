@@ -370,6 +370,21 @@ test(
       assert.ok(computerCall)
       assert.equal(typeof computerCall.action, 'object')
       assert.equal(typeof computerCall.action?.type, 'string')
+      const allowedActionTypes = new Set([
+        'click',
+        'double_click',
+        'drag',
+        'keypress',
+        'move',
+        'screenshot',
+        'scroll',
+        'type',
+        'wait',
+      ])
+      assert.ok(
+        allowedActionTypes.has(computerCall.action.type),
+        `unexpected computer action type: ${computerCall.action.type}`,
+      )
 
       const steps = await client.beta.threads.runs.steps.list(run.id, {
         thread_id: thread.id,
@@ -398,6 +413,10 @@ test(
       ) as Record<string, unknown>
       assert.equal(typeof parsedArgs.action, 'object')
       assert.equal(typeof parsedArgs.action?.type, 'string')
+      assert.ok(
+        allowedActionTypes.has(parsedArgs.action.type),
+        `unexpected computer action type in message: ${parsedArgs.action.type}`,
+      )
     } catch (error: any) {
       if (
         error?.message &&
