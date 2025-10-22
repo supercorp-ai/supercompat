@@ -5,6 +5,18 @@ export const serializeMessage = ({
 }: {
   message: OpenAI.ChatCompletionMessageParam
 }) => {
+  const parseArguments = (value?: string | null) => {
+    if (typeof value !== 'string') return {}
+    const trimmed = value.trim()
+    if (!trimmed) return {}
+
+    try {
+      return JSON.parse(trimmed)
+    } catch {
+      return {}
+    }
+  }
+
   if (message.role === 'user') {
     return {
       role: 'user',
@@ -24,7 +36,7 @@ export const serializeMessage = ({
           // @ts-expect-error todo
           name: toolCall.function.name,
           // @ts-expect-error todo
-          input: toolCall.function.arguments ? JSON.parse(toolCall.function.arguments) : {},
+          input: parseArguments(toolCall.function.arguments),
         })),
       ],
     }

@@ -21,6 +21,351 @@ if (process.env.HTTPS_PROXY) {
 
 const anthropicKey = process.env.ANTHROPIC_API_KEY!
 
+test('completions run adapter handles anthropic function tool calls with empty arguments', async () => {
+  const prisma = new PrismaClient()
+  const anthropic = new Anthropic({
+    apiKey: anthropicKey,
+    ...(process.env.HTTPS_PROXY
+      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+      : {}),
+  })
+
+  const client = supercompat({
+    client: anthropicClientAdapter({ anthropic }),
+    storage: prismaStorageAdapter({ prisma }),
+    runAdapter: completionsRunAdapter(),
+  })
+
+  const tools = [
+    {
+      type: 'function',
+      function: {
+        name: 'ping',
+        description: 'No input required. Return a short acknowledgement.',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+      },
+    },
+  ]
+
+  try {
+    const assistant = await client.beta.assistants.create({
+      model: 'claude-sonnet-4-5',
+      instructions:
+        'Always call the ping function before responding to the user.',
+      tools,
+    })
+
+    const thread = await prisma.thread.create({
+      data: { assistantId: assistant.id },
+    })
+
+    await client.beta.threads.messages.create(thread.id, {
+      role: 'user',
+      content: 'Call the ping function for me.',
+    })
+
+    const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+      assistant_id: assistant.id,
+      tools,
+      instructions: 'Make sure to call ping before you answer.',
+    })
+
+    const toolCall = run.required_action?.submit_tool_outputs.tool_calls?.[0]
+    assert.ok(toolCall)
+
+    const dbMessages = await prisma.message.findMany({
+      where: { threadId: thread.id },
+    })
+    const dbToolMessage = dbMessages.find((message: any) =>
+      Array.isArray(message.toolCalls) && message.toolCalls.length > 0
+    )
+    assert.ok(dbToolMessage?.toolCalls)
+
+    const mutatedToolCalls = (dbToolMessage!.toolCalls as any[]).map(
+      (call) => ({
+        ...call,
+        function: {
+          ...(call.function ?? {}),
+          arguments: '{',
+        },
+      })
+    )
+
+    await prisma.message.update({
+      where: { id: dbToolMessage!.id },
+      data: {
+        toolCalls: mutatedToolCalls,
+      },
+    })
+
+    const completed = await client.beta.threads.runs.submitToolOutputsAndPoll(
+      run.id,
+      {
+        thread_id: thread.id,
+        tool_outputs: [
+          {
+            tool_call_id: toolCall.id,
+            output: 'pong',
+          },
+        ],
+      }
+    )
+
+    assert.equal(completed.status, 'completed')
+
+    const messages = await client.beta.threads.messages.list(thread.id)
+    const assistantMessage = messages.data
+      .filter((m) => m.role === 'assistant')
+      .at(-1)
+
+    assert.ok(assistantMessage?.metadata?.toolCalls?.[0])
+  } finally {
+    await prisma.$disconnect()
+  }
+})
+
+test('completions run adapter surfaces anthropic getComments tool call', async () => {
+  const prisma = new PrismaClient()
+  const anthropic = new Anthropic({
+    apiKey: anthropicKey,
+    ...(process.env.HTTPS_PROXY
+      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+      : {}),
+  })
+
+  const client = supercompat({
+    client: anthropicClientAdapter({ anthropic }),
+    storage: prismaStorageAdapter({ prisma }),
+    runAdapter: completionsRunAdapter(),
+  })
+
+  const tools = [
+    {
+      type: 'function',
+      function: {
+        name: 'getComments',
+        description:
+          'Get latest comments from stream viewers. Latest comments are at the start of the list.',
+        parameters: {
+          type: 'object',
+          properties: {},
+        },
+      },
+    },
+  ]
+
+  try {
+    const assistant = await client.beta.assistants.create({
+      model: 'claude-sonnet-4-5',
+      instructions:
+        'Call getComments to retrieve viewer comments before responding.',
+      tools,
+    })
+
+    const thread = await prisma.thread.create({
+      data: { assistantId: assistant.id },
+    })
+
+    await client.beta.threads.messages.create(thread.id, {
+      role: 'user',
+      content:
+        'Fetch the latest comments for stream a1c19514-7623-400e-abeb-7b4defeebdbb, summarize key themes.',
+    })
+
+    const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+      assistant_id: assistant.id,
+      tools,
+      instructions:
+        'Always invoke getComments first, then summarize what viewers are saying.',
+    })
+
+    assert.equal(run.status, 'requires_action')
+    const toolCall = run.required_action?.submit_tool_outputs.tool_calls?.[0]
+    assert.ok(toolCall)
+
+    const completed = await client.beta.threads.runs.submitToolOutputsAndPoll(
+      run.id,
+      {
+        thread_id: thread.id,
+        tool_outputs: [
+          {
+            tool_call_id: toolCall.id,
+            output: JSON.stringify({
+              comments: [
+                {
+                  id: 'example',
+                  author: 'viewer123',
+                  message: 'Great stream!',
+                  createdAt: new Date().toISOString(),
+                },
+              ],
+            }),
+          },
+        ],
+      }
+    )
+
+    assert.equal(completed.status, 'completed')
+
+    const messages = await client.beta.threads.messages.list(thread.id)
+    const assistantMessage = messages.data
+      .filter((m) => m.role === 'assistant')
+      .at(-1)
+
+    assert.ok(assistantMessage?.metadata?.toolCalls?.[0])
+  } finally {
+    await prisma.$disconnect()
+  }
+})
+
+test(
+  'completions run adapter surfaces anthropic getComments tool call via streaming submit',
+  async () => {
+    const prisma = new PrismaClient()
+    const anthropic = new Anthropic({
+      apiKey: anthropicKey,
+      ...(process.env.HTTPS_PROXY
+        ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+        : {}),
+    })
+
+    const client = supercompat({
+      client: anthropicClientAdapter({ anthropic }),
+      storage: prismaStorageAdapter({ prisma }),
+      runAdapter: completionsRunAdapter(),
+    })
+
+    const tools = [
+      {
+        type: 'function',
+        function: {
+          name: 'getComments',
+          description:
+            'Get latest comments from stream viewers. Latest comments are at the start of the list.',
+          parameters: {
+            type: 'object',
+            properties: {},
+          },
+        },
+      },
+    ]
+
+    try {
+      const assistant = await client.beta.assistants.create({
+        model: 'claude-sonnet-4-5',
+        instructions:
+          'Call getComments to retrieve viewer comments before responding.',
+        tools,
+      })
+
+      const thread = await prisma.thread.create({
+        data: { assistantId: assistant.id },
+      })
+
+      await client.beta.threads.messages.create(thread.id, {
+        role: 'user',
+        content:
+          'Check stream a1c19514-7623-400e-abeb-7b4defeebdbb for new comments and summarize them.',
+      })
+
+      const run = await client.beta.threads.runs.create(thread.id, {
+        assistant_id: assistant.id,
+        tools,
+        instructions:
+          'Call getComments first, then summarize what viewers are saying.',
+        stream: true,
+      })
+
+      let requiresActionEvent:
+        | OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
+        | undefined
+
+      for await (const event of run) {
+        if (event.event === 'thread.run.requires_action') {
+          requiresActionEvent =
+            event as OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
+        }
+      }
+
+      assert.ok(requiresActionEvent)
+
+      const dbMessages = await prisma.message.findMany({
+        where: { threadId: thread.id },
+      })
+      const dbToolMessage = dbMessages.find(
+        (message: any) =>
+          Array.isArray(message.toolCalls) && message.toolCalls.length > 0
+      )
+      assert.ok(dbToolMessage?.toolCalls)
+
+      const mutatedToolCalls = (dbToolMessage!.toolCalls as any[]).map(
+        (call) => ({
+          ...call,
+          function: {
+            ...(call.function ?? {}),
+            arguments: '{',
+          },
+        })
+      )
+
+      await prisma.message.update({
+        where: { id: dbToolMessage!.id },
+        data: {
+          toolCalls: mutatedToolCalls,
+        },
+      })
+
+      const toolCallId =
+        requiresActionEvent.data.required_action?.submit_tool_outputs
+          .tool_calls[0].id
+
+      const submit = await client.beta.threads.runs.submitToolOutputs(
+        requiresActionEvent.data.id,
+        {
+          thread_id: thread.id,
+          stream: true,
+          tool_outputs: [
+            {
+              tool_call_id: toolCallId,
+              output: JSON.stringify({
+                comments: [
+                  {
+                    id: 'example-stream',
+                    author: 'viewer456',
+                    message: 'Loved the demo!',
+                    createdAt: new Date().toISOString(),
+                  },
+                ],
+              }),
+            },
+          ],
+        }
+      )
+
+      let sawCompleted = false
+      for await (const event of submit) {
+        if (event.event === 'thread.run.completed') {
+          sawCompleted = true
+        }
+      }
+
+      assert.ok(sawCompleted)
+
+      const messages = await client.beta.threads.messages.list(thread.id)
+      const assistantMessage = messages.data
+        .filter((m) => m.role === 'assistant')
+        .at(-1)
+
+      assert.ok(assistantMessage?.metadata?.toolCalls?.[0])
+    } finally {
+      await prisma.$disconnect()
+    }
+  }
+)
+
 test('completions run adapter surfaces anthropic tool calls', async () => {
   const prisma = new PrismaClient()
   const anthropic = new Anthropic({
