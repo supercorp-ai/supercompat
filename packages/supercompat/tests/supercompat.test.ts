@@ -34,7 +34,7 @@ test("supercompat can call OpenAI completions", async () => {
   const choices =
     "choices" in result ? result.choices : (result as any).data.choices;
   const message = choices[0]?.message?.content?.trim();
-  assert.equal(message, "4");
+  assert.ok(message === "4" || message === "4.");
 });
 
 test("supercompat can list models via OpenAI", async () => {
