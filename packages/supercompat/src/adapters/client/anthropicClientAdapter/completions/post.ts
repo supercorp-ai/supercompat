@@ -155,10 +155,15 @@ export const post = ({
 
         for await (const chunk of response) {
           if (chunk.type === 'content_block_stop') {
-            const toolUseId =
+            let toolUseId =
               typeof chunk.index === 'number'
                 ? blockIndexToToolUseId.get(chunk.index)
                 : undefined
+
+            if (!toolUseId && toolUseIdArgumentBuffer.size === 1) {
+              const [firstKey] = toolUseIdArgumentBuffer.keys()
+              toolUseId = firstKey
+            }
 
             if (toolUseId && computerToolUseIds.has(toolUseId) && !normalizedComputerCalls.has(toolUseId)) {
               const buffered = toolUseIdArgumentBuffer.get(toolUseId) ?? ''
@@ -175,6 +180,37 @@ export const post = ({
                   chunkIndex,
                 })
                 normalizedComputerCalls.add(toolUseId)
+              }
+            }
+
+            if (toolUseId && !computerToolUseIds.has(toolUseId)) {
+              const buffered = toolUseIdArgumentBuffer.get(toolUseId) ?? ''
+              if (!buffered.trim()) {
+                const toolCallIndex = getOrCreateIndexForToolUseId(toolUseId)
+                const chunkIndex = typeof chunk.index === 'number' ? chunk.index : 0
+
+                const messageDelta = {
+                  id: `chatcmpl-${uid(29)}`,
+                  object: 'chat.completion.chunk',
+                  choices: [
+                    {
+                      index: chunkIndex,
+                      delta: {
+                        content: null,
+                        tool_calls: [
+                          {
+                            index: toolCallIndex,
+                            function: {
+                              arguments: '{}',
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                }
+
+                controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
               }
             }
 
@@ -195,10 +231,15 @@ export const post = ({
             let delta: { tool_calls?: any; content?: string | null }
 
             if (chunk.delta.type === 'input_json_delta') {
-              const toolUseId =
+              let toolUseId =
                 typeof chunk.index === 'number'
                   ? blockIndexToToolUseId.get(chunk.index)
                   : undefined
+
+              if (!toolUseId && toolUseIdArgumentBuffer.size === 1) {
+                const [firstKey] = toolUseIdArgumentBuffer.keys()
+                toolUseId = firstKey
+              }
 
               if (toolUseId && computerToolUseIds.has(toolUseId)) {
                 const existing = toolUseIdArgumentBuffer.get(toolUseId) ?? ''

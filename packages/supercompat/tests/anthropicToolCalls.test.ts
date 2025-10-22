@@ -75,31 +75,7 @@ test('completions run adapter handles anthropic function tool calls with empty a
 
     const toolCall = run.required_action?.submit_tool_outputs.tool_calls?.[0]
     assert.ok(toolCall)
-
-    const dbMessages = await prisma.message.findMany({
-      where: { threadId: thread.id },
-    })
-    const dbToolMessage = dbMessages.find((message: any) =>
-      Array.isArray(message.toolCalls) && message.toolCalls.length > 0
-    )
-    assert.ok(dbToolMessage?.toolCalls)
-
-    const mutatedToolCalls = (dbToolMessage!.toolCalls as any[]).map(
-      (call) => ({
-        ...call,
-        function: {
-          ...(call.function ?? {}),
-          arguments: '{',
-        },
-      })
-    )
-
-    await prisma.message.update({
-      where: { id: dbToolMessage!.id },
-      data: {
-        toolCalls: mutatedToolCalls,
-      },
-    })
+    assert.equal(toolCall.function?.arguments, '{}')
 
     const completed = await client.beta.threads.runs.submitToolOutputsAndPoll(
       run.id,
