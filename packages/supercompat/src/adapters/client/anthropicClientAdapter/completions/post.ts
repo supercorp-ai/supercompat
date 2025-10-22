@@ -155,15 +155,10 @@ export const post = ({
 
         for await (const chunk of response) {
           if (chunk.type === 'content_block_stop') {
-            let toolUseId =
+            const toolUseId =
               typeof chunk.index === 'number'
                 ? blockIndexToToolUseId.get(chunk.index)
                 : undefined
-
-            if (!toolUseId && toolUseIdArgumentBuffer.size === 1) {
-              const [firstKey] = toolUseIdArgumentBuffer.keys()
-              toolUseId = firstKey
-            }
 
             if (toolUseId && computerToolUseIds.has(toolUseId) && !normalizedComputerCalls.has(toolUseId)) {
               const buffered = toolUseIdArgumentBuffer.get(toolUseId) ?? ''
@@ -231,15 +226,10 @@ export const post = ({
             let delta: { tool_calls?: any; content?: string | null }
 
             if (chunk.delta.type === 'input_json_delta') {
-              let toolUseId =
+              const toolUseId =
                 typeof chunk.index === 'number'
                   ? blockIndexToToolUseId.get(chunk.index)
                   : undefined
-
-              if (!toolUseId && toolUseIdArgumentBuffer.size === 1) {
-                const [firstKey] = toolUseIdArgumentBuffer.keys()
-                toolUseId = firstKey
-              }
 
               if (toolUseId && computerToolUseIds.has(toolUseId)) {
                 const existing = toolUseIdArgumentBuffer.get(toolUseId) ?? ''

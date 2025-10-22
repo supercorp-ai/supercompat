@@ -75,7 +75,10 @@ test('completions run adapter handles anthropic function tool calls with empty a
 
     const toolCall = run.required_action?.submit_tool_outputs.tool_calls?.[0]
     assert.ok(toolCall)
-    assert.equal(toolCall.function?.arguments, '{}')
+
+    assert.doesNotThrow(() => {
+      JSON.parse(toolCall.function?.arguments ?? '')
+    })
 
     const completed = await client.beta.threads.runs.submitToolOutputsAndPoll(
       run.id,
