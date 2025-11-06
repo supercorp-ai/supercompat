@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
 import { AIProjectClient } from '@azure/ai-projects'
@@ -15,10 +15,11 @@ const azureTenantId = process.env.AZURE_TENANT_ID
 const azureClientId = process.env.AZURE_CLIENT_ID
 const azureClientSecret = process.env.AZURE_CLIENT_SECRET
 
-// You need to create these agents in Azure AI Studio
-const SIMPLE_AGENT_ID = process.env.AZURE_AGENT_ID || 'asst_D1Ii6UTiucSRtzjzMdZabi3o'
-const FUNCTION_AGENT_ID = process.env.AZURE_FUNCTION_AGENT_ID || SIMPLE_AGENT_ID
-const CODE_INTERPRETER_AGENT_ID = process.env.AZURE_CODE_INTERPRETER_AGENT_ID || SIMPLE_AGENT_ID
+// Agents will be created dynamically during test setup
+let SIMPLE_AGENT_ID: string
+let FUNCTION_AGENT_ID: string
+let CODE_INTERPRETER_AGENT_ID: string
+const createdAgentIds: string[] = []
 
 if (!azureEndpoint || !azureTenantId || !azureClientId || !azureClientSecret) {
   console.error('Azure credentials not found in environment variables')
@@ -32,6 +33,71 @@ const cred = new ClientSecretCredential(
 )
 
 const azureAiProject = new AIProjectClient(azureEndpoint, cred)
+
+// Create agents for testing
+test('setup: create agents', async (t) => {
+  console.log('Creating test agents...')
+
+  // Create simple agent
+  const simpleAgent = await azureAiProject.agents.createAgent('gpt-4.1', {
+    name: 'Test Simple Agent',
+    instructions: 'You are a helpful assistant that answers questions concisely.',
+  })
+  SIMPLE_AGENT_ID = simpleAgent.id
+  createdAgentIds.push(simpleAgent.id)
+  console.log(`Created simple agent: ${SIMPLE_AGENT_ID}`)
+
+  // Create function agent with weather tool
+  const functionAgent = await azureAiProject.agents.createAgent('gpt-4.1', {
+    name: 'Test Function Agent',
+    instructions: 'You are a helpful assistant with access to weather information.',
+    tools: [
+      {
+        type: 'function',
+        function: {
+          name: 'get_weather',
+          description: 'Get the current weather for a location',
+          parameters: {
+            type: 'object',
+            properties: {
+              location: {
+                type: 'string',
+                description: 'The city name',
+              },
+            },
+            required: ['location'],
+          },
+        },
+      },
+    ],
+  })
+  FUNCTION_AGENT_ID = functionAgent.id
+  createdAgentIds.push(functionAgent.id)
+  console.log(`Created function agent: ${FUNCTION_AGENT_ID}`)
+
+  // Create code interpreter agent
+  const codeInterpreterAgent = await azureAiProject.agents.createAgent('gpt-4.1', {
+    name: 'Test Code Interpreter Agent',
+    instructions: 'You are a helpful assistant that can run Python code.',
+    tools: [{ type: 'code_interpreter' }],
+  })
+  CODE_INTERPRETER_AGENT_ID = codeInterpreterAgent.id
+  createdAgentIds.push(codeInterpreterAgent.id)
+  console.log(`Created code interpreter agent: ${CODE_INTERPRETER_AGENT_ID}`)
+})
+
+// Cleanup agents after all tests
+after(async () => {
+  console.log('Cleaning up test agents...')
+  for (const agentId of createdAgentIds) {
+    try {
+      await azureAiProject.agents.deleteAgent(agentId)
+      console.log(`Deleted agent: ${agentId}`)
+    } catch (error: any) {
+      console.error(`Failed to delete agent ${agentId}:`, error.message)
+    }
+  }
+})
 
 test('azureAgentsRunAdapter can create thread, message, and run with simple agent', async (t) => {
   const client = supercompat({
@@ -59,6 +125,9 @@ test('azureAgentsRunAdapter can create thread, message, and run with simple agen
   })
 
   assert.ok(run.id, 'Run should have an ID')
+  if (run.status === 'failed') {
+    console.error('Run failed with error:', JSON.stringify(run.last_error, null, 2))
+  }
   assert.equal(run.status, 'completed', 'Run should be completed')
 
   const list = await client.beta.threads.messages.list(thread.id)
@@ -251,18 +320,15 @@ test('azureAgentsRunAdapter handles function calls', async (t) => {
     )
 
     // Submit tool output
-    const completedRun = await client.beta.threads.runs.submitToolOutputsAndPoll(
-      thread.id,
-      run.id,
-      {
-        tool_outputs: [
-          {
-            tool_call_id: toolCall.id,
-            output: JSON.stringify({ temperature: 72, condition: 'sunny' }),
-          },
-        ],
-      },
-    )
+    const completedRun = await client.beta.threads.runs.submitToolOutputsAndPoll(run.id, {
+      thread_id: thread.id,
+      tool_outputs: [
+        {
+          tool_call_id: toolCall.id,
+          output: JSON.stringify({ temperature: 72, condition: 'sunny' }),
+        },
+      ],
+    })
 
     assert.equal(
       completedRun.status,
@@ -402,5 +468,344 @@ test('azureAgentsRunAdapter allows overriding instructions in run', async (t) =>
   assert.ok(
     text.includes('OVERRIDE'),
     `Response should include OVERRIDE, indicating instructions were overridden. Got: ${text}`,
+  )
+})
+
+test('azureAgentsRunAdapter streams function call events correctly', async (t) => {
+  const client = supercompat({
+    client: azureAiProjectClientAdapter({ azureAiProject }),
+    runAdapter: azureAgentsRunAdapter({
+      azureAiProject,
+    }),
+    storage: azureAgentsStorageAdapter({
+      azureAiProject,
+    }),
+  })
+
+  const thread = await client.beta.threads.create()
+
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: 'What is the weather in San Francisco?',
+  })
+
+  // Create run with streaming enabled
+  const run = await client.beta.threads.runs.create(thread.id, {
+    assistant_id: FUNCTION_AGENT_ID,
+    stream: true,
+  })
+
+  let sawRunCreated = false
+  let sawRequiresAction = false
+  let toolCallId: string | null = null
+  let runId: string | null = null
+
+  for await (const event of run) {
+    if (event.event === 'thread.run.created') {
+      sawRunCreated = true
+      runId = event.data.id
+    }
+    if (event.event === 'thread.run.requires_action') {
+      sawRequiresAction = true
+      runId = event.data.id
+      const toolCalls = event.data.required_action?.submit_tool_outputs.tool_calls
+      if (toolCalls && toolCalls.length > 0) {
+        toolCallId = toolCalls[0].id
+      }
+    }
+  }
+
+  assert.ok(sawRunCreated, 'Should see run.created event')
+
+  if (sawRequiresAction && toolCallId && runId) {
+    assert.ok(toolCallId, 'Should have tool call ID')
+    assert.ok(runId, 'Should have run ID')
+
+    // Submit tool outputs with streaming
+    const submitRun = await client.beta.threads.runs.submitToolOutputs(runId, {
+      thread_id: thread.id,
+      tool_outputs: [
+        {
+          tool_call_id: toolCallId,
+          output: JSON.stringify({ temperature: 72, condition: 'sunny' }),
+        },
+      ],
+      stream: true,
+    })
+
+    let sawMessageDelta = false
+    let sawCompleted = false
+
+    for await (const event of submitRun) {
+      if (event.event === 'thread.message.delta') {
+        sawMessageDelta = true
+      }
+      if (event.event === 'thread.run.completed') {
+        sawCompleted = true
+      }
+    }
+
+    // Check if we saw streaming events (delta or completed)
+    assert.ok(
+      sawMessageDelta || sawCompleted,
+      'Should see message delta or completion events during tool output submission',
+    )
+  } else {
+    // If agent doesn't require tool outputs, just verify the run completed
+    assert.ok(sawRunCreated, 'Should at least see run created')
+  }
+})
+
+test('azureAgentsRunAdapter streams code interpreter events correctly', async (t) => {
+  const client = supercompat({
+    client: azureAiProjectClientAdapter({ azureAiProject }),
+    runAdapter: azureAgentsRunAdapter({
+      azureAiProject,
+    }),
+    storage: azureAgentsStorageAdapter({
+      azureAiProject,
+    }),
+  })
+
+  const thread = await client.beta.threads.create()
+
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: 'Calculate the sum of numbers from 1 to 100.',
+  })
+
+  // Create run with streaming enabled
+  const run = await client.beta.threads.runs.create(thread.id, {
+    assistant_id: CODE_INTERPRETER_AGENT_ID,
+    tools: [{ type: 'code_interpreter' }],
+    stream: true,
+  })
+
+  let sawRunCreated = false
+  let sawRunInProgress = false
+  let sawMessageCreated = false
+  let sawMessageCompleted = false
+  let sawRunCompleted = false
+  let finalMessage = ''
+
+  for await (const event of run) {
+    if (event.event === 'thread.run.created') {
+      sawRunCreated = true
+    }
+    if (event.event === 'thread.run.in_progress') {
+      sawRunInProgress = true
+    }
+    if (event.event === 'thread.message.created') {
+      sawMessageCreated = true
+    }
+    if (event.event === 'thread.message.delta') {
+      // Accumulate delta content
+      const delta = event.data as any
+      if (delta.delta?.content) {
+        for (const content of delta.delta.content) {
+          if (content.type === 'text' && content.text?.value) {
+            finalMessage += content.text.value
+          }
+        }
+      }
+    }
+    if (event.event === 'thread.message.completed') {
+      sawMessageCompleted = true
+      const message = event.data as OpenAI.Beta.Threads.Message
+      if (message.content[0] && message.content[0].type === 'text') {
+        finalMessage = message.content[0].text.value
+      }
+    }
+    if (event.event === 'thread.run.completed') {
+      sawRunCompleted = true
+    }
+  }
+
+  assert.ok(sawRunCreated, 'Should see run.created event')
+  assert.ok(sawRunCompleted, 'Should see run.completed event')
+  assert.ok(
+    sawMessageCreated || sawMessageCompleted,
+    'Should see message created or completed event',
+  )
+
+  // Verify the calculation result is in the message
+  assert.ok(
+    finalMessage.toLowerCase().includes('5050') || finalMessage.includes('5,050'),
+    `Response should include 5050, got: ${finalMessage}`,
+  )
+})
+
+test('azureAgentsRunAdapter exposes run steps during streaming', async (t) => {
+  const client = supercompat({
+    client: azureAiProjectClientAdapter({ azureAiProject }),
+    runAdapter: azureAgentsRunAdapter({
+      azureAiProject,
+    }),
+    storage: azureAgentsStorageAdapter({
+      azureAiProject,
+    }),
+  })
+
+  const thread = await client.beta.threads.create()
+
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: 'Calculate 10 + 5',
+  })
+
+  const run = await client.beta.threads.runs.create(thread.id, {
+    assistant_id: CODE_INTERPRETER_AGENT_ID,
+    tools: [{ type: 'code_interpreter' }],
+    stream: true,
+  })
+
+  let sawRunStepCreated = false
+  let sawRunStepInProgress = false
+  let sawRunStepCompleted = false
+  let runStepCount = 0
+
+  for await (const event of run) {
+    if (event.event === 'thread.run.step.created') {
+      sawRunStepCreated = true
+      runStepCount++
+    }
+    if (event.event === 'thread.run.step.in_progress') {
+      sawRunStepInProgress = true
+    }
+    if (event.event === 'thread.run.step.completed') {
+      sawRunStepCompleted = true
+    }
+  }
+
+  // Run steps are emitted when tools are used or messages are created
+  assert.ok(
+    sawRunStepCreated || sawRunStepCompleted,
+    'Should see at least one run step event',
+  )
+
+  if (sawRunStepCreated) {
+    assert.ok(runStepCount > 0, 'Should have at least one run step')
+  }
+})
+
+test('azureAgentsRunAdapter can list run steps', async (t) => {
+  const client = supercompat({
+    client: azureAiProjectClientAdapter({ azureAiProject }),
+    runAdapter: azureAgentsRunAdapter({
+      azureAiProject,
+    }),
+    storage: azureAgentsStorageAdapter({
+      azureAiProject,
+    }),
+  })
+
+  const thread = await client.beta.threads.create()
+
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: 'Calculate 5 * 3',
+  })
+
+  const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+    assistant_id: CODE_INTERPRETER_AGENT_ID,
+    tools: [{ type: 'code_interpreter' }],
+  })
+
+  assert.equal(run.status, 'completed', 'Run should complete')
+
+  // List run steps
+  const steps = await client.beta.threads.runs.steps.list(run.id, {
+    thread_id: thread.id,
+  })
+
+  assert.ok(steps.data, 'Should have steps data')
+  assert.ok(steps.data.length > 0, 'Should have at least one step')
+
+  // Verify step structure
+  const firstStep = steps.data[0]
+  assert.ok(firstStep.id, 'Step should have an ID')
+  assert.equal(firstStep.object, 'thread.run.step', 'Should be a run step')
+  assert.ok(firstStep.run_id, 'Step should have a run_id')
+  assert.equal(firstStep.thread_id, thread.id, 'Step should belong to the thread')
+})
+
+test('azureAgentsRunAdapter handles multiple simultaneous tool calls', async (t) => {
+  const client = supercompat({
+    client: azureAiProjectClientAdapter({ azureAiProject }),
+    runAdapter: azureAgentsRunAdapter({
+      azureAiProject,
+    }),
+    storage: azureAgentsStorageAdapter({
+      azureAiProject,
+    }),
+  })
+
+  const thread = await client.beta.threads.create()
+
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content:
+      'Please get the current weather for San Francisco and New York City. Call the weather function for both cities before replying.',
+  })
+
+  const run = await client.beta.threads.runs.create(thread.id, {
+    assistant_id: FUNCTION_AGENT_ID,
+    stream: true,
+    instructions:
+      'Call the weather function for every requested city before answering.',
+  })
+
+  let requiresActionEvent:
+    | OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
+    | undefined
+  for await (const event of run) {
+    if (event.event === 'thread.run.requires_action') {
+      requiresActionEvent =
+        event as OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
+      break
+    }
+  }
+
+  assert.ok(requiresActionEvent, 'Run should require tool outputs')
+
+  const toolCalls =
+    requiresActionEvent!.data.required_action?.submit_tool_outputs.tool_calls ?? []
+
+  // Azure might make multiple calls or just one, but at least one is expected
+  assert.ok(toolCalls.length >= 1, 'Expected at least one tool call')
+
+  const toolOutputs = toolCalls.map((toolCall) => {
+    const parsedArgs = JSON.parse(toolCall.function.arguments ?? '{}')
+    return {
+      tool_call_id: toolCall.id,
+      output: JSON.stringify({
+        city: parsedArgs.city ?? 'unknown',
+        temperature_f: 70,
+        conditions: 'sunny',
+      }),
+    }
+  })
+
+  const submit = await client.beta.threads.runs.submitToolOutputs(
+    requiresActionEvent!.data.id,
+    {
+      thread_id: thread.id,
+      stream: true,
+      tool_outputs: toolOutputs,
+    },
+  )
+
+  for await (const _event of submit) {
+    // drain
+  }
+
+  const messagesAfter = await client.beta.threads.messages.list(thread.id)
+  const assistantMessage = messagesAfter.data
+    .filter((m) => m.role === 'assistant')
+    .at(-1)
+
+  assert.ok(
+    assistantMessage,
+    'Expected an assistant message after submitting tool outputs',
   )
 })

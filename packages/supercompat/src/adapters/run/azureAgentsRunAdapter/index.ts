@@ -3,6 +3,179 @@ import type OpenAI from 'openai'
 import type { AIProjectClient } from '@azure/ai-projects'
 import { uid } from 'radash'
 
+// Convert Azure Agent event to OpenAI Assistant event
+function convertAzureEventToOpenAI(
+  azureEvent: any,
+  assistantId: string,
+): OpenAI.Beta.AssistantStreamEvent | null {
+  const { event, data } = azureEvent
+
+  // Map Azure event types to OpenAI event types (they're mostly 1:1)
+  const eventType = event as string
+
+  // Convert Azure data to OpenAI format based on event type
+  if (eventType.startsWith('thread.run.')) {
+    // Convert ThreadRun to OpenAI Run
+    return {
+      event: eventType as any,
+      data: {
+        id: data.id,
+        object: 'thread.run',
+        created_at: dayjs(data.createdAt).unix(),
+        thread_id: data.threadId,
+        assistant_id: assistantId,
+        status: data.status,
+        required_action: data.requiredAction
+          ? {
+              type: 'submit_tool_outputs',
+              submit_tool_outputs: {
+                tool_calls: (data.requiredAction as any).submitToolOutputs?.toolCalls?.map(
+                  (tc: any) => ({
+                    id: tc.id,
+                    type: 'function' as const,
+                    function: {
+                      name: tc.function.name,
+                      arguments: tc.function.arguments,
+                    },
+                  }),
+                ) || [],
+              },
+            }
+          : null,
+        last_error: data.lastError
+          ? {
+              code: 'server_error',
+              message: JSON.stringify(data.lastError),
+            }
+          : null,
+        expires_at: null,
+        started_at: data.startedAt ? dayjs(data.startedAt).unix() : null,
+        cancelled_at: data.cancelledAt ? dayjs(data.cancelledAt).unix() : null,
+        failed_at: data.failedAt ? dayjs(data.failedAt).unix() : null,
+        completed_at: data.completedAt ? dayjs(data.completedAt).unix() : null,
+        incomplete_details: null,
+        model: data.model || '',
+        instructions: data.instructions || '',
+        tools: data.tools || [],
+        metadata: data.metadata || {},
+        temperature: data.temperature ?? null,
+        top_p: data.topP ?? null,
+        max_prompt_tokens: null,
+        max_completion_tokens: null,
+        truncation_strategy: {
+          type: 'auto',
+          last_messages: null,
+        },
+        response_format: 'auto',
+        tool_choice: 'auto',
+        parallel_tool_calls: true,
+        usage: null,
+      } as OpenAI.Beta.Threads.Run,
+    } as OpenAI.Beta.AssistantStreamEvent
+  }
+
+  if (eventType.startsWith('thread.message.') && eventType !== 'thread.message.delta') {
+    // Convert ThreadMessage to OpenAI Message
+    return {
+      event: eventType as any,
+      data: {
+        id: data.id,
+        object: 'thread.message',
+        created_at: dayjs(data.createdAt).unix(),
+        thread_id: data.threadId,
+        role: data.role,
+        content: data.content?.map((c: any) => {
+          if (c.type === 'text') {
+            return {
+              type: 'text',
+              text: {
+                value: c.text?.value || '',
+                annotations: c.text?.annotations || [],
+              },
+            }
+          }
+          return c
+        }) || [],
+        assistant_id: assistantId,
+        run_id: data.runId || null,
+        attachments: data.attachments || [],
+        metadata: data.metadata || {},
+        status: data.status || 'completed',
+        completed_at: data.completedAt ? dayjs(data.completedAt).unix() : null,
+        incomplete_at: null,
+        incomplete_details: null,
+      } as OpenAI.Beta.Threads.Message,
+    } as OpenAI.Beta.AssistantStreamEvent
+  }
+
+  if (eventType === 'thread.message.delta') {
+    // Convert MessageDeltaChunk to OpenAI MessageDelta
+    return {
+      event: 'thread.message.delta' as any,
+      data: {
+        id: data.id,
+        object: 'thread.message.delta',
+        delta: {
+          content: data.delta?.content?.map((c: any) => {
+            if (c.type === 'text') {
+              return {
+                index: c.index || 0,
+                type: 'text',
+                text: {
+                  value: c.text?.value || '',
+                  annotations: c.text?.annotations || [],
+                },
+              }
+            }
+            return c
+          }) || [],
+        },
+      },
+    } as OpenAI.Beta.AssistantStreamEvent
+  }
+
+  if (eventType.startsWith('thread.run.step.')) {
+    // Convert RunStep events
+    return {
+      event: eventType as any,
+      data: {
+        id: data.id,
+        object: 'thread.run.step',
+        created_at: dayjs(data.createdAt).unix(),
+        assistant_id: assistantId,
+        thread_id: data.threadId,
+        run_id: data.runId,
+        type: data.type,
+        status: data.status,
+        step_details: data.stepDetails || {},
+        last_error: data.lastError || null,
+        expired_at: null,
+        cancelled_at: data.cancelledAt ? dayjs(data.cancelledAt).unix() : null,
+        failed_at: data.failedAt ? dayjs(data.failedAt).unix() : null,
+        completed_at: data.completedAt ? dayjs(data.completedAt).unix() : null,
+        metadata: data.metadata || {},
+        usage: null,
+      } as OpenAI.Beta.Threads.Runs.RunStep,
+    } as OpenAI.Beta.AssistantStreamEvent
+  }
+
+  if (eventType === 'thread.created') {
+    return {
+      event: 'thread.created' as any,
+      data: {
+        id: data.id,
+        object: 'thread',
+        created_at: dayjs(data.createdAt).unix(),
+        metadata: data.metadata || {},
+        tool_resources: data.toolResources || null,
+      } as OpenAI.Beta.Threads.Thread,
+    } as OpenAI.Beta.AssistantStreamEvent
+  }
+
+  // Return null for unhandled event types
+  return null
+}
+
 export const azureAgentsRunAdapter = ({
   azureAiProject,
 }: {
@@ -38,307 +211,22 @@ export const azureAgentsRunAdapter = ({
         createOptions.tools = tools
       }
 
-      // Create the run
-      let azureRun = await azureAiProject.agents.runs.create(
+      // Create the run with streaming support
+      const runResponse = azureAiProject.agents.runs.create(
         threadId,
         azureAgentId,
         createOptions,
       )
 
-      // Emit run created event
-      await onEvent({
-        event: 'thread.run.created',
-        data: {
-          id: azureRun.id,
-          object: 'thread.run',
-          created_at: dayjs(azureRun.createdAt).unix(),
-          thread_id: azureRun.threadId,
-          assistant_id: assistantId,
-          status: azureRun.status as any,
-          required_action: null,
-          last_error: null,
-          expires_at: null,
-          started_at: null,
-          cancelled_at: null,
-          failed_at: null,
-          completed_at: null,
-          incomplete_details: null,
-          model: '',
-          instructions: '',
-          tools: [],
-          metadata: {},
-          temperature: null,
-          top_p: null,
-          max_prompt_tokens: null,
-          max_completion_tokens: null,
-          truncation_strategy: {
-            type: 'auto',
-            last_messages: null,
-          },
-          response_format: 'auto',
-          tool_choice: 'auto',
-          parallel_tool_calls: true,
-          usage: null,
-        } as OpenAI.Beta.Threads.Run,
-      })
+      // Start streaming
+      const stream = await runResponse.stream()
 
-      // Emit run in progress event
-      await onEvent({
-        event: 'thread.run.in_progress',
-        data: {
-          id: azureRun.id,
-          object: 'thread.run',
-          created_at: dayjs(azureRun.createdAt).unix(),
-          thread_id: azureRun.threadId,
-          assistant_id: assistantId,
-          status: 'in_progress',
-          required_action: null,
-          last_error: null,
-          expires_at: null,
-          started_at: dayjs(azureRun.createdAt).unix(),
-          cancelled_at: null,
-          failed_at: null,
-          completed_at: null,
-          incomplete_details: null,
-          model: '',
-          instructions: '',
-          tools: [],
-          metadata: {},
-          temperature: null,
-          top_p: null,
-          max_prompt_tokens: null,
-          max_completion_tokens: null,
-          truncation_strategy: {
-            type: 'auto',
-            last_messages: null,
-          },
-          response_format: 'auto',
-          tool_choice: 'auto',
-          parallel_tool_calls: true,
-          usage: null,
-        } as OpenAI.Beta.Threads.Run,
-      })
-
-      // Poll until the run reaches a terminal status
-      while (azureRun.status === 'queued' || azureRun.status === 'in_progress') {
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        azureRun = await azureAiProject.agents.runs.get(threadId, azureRun.id)
-      }
-
-      // Handle different terminal statuses
-      if (azureRun.status === 'failed') {
-        await onEvent({
-          event: 'thread.run.failed',
-          data: {
-            id: azureRun.id,
-            object: 'thread.run',
-            created_at: dayjs(azureRun.createdAt).unix(),
-            thread_id: azureRun.threadId,
-            assistant_id: assistantId,
-            status: 'failed',
-            required_action: null,
-            last_error: azureRun.lastError
-              ? {
-                  code: 'server_error',
-                  message: JSON.stringify(azureRun.lastError),
-                }
-              : null,
-            expires_at: null,
-            started_at: dayjs(azureRun.createdAt).unix(),
-            cancelled_at: null,
-            failed_at: dayjs().unix(),
-            completed_at: null,
-            incomplete_details: null,
-            model: '',
-            instructions: '',
-            tools: [],
-            metadata: {},
-            temperature: null,
-            top_p: null,
-            max_prompt_tokens: null,
-            max_completion_tokens: null,
-            truncation_strategy: {
-              type: 'auto',
-              last_messages: null,
-            },
-            response_format: 'auto',
-            tool_choice: 'auto',
-            parallel_tool_calls: true,
-            usage: null,
-          } as OpenAI.Beta.Threads.Run,
-        })
-        return
-      }
-
-      if (azureRun.status === 'requires_action') {
-        // Handle tool calls
-        const requiredAction = azureRun.requiredAction
-        if (requiredAction?.type === 'submit_tool_outputs') {
-          const toolCalls = (requiredAction as any).submitToolOutputs.toolCalls.map((tc: any) => ({
-            id: tc.id,
-            type: 'function' as const,
-            function: {
-              name: tc.function.name,
-              arguments: tc.function.arguments,
-            },
-          }))
-
-          await onEvent({
-            event: 'thread.run.requires_action',
-            data: {
-              id: azureRun.id,
-              object: 'thread.run',
-              created_at: dayjs(azureRun.createdAt).unix(),
-              thread_id: azureRun.threadId,
-              assistant_id: assistantId,
-              status: 'requires_action',
-              required_action: {
-                type: 'submit_tool_outputs',
-                submit_tool_outputs: {
-                  tool_calls: toolCalls,
-                },
-              },
-              last_error: null,
-              expires_at: null,
-              started_at: dayjs(azureRun.createdAt).unix(),
-              cancelled_at: null,
-              failed_at: null,
-              completed_at: null,
-              incomplete_details: null,
-              model: '',
-              instructions: '',
-              tools: [],
-              metadata: {},
-              temperature: null,
-              top_p: null,
-              max_prompt_tokens: null,
-              max_completion_tokens: null,
-              truncation_strategy: {
-                type: 'auto',
-                last_messages: null,
-              },
-              response_format: 'auto',
-              tool_choice: 'auto',
-              parallel_tool_calls: true,
-              usage: null,
-            } as OpenAI.Beta.Threads.Run,
-          })
-          return
+      // Convert Azure events to OpenAI events and emit them
+      for await (const azureEvent of stream) {
+        const openaiEvent = convertAzureEventToOpenAI(azureEvent, assistantId)
+        if (openaiEvent) {
+          await onEvent(openaiEvent)
         }
-      }
-
-      if (azureRun.status === 'completed') {
-        // Retrieve messages and emit message events
-        // Only emit messages from THIS run by filtering by creation time after run started
-        const runStartTime = dayjs(azureRun.createdAt)
-        const messages = await azureAiProject.agents.messages.list(threadId, {
-          order: 'asc',
-        })
-
-        for await (const message of messages) {
-          // Only emit assistant messages that were created during or after this run
-          const messageTime = dayjs(message.createdAt)
-          if (
-            message.role === 'assistant' &&
-            (messageTime.isAfter(runStartTime) || messageTime.isSame(runStartTime))
-          ) {
-            // Find text content
-            const textContent = message.content.find((c: any) => c.type === 'text')
-            if (textContent && 'text' in textContent) {
-              await onEvent({
-                event: 'thread.message.created',
-                data: {
-                  id: message.id,
-                  object: 'thread.message',
-                  created_at: dayjs(message.createdAt).unix(),
-                  thread_id: message.threadId,
-                  role: 'assistant',
-                  content: [
-                    {
-                      type: 'text',
-                      text: {
-                        value: textContent.text.value,
-                        annotations: [],
-                      },
-                    },
-                  ],
-                  assistant_id: assistantId,
-                  run_id: azureRun.id,
-                  attachments: [],
-                  metadata: {},
-                  status: 'in_progress',
-                  completed_at: null,
-                  incomplete_at: null,
-                  incomplete_details: null,
-                } as OpenAI.Beta.Threads.Message,
-              })
-
-              await onEvent({
-                event: 'thread.message.completed',
-                data: {
-                  id: message.id,
-                  object: 'thread.message',
-                  created_at: dayjs(message.createdAt).unix(),
-                  thread_id: message.threadId,
-                  role: 'assistant',
-                  content: [
-                    {
-                      type: 'text',
-                      text: {
-                        value: textContent.text.value,
-                        annotations: [],
-                      },
-                    },
-                  ],
-                  assistant_id: assistantId,
-                  run_id: azureRun.id,
-                  attachments: [],
-                  metadata: {},
-                  status: 'completed',
-                  completed_at: dayjs().unix(),
-                  incomplete_at: null,
-                  incomplete_details: null,
-                } as OpenAI.Beta.Threads.Message,
-              })
-            }
-          }
-        }
-
-        await onEvent({
-          event: 'thread.run.completed',
-          data: {
-            id: azureRun.id,
-            object: 'thread.run',
-            created_at: dayjs(azureRun.createdAt).unix(),
-            thread_id: azureRun.threadId,
-            assistant_id: assistantId,
-            status: 'completed',
-            required_action: null,
-            last_error: null,
-            expires_at: null,
-            started_at: dayjs(azureRun.createdAt).unix(),
-            cancelled_at: null,
-            failed_at: null,
-            completed_at: dayjs().unix(),
-            incomplete_details: null,
-            model: '',
-            instructions: '',
-            tools: [],
-            metadata: {},
-            temperature: null,
-            top_p: null,
-            max_prompt_tokens: null,
-            max_completion_tokens: null,
-            truncation_strategy: {
-              type: 'auto',
-              last_messages: null,
-            },
-            response_format: 'auto',
-            tool_choice: 'auto',
-            parallel_tool_calls: true,
-            usage: null,
-          } as OpenAI.Beta.Threads.Run,
-        })
       }
     } catch (e: any) {
       // Generate a unique run ID for the failed run

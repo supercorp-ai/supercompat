@@ -5,6 +5,121 @@ import dayjs from 'dayjs'
 import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
 import { RunAdapterWithAssistant } from '@/types'
 
+// Import the conversion function from the run adapter
+// We need to extract this to a shared module
+function convertAzureEventToOpenAI(
+  azureEvent: any,
+  assistantId: string,
+): OpenAI.Beta.AssistantStreamEvent | null {
+  const { event, data } = azureEvent
+  const eventType = event as string
+
+  if (eventType.startsWith('thread.run.')) {
+    return {
+      event: eventType as any,
+      data: {
+        id: data.id,
+        object: 'thread.run',
+        created_at: dayjs(data.createdAt).unix(),
+        thread_id: data.threadId,
+        assistant_id: assistantId,
+        status: data.status,
+        required_action: data.requiredAction
+          ? {
+              type: 'submit_tool_outputs',
+              submit_tool_outputs: {
+                tool_calls: (data.requiredAction as any).submitToolOutputs?.toolCalls?.map(
+                  (tc: any) => ({
+                    id: tc.id,
+                    type: 'function' as const,
+                    function: {
+                      name: tc.function.name,
+                      arguments: tc.function.arguments,
+                    },
+                  }),
+                ) || [],
+              },
+            }
+          : null,
+        last_error: data.lastError ? { code: 'server_error', message: JSON.stringify(data.lastError) } : null,
+        expires_at: null,
+        started_at: data.startedAt ? dayjs(data.startedAt).unix() : null,
+        cancelled_at: data.cancelledAt ? dayjs(data.cancelledAt).unix() : null,
+        failed_at: data.failedAt ? dayjs(data.failedAt).unix() : null,
+        completed_at: data.completedAt ? dayjs(data.completedAt).unix() : null,
+        incomplete_details: null,
+        model: data.model || '',
+        instructions: data.instructions || '',
+        tools: data.tools || [],
+        metadata: data.metadata || {},
+        temperature: data.temperature ?? null,
+        top_p: data.topP ?? null,
+        max_prompt_tokens: null,
+        max_completion_tokens: null,
+        truncation_strategy: { type: 'auto', last_messages: null },
+        response_format: 'auto',
+        tool_choice: 'auto',
+        parallel_tool_calls: true,
+        usage: null,
+      } as OpenAI.Beta.Threads.Run,
+    } as OpenAI.Beta.AssistantStreamEvent
+  }
+
+  if (eventType.startsWith('thread.message.') && eventType !== 'thread.message.delta') {
+    return {
+      event: eventType as any,
+      data: {
+        id: data.id,
+        object: 'thread.message',
+        created_at: dayjs(data.createdAt).unix(),
+        thread_id: data.threadId,
+        role: data.role,
+        content: data.content?.map((c: any) => {
+          if (c.type === 'text') {
+            return {
+              type: 'text',
+              text: { value: c.text?.value || '', annotations: c.text?.annotations || [] },
+            }
+          }
+          return c
+        }) || [],
+        assistant_id: assistantId,
+        run_id: data.runId || null,
+        attachments: data.attachments || [],
+        metadata: data.metadata || {},
+        status: data.status || 'completed',
+        completed_at: data.completedAt ? dayjs(data.completedAt).unix() : null,
+        incomplete_at: null,
+        incomplete_details: null,
+      } as OpenAI.Beta.Threads.Message,
+    } as OpenAI.Beta.AssistantStreamEvent
+  }
+
+  if (eventType === 'thread.message.delta') {
+    return {
+      event: 'thread.message.delta' as any,
+      data: {
+        id: data.id,
+        object: 'thread.message.delta',
+        delta: {
+          content: data.delta?.content?.map((c: any) => {
+            if (c.type === 'text') {
+              return {
+                index: c.index || 0,
+                type: 'text',
+                text: { value: c.text?.value || '', annotations: c.text?.annotations || [] },
+              }
+            }
+            return c
+          }) || [],
+        },
+      },
+    } as OpenAI.Beta.AssistantStreamEvent
+  }
+
+  return null
+}
+
 type SubmitToolOutputsResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Run>
 }
@@ -37,124 +152,28 @@ export const post =
     const existingRun = await azureAiProject.agents.runs.get(threadId, runId)
     const assistantId = existingRun.assistantId
 
-    // Submit tool outputs to Azure
-    await azureAiProject.agents.runs.submitToolOutputs(threadId, runId, tool_outputs.map((to: any) => ({
-      toolCallId: to.tool_call_id,
-      output: to.output,
-    })))
+    // Submit tool outputs to Azure with streaming support
+    const submitResponse = azureAiProject.agents.runs.submitToolOutputs(
+      threadId,
+      runId,
+      tool_outputs.map((to: any) => ({
+        toolCallId: to.tool_call_id,
+        output: to.output,
+      })),
+    )
 
-    // After submitting tool outputs, poll the existing run until it completes
-    const pollRun = async (onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<void>) => {
+    // After submitting tool outputs, stream the results
+    const streamRun = async (onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<void>) => {
       try {
-        // Emit run in progress event
-        await onEvent({
-          event: 'thread.run.in_progress',
-          data: {
-            id: runId,
-            object: 'thread.run',
-            created_at: dayjs().unix(),
-            thread_id: threadId,
-            assistant_id: assistantId,
-            status: 'in_progress',
-            required_action: null,
-            last_error: null,
-            expires_at: null,
-            started_at: dayjs().unix(),
-            cancelled_at: null,
-            failed_at: null,
-            completed_at: null,
-            incomplete_details: null,
-            model: '',
-            instructions: '',
-            tools: [],
-            metadata: {},
-            temperature: null,
-            top_p: null,
-            max_prompt_tokens: null,
-            max_completion_tokens: null,
-            truncation_strategy: { type: 'auto', last_messages: null },
-            response_format: 'auto',
-            tool_choice: 'auto',
-            parallel_tool_calls: true,
-            usage: null,
-          } as OpenAI.Beta.Threads.Run,
-        })
+        // Start streaming the results
+        const stream = await submitResponse.stream()
 
-        // Poll the run until it reaches a terminal status
-        let azureRun = await azureAiProject.agents.runs.get(threadId, runId)
-        while (azureRun.status === 'queued' || azureRun.status === 'in_progress') {
-          await new Promise((resolve) => setTimeout(resolve, 1000))
-          azureRun = await azureAiProject.agents.runs.get(threadId, runId)
-        }
-
-        if (azureRun.status === 'completed') {
-          // Get messages from this run
-          const runStartTime = dayjs(existingRun.createdAt)
-          const messages = await azureAiProject.agents.messages.list(threadId, { order: 'asc' })
-
-          for await (const message of messages) {
-            const messageTime = dayjs(message.createdAt)
-            if (
-              message.role === 'assistant' &&
-              messageTime.isAfter(runStartTime)
-            ) {
-              const textContent = message.content.find((c: any) => c.type === 'text')
-              if (textContent && 'text' in textContent) {
-                await onEvent({
-                  event: 'thread.message.created',
-                  data: {
-                    id: message.id,
-                    object: 'thread.message',
-                    created_at: dayjs(message.createdAt).unix(),
-                    thread_id: message.threadId,
-                    role: 'assistant',
-                    content: [{ type: 'text', text: { value: textContent.text.value, annotations: [] } }],
-                    assistant_id: assistantId,
-                    run_id: runId,
-                    attachments: [],
-                    metadata: {},
-                    status: 'completed',
-                    completed_at: dayjs().unix(),
-                    incomplete_at: null,
-                    incomplete_details: null,
-                  } as OpenAI.Beta.Threads.Message,
-                })
-              }
-            }
+        // Convert Azure events to OpenAI events and emit them
+        for await (const azureEvent of stream) {
+          const openaiEvent = convertAzureEventToOpenAI(azureEvent, assistantId)
+          if (openaiEvent) {
+            await onEvent(openaiEvent)
           }
-
-          await onEvent({
-            event: 'thread.run.completed',
-            data: {
-              id: runId,
-              object: 'thread.run',
-              created_at: dayjs(azureRun.createdAt).unix(),
-              thread_id: threadId,
-              assistant_id: assistantId,
-              status: 'completed',
-              required_action: null,
-              last_error: null,
-              expires_at: null,
-              started_at: dayjs(azureRun.createdAt).unix(),
-              cancelled_at: null,
-              failed_at: null,
-              completed_at: dayjs().unix(),
-              incomplete_details: null,
-              model: '',
-              instructions: '',
-              tools: [],
-              metadata: {},
-              temperature: null,
-              top_p: null,
-              max_prompt_tokens: null,
-              max_completion_tokens: null,
-              truncation_strategy: { type: 'auto', last_messages: null },
-              response_format: 'auto',
-              tool_choice: 'auto',
-              parallel_tool_calls: true,
-              usage: null,
-            } as OpenAI.Beta.Threads.Run,
-          })
         }
       } catch (error: any) {
         await onEvent({
@@ -197,7 +216,7 @@ export const post =
 
     const readableStream = new ReadableStream({
       async start(controller) {
-        await pollRun(async (event) => {
+        await streamRun(async (event) => {
           controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
         })
         controller.close()
@@ -215,7 +234,7 @@ export const post =
       const events: OpenAI.Beta.AssistantStreamEvent[] = []
       let finalRun: OpenAI.Beta.Threads.Run | null = null
 
-      await pollRun(async (event) => {
+      await streamRun(async (event) => {
         events.push(event)
         if (
           event.event === 'thread.run.completed' ||

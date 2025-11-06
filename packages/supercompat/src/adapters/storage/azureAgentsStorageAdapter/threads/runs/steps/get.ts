@@ -18,12 +18,7 @@ export const get =
   }) =>
   async (urlString: string): Promise<StepListResponse> => {
     const url = new URL(urlString)
-    const threadId = url.searchParams.get('thread_id')
-    const [, runId] = url.pathname.match(new RegExp(stepsRegexp))!
-
-    if (!threadId) {
-      throw new Error('thread_id query parameter is required')
-    }
+    const [, threadId, runId] = url.pathname.match(new RegExp(stepsRegexp))!
 
     const azureSteps = await azureAiProject.agents.runSteps.list(threadId, runId)
 

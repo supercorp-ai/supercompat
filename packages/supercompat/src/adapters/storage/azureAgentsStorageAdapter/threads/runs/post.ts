@@ -122,9 +122,17 @@ export const post =
               // Wait for the active run to complete
               let activeRun = await azureAiProject.agents.runs.get(threadId, activeRunId)
 
+              // Wait only if the run is actually in progress
+              // requires_action is a terminal state that needs tool outputs to be submitted
               while (activeRun.status === 'queued' || activeRun.status === 'in_progress') {
                 await new Promise((resolve) => setTimeout(resolve, 500))
                 activeRun = await azureAiProject.agents.runs.get(threadId, activeRunId)
+              }
+
+              // If the run is in requires_action state, we can't create a new run
+              // We need to throw an error so the caller knows to handle it
+              if (activeRun.status === 'requires_action') {
+                throw new Error(`Thread ${threadId} has an active run ${activeRunId} that requires action (tool outputs must be submitted before creating a new run)`)
               }
             } else {
               // Can't determine run ID, just wait and retry
