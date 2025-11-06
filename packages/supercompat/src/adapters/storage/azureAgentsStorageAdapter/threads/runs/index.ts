@@ -6,12 +6,10 @@ import type { RequestHandler, RunAdapterWithAssistant } from '@/types'
 export const runs = ({
   azureAiProject,
   runAdapter,
-  azureAgentId,
 }: {
   azureAiProject: AIProjectClient
   runAdapter: RunAdapterWithAssistant
-  azureAgentId: string
 }): { get: RequestHandler; post: RequestHandler } => ({
   get: get(),
-  post: post({ azureAiProject, runAdapter, azureAgentId }),
+  post: post({ azureAiProject, runAdapter }),
 })

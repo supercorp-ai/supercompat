@@ -3,62 +3,47 @@ import type OpenAI from 'openai'
 import type { AIProjectClient } from '@azure/ai-projects'
 import { uid } from 'radash'
 
-type Args = {
-  select?: {
-    id?: boolean
-  }
-}
-
-type NormalizedArgs = {
-  select: {
-    id: boolean
-  }
-}
-
 export const azureAgentsRunAdapter = ({
   azureAiProject,
-  azureAgentId,
-  getOpenaiAssistant: getDirectOpenaiAssistant,
 }: {
   azureAiProject: AIProjectClient
-  azureAgentId: string
-  getOpenaiAssistant: (
-    args?: Args,
-  ) =>
-    | Promise<OpenAI.Beta.Assistants.Assistant>
-    | OpenAI.Beta.Assistants.Assistant
-    | Pick<OpenAI.Beta.Assistants.Assistant, 'id'>
-    | Promise<Pick<OpenAI.Beta.Assistants.Assistant, 'id'>>
 }) => {
-  let cachedOpenaiAssistant: OpenAI.Beta.Assistants.Assistant | null = null
-
-  const getOpenaiAssistant = async ({ select: { id = false } = {} }: Args = {}) => {
-    const args: NormalizedArgs = { select: { id } }
-
-    if (args.select.id) {
-      return {
-        id: (await getDirectOpenaiAssistant({ select: { id: true } })).id,
-      }
-    }
-
-    if (cachedOpenaiAssistant) return cachedOpenaiAssistant
-
-    cachedOpenaiAssistant = (await getDirectOpenaiAssistant()) as OpenAI.Beta.Assistants.Assistant
-    return cachedOpenaiAssistant
+  const getOpenaiAssistant = async ({ assistantId }: { assistantId: string }) => {
+    return { id: assistantId }
   }
 
   const handleRun = async ({
     threadId,
+    assistantId,
+    instructions,
+    tools,
     onEvent,
   }: {
     threadId: string
+    assistantId: string
+    instructions?: string
+    tools?: any[]
     onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
   }) => {
     try {
-      const assistantId = (await getOpenaiAssistant({ select: { id: true } })).id
+      // assistantId from OpenAI API maps to azureAgentId
+      const azureAgentId = assistantId
+
+      // Build the options object for Azure run creation
+      const createOptions: any = {}
+      if (instructions) {
+        createOptions.instructions = instructions
+      }
+      if (tools) {
+        createOptions.tools = tools
+      }
 
       // Create the run
-      let azureRun = await azureAiProject.agents.runs.create(threadId, azureAgentId)
+      let azureRun = await azureAiProject.agents.runs.create(
+        threadId,
+        azureAgentId,
+        createOptions,
+      )
 
       // Emit run created event
       await onEvent({
@@ -365,7 +350,7 @@ export const azureAgentsRunAdapter = ({
           object: 'thread.run',
           created_at: dayjs().unix(),
           thread_id: threadId,
-          assistant_id: (await getOpenaiAssistant({ select: { id: true } })).id,
+          assistant_id: assistantId,
           status: 'failed',
           required_action: null,
           last_error: {

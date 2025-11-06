@@ -22,16 +22,15 @@ export const get =
 
     const azureRun = await azureAiProject.agents.runs.get(threadId, runId)
 
-    const openaiAssistant = await runAdapter.getOpenaiAssistant({
-      select: { id: true },
-    })
+    // Get assistant ID from the Azure run
+    const assistantId = azureRun.assistantId
 
     const openaiRun: OpenAI.Beta.Threads.Run = {
       id: azureRun.id,
       object: 'thread.run',
       created_at: dayjs(azureRun.createdAt).unix(),
       thread_id: azureRun.threadId,
-      assistant_id: openaiAssistant.id,
+      assistant_id: assistantId,
       status: azureRun.status as any,
       required_action:
         azureRun.status === 'requires_action' && azureRun.requiredAction

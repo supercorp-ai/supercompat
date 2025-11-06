@@ -22,17 +22,15 @@ type AzureAgentsStorageAdapterArgs = StorageAdapterArgs & {
 
 export const azureAgentsStorageAdapter = ({
   azureAiProject,
-  azureAgentId,
 }: {
   azureAiProject: AIProjectClient
-  azureAgentId: string
 }) => {
   return ({ runAdapter }: AzureAgentsStorageAdapterArgs) => ({
     requestHandlers: {
       '^/(?:v1|/?openai)/assistants$': assistants({ runAdapter }),
       '^/(?:v1|/?openai)/threads$': threads({ azureAiProject }),
       [messagesRegexp]: messages({ azureAiProject, runAdapter }),
-      [runsRegexp]: runs({ azureAiProject, runAdapter, azureAgentId }),
+      [runsRegexp]: runs({ azureAiProject, runAdapter }),
       [runRegexp]: run({ azureAiProject, runAdapter }),
       [stepsRegexp]: steps({ azureAiProject, runAdapter }),
       [submitToolOutputsRegexp]: submitToolOutputs({ azureAiProject, runAdapter }),
