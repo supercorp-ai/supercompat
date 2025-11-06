@@ -43,41 +43,41 @@ export const post =
     // assistant_id from OpenAI API maps to azureAgentId
     const azureAgentId = assistant_id
 
-    const readableStream = new ReadableStream({
-      async start(controller) {
-        try {
-          await runAdapter.handleRun({
-            threadId,
-            assistantId: azureAgentId,
-            instructions,
-            tools,
-            onEvent: async (event) => {
-              controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
-            },
-          })
-        } catch (error: any) {
-          console.error(error)
-
-          const event = {
-            event: 'thread.run.failed',
-            data: {
-              id: uid(24),
-              failed_at: dayjs().unix(),
-              last_error: {
-                code: 'server_error',
-                message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
+    if (stream) {
+      const readableStream = new ReadableStream({
+        async start(controller) {
+          try {
+            await runAdapter.handleRun({
+              threadId,
+              assistantId: azureAgentId,
+              instructions,
+              tools,
+              onEvent: async (event) => {
+                controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
               },
-            },
+            })
+          } catch (error: any) {
+            console.error(error)
+
+            const event = {
+              event: 'thread.run.failed',
+              data: {
+                id: uid(24),
+                failed_at: dayjs().unix(),
+                last_error: {
+                  code: 'server_error',
+                  message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
+                },
+              },
+            }
+
+            controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
           }
 
-          controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
-        }
+          controller.close()
+        },
+      })
 
-        controller.close()
-      },
-    })
-
-    if (stream) {
       return new Response(readableStream, {
         headers: {
           'Content-Type': 'text/event-stream',
