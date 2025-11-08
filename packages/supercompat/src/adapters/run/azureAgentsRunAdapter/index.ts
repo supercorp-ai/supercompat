@@ -136,7 +136,7 @@ function convertAzureEventToOpenAI(
 
   if (eventType === 'thread.run.step.delta') {
     // Handle run step delta events separately - they have delta.stepDetails
-    let stepDetailsDelta: any = {}
+    let stepDetailsDelta: any = undefined
 
     if (data.delta?.stepDetails) {
       const details = data.delta.stepDetails
@@ -213,7 +213,7 @@ function convertAzureEventToOpenAI(
 
   if (eventType.startsWith('thread.run.step.')) {
     // Convert RunStep events with proper snake_case transformation
-    let stepDetails: any = {}
+    let stepDetails: any = undefined
 
     if (data.stepDetails) {
       if (data.stepDetails.type === 'message_creation') {
