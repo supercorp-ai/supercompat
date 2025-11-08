@@ -134,8 +134,150 @@ function convertAzureEventToOpenAI(
     } as OpenAI.Beta.AssistantStreamEvent
   }
 
+  if (eventType === 'thread.run.step.delta') {
+    // Handle run step delta events separately - they have delta.stepDetails
+    let stepDetailsDelta: any = {}
+
+    if (data.delta?.stepDetails) {
+      const details = data.delta.stepDetails
+      if (details.type === 'tool_calls') {
+        stepDetailsDelta = {
+          type: 'tool_calls',
+          tool_calls: details.toolCalls?.map((tc: any) => {
+            if (tc.type === 'code_interpreter') {
+              return {
+                index: tc.index ?? 0,
+                id: tc.id,
+                type: 'code_interpreter',
+                code_interpreter: {
+                  input: tc.codeInterpreter?.input || '',
+                  outputs: tc.codeInterpreter?.outputs?.map((output: any) => {
+                    if (output.type === 'logs') {
+                      return {
+                        index: output.index ?? 0,
+                        type: 'logs',
+                        logs: output.logs || '',
+                      }
+                    }
+                    if (output.type === 'image') {
+                      return {
+                        index: output.index ?? 0,
+                        type: 'image',
+                        image: {
+                          file_id: output.image?.fileId || '',
+                        },
+                      }
+                    }
+                    return output
+                  }) || [],
+                },
+              }
+            } else if (tc.type === 'file_search') {
+              return {
+                index: tc.index ?? 0,
+                id: tc.id,
+                type: 'file_search',
+                file_search: tc.fileSearch || {},
+              }
+            } else if (tc.type === 'function') {
+              return {
+                index: tc.index ?? 0,
+                id: tc.id,
+                type: 'function',
+                function: {
+                  name: tc.function?.name || '',
+                  arguments: tc.function?.arguments || '',
+                  output: tc.function?.output || null,
+                },
+              }
+            }
+            return tc
+          }) || [],
+        }
+      } else {
+        stepDetailsDelta = details
+      }
+    }
+
+    return {
+      event: 'thread.run.step.delta' as any,
+      data: {
+        id: data.id,
+        object: 'thread.run.step.delta',
+        delta: {
+          step_details: stepDetailsDelta,
+        },
+      },
+    } as OpenAI.Beta.AssistantStreamEvent
+  }
+
   if (eventType.startsWith('thread.run.step.')) {
-    // Convert RunStep events
+    // Convert RunStep events with proper snake_case transformation
+    let stepDetails: any = {}
+
+    if (data.stepDetails) {
+      if (data.stepDetails.type === 'message_creation') {
+        stepDetails = {
+          type: 'message_creation',
+          message_creation: {
+            message_id: data.stepDetails.messageCreation?.messageId || '',
+          },
+        }
+      } else if (data.stepDetails.type === 'tool_calls') {
+        stepDetails = {
+          type: 'tool_calls',
+          tool_calls: data.stepDetails.toolCalls?.map((tc: any) => {
+            if (tc.type === 'code_interpreter') {
+              return {
+                id: tc.id,
+                type: 'code_interpreter',
+                code_interpreter: {
+                  input: tc.codeInterpreter?.input || '',
+                  outputs: tc.codeInterpreter?.outputs?.map((output: any) => {
+                    if (output.type === 'logs') {
+                      return {
+                        type: 'logs',
+                        logs: output.logs || '',
+                      }
+                    }
+                    if (output.type === 'image') {
+                      return {
+                        type: 'image',
+                        image: {
+                          file_id: output.image?.fileId || '',
+                        },
+                      }
+                    }
+                    return output
+                  }) || [],
+                },
+              }
+            } else if (tc.type === 'file_search') {
+              return {
+                id: tc.id,
+                type: 'file_search',
+                file_search: tc.fileSearch || {},
+              }
+            } else if (tc.type === 'function') {
+              return {
+                id: tc.id,
+                type: 'function',
+                function: {
+                  name: tc.function?.name || '',
+                  arguments: tc.function?.arguments || '',
+                  output: tc.function?.output || null,
+                },
+              }
+            }
+            return tc
+          }) || [],
+        }
+      } else {
+        // Unknown type, pass through
+        stepDetails = data.stepDetails
+      }
+    }
+
     return {
       event: eventType as any,
       data: {
@@ -147,7 +289,7 @@ function convertAzureEventToOpenAI(
         run_id: data.runId,
         type: data.type,
         status: data.status,
-        step_details: data.stepDetails || {},
+        step_details: stepDetails,
         last_error: data.lastError || null,
         expired_at: null,
         cancelled_at: data.cancelledAt ? dayjs(data.cancelledAt).unix() : null,

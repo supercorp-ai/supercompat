@@ -42,15 +42,52 @@ export const get =
             ? {
                 type: 'tool_calls' as const,
                 tool_calls: (step.stepDetails as any).toolCalls.map(
-                  (tc: any) => ({
-                    id: tc.id,
-                    type: 'function' as const,
-                    function: {
-                      name: tc.function.name,
-                      arguments: tc.function.arguments,
-                      output: tc.function.output || null,
-                    },
-                  }),
+                  (tc: any) => {
+                    if (tc.type === 'code_interpreter') {
+                      return {
+                        id: tc.id,
+                        type: 'code_interpreter' as const,
+                        code_interpreter: {
+                          input: tc.codeInterpreter?.input || '',
+                          outputs: tc.codeInterpreter?.outputs?.map((output: any) => {
+                            if (output.type === 'logs') {
+                              return {
+                                type: 'logs' as const,
+                                logs: output.logs || '',
+                              }
+                            }
+                            if (output.type === 'image') {
+                              return {
+                                type: 'image' as const,
+                                image: {
+                                  file_id: output.image?.fileId || '',
+                                },
+                              }
+                            }
+                            return output
+                          }) || [],
+                        },
+                      }
+                    } else if (tc.type === 'file_search') {
+                      return {
+                        id: tc.id,
+                        type: 'file_search' as const,
+                        file_search: tc.fileSearch || {},
+                      }
+                    } else if (tc.type === 'function') {
+                      return {
+                        id: tc.id,
+                        type: 'function' as const,
+                        function: {
+                          name: tc.function.name,
+                          arguments: tc.function.arguments,
+                          output: tc.function.output || null,
+                        },
+                      }
+                    }
+                    // Unknown tool type, return as-is
+                    return tc
+                  },
                 ),
               }
             : {
