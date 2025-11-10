@@ -1168,3 +1168,238 @@ test('azureAgentsRunAdapter validates message_creation step_details transformati
     console.log('✅ Message creation step_details properly transformed to snake_case')
   }
 })
+
+test('azureAgentsRunAdapter handles file_search with empty vector store without crashing', async (t) => {
+  // This test reproduces the exact scenario causing crashes in superinterface-cloud:
+  // file_search tool with an empty vector store (no files uploaded)
+  // Azure sends step events with incomplete/empty stepDetails which we need to handle gracefully
+
+  const vectorStore = await azureAiProject.agents.vectorStores.create({
+    name: 'Empty Vector Store for file_search',
+  })
+  console.log('Created empty vector store:', vectorStore.id)
+
+  try {
+    // Create agent with file_search tool but NO files in the vector store
+    const fileSearchAgent = await azureAiProject.agents.createAgent('gpt-4.1', {
+      name: 'Test File Search Empty Agent',
+      instructions: 'You are a file search assistant. Use the file_search tool to find information.',
+      tools: [{ type: 'file_search' }],
+      toolResources: {
+        fileSearch: {
+          vectorStoreIds: [vectorStore.id],
+        },
+      },
+    })
+    console.log('Created file search agent with empty vector store:', fileSearchAgent.id)
+
+    try {
+      const client = supercompat({
+        client: azureAiProjectClientAdapter({ azureAiProject }),
+        runAdapter: azureAgentsRunAdapter({
+          azureAiProject,
+        }),
+        storage: azureAgentsStorageAdapter({ azureAiProject }),
+      })
+
+      const thread = await client.beta.threads.create()
+
+      await client.beta.threads.messages.create(thread.id, {
+        role: 'user',
+        content: 'What is the secret code in the file? Reply with just the code.',
+      })
+
+      // Track ALL events to see what Azure sends
+      const allEvents: any[] = []
+      let errorOccurred = false
+
+      try {
+        const run = await client.beta.threads.runs.create(thread.id, {
+          assistant_id: fileSearchAgent.id,
+          stream: true,
+        })
+
+        for await (const event of run) {
+          allEvents.push({
+            event: event.event,
+            type: (event.data as any).type,
+            hasStepDetails: (event.data as any).step_details !== undefined,
+          })
+
+          if (event.event.startsWith('thread.run.step.')) {
+            console.log('Step event:', event.event, 'type:', (event.data as any).type, 'step_details:', (event.data as any).step_details)
+          }
+        }
+      } catch (error: any) {
+        errorOccurred = true
+        console.error('Stream error:', error.message)
+        console.log('Events received before error:', allEvents.length)
+
+        // This is the error we're trying to fix:
+        // "Cannot read properties of undefined (reading 'type')"
+        if (error.message.includes("Cannot read properties of undefined (reading 'type')")) {
+          throw new Error('REPRODUCED BUG: Step event with undefined step_details crashed OpenAI SDK')
+        }
+        throw error
+      }
+
+      // If we get here without error, the fix is working!
+      console.log('✅ file_search with empty vector store handled gracefully')
+      console.log('Total events received:', allEvents.length)
+
+      // The assistant should respond that it can't find the file or has no information
+      const messages = await client.beta.threads.messages.list(thread.id)
+      const assistantMessage = messages.data
+        .filter((m) => m.role === 'assistant')
+        .at(-1)
+
+      assert.ok(assistantMessage, 'Should have an assistant message even with empty vector store')
+    } finally {
+      await azureAiProject.agents.deleteAgent(fileSearchAgent.id)
+    }
+  } finally {
+    await azureAiProject.agents.vectorStores.delete(vectorStore.id)
+  }
+})
+
+test.skip('azureAgentsRunAdapter properly transforms step_details for file_search', async (t) => {
+  // TODO: Azure SDK bug - file upload returns 400 "The browser (or proxy) sent a request that this server could not understand"
+  // This is an issue with @azure/ai-projects multipart/form-data handling in v1.0.0
+  // Error occurs at: azureAiProject.agents.files.upload(blob, 'assistants', ...)
+  // Once Azure SDK fixes the file upload endpoint, this test can be enabled
+
+  // This test validates that Azure's camelCase stepDetails.toolCalls with fileSearch
+  // is properly converted to OpenAI's snake_case step_details.tool_calls with file_search
+
+  // First, create a vector store and upload a file
+  const vectorStore = await azureAiProject.agents.vectorStores.create({
+    name: 'Test Vector Store for file_search',
+  })
+  console.log('Created vector store:', vectorStore.id)
+
+  try {
+    // Create a simple test file with searchable content
+    const fileContent = 'The secret code is SUPERCOMPAT_FILE_SEARCH_2024. This is important information.'
+    const blob = new Blob([fileContent], { type: 'text/plain' })
+    const file = await azureAiProject.agents.files.upload(blob, 'assistants', {
+      filename: 'test-file-search.txt',
+    })
+    console.log('Uploaded file:', file.id)
+
+    try {
+      // Add file to vector store
+      await azureAiProject.agents.vectorStoreFiles.createVectorStoreFile(
+        vectorStore.id,
+        { fileId: file.id },
+      )
+      console.log('Added file to vector store')
+
+      // Wait for file to be processed
+      await new Promise((resolve) => setTimeout(resolve, 3000))
+
+      // Create a new agent with file_search and the vector store
+      const fileSearchAgent = await azureAiProject.agents.createAgent('gpt-4.1', {
+        name: 'Test File Search Transform Agent',
+        instructions: 'You are a file search assistant. Use the file_search tool to find information.',
+        tools: [{ type: 'file_search' }],
+        toolResources: {
+          fileSearch: {
+            vectorStoreIds: [vectorStore.id],
+          },
+        },
+      })
+      console.log('Created file search agent:', fileSearchAgent.id)
+
+      try {
+        const client = supercompat({
+          client: azureAiProjectClientAdapter({ azureAiProject }),
+          runAdapter: azureAgentsRunAdapter({
+            azureAiProject,
+          }),
+          storage: azureAgentsStorageAdapter({ azureAiProject }),
+        })
+
+        const thread = await client.beta.threads.create()
+
+        await client.beta.threads.messages.create(thread.id, {
+          role: 'user',
+          content: 'What is the secret code in the file? Reply with just the code.',
+        })
+
+        // Track run step events to validate step_details format
+        const runStepEvents: OpenAI.Beta.AssistantStreamEvent[] = []
+
+        const run = await client.beta.threads.runs.create(thread.id, {
+          assistant_id: fileSearchAgent.id,
+          stream: true,
+        })
+
+        for await (const event of run) {
+          if (event.event.startsWith('thread.run.step.')) {
+            runStepEvents.push(event)
+            console.log('Step event:', event.event, 'type:', (event.data as any).type)
+          }
+        }
+
+        // Find a tool_calls step event with file_search
+        const fileSearchStepEvent = runStepEvents.find(
+          (e) =>
+            e.event === 'thread.run.step.created' &&
+            e.data.type === 'tool_calls'
+        )
+
+        if (fileSearchStepEvent) {
+          const stepData = fileSearchStepEvent.data as OpenAI.Beta.Threads.Runs.RunStep
+
+          // Validate step_details exists and is properly formatted
+          assert.ok(stepData.step_details, 'step_details should exist')
+          assert.equal(stepData.step_details.type, 'tool_calls', 'step_details type should be tool_calls')
+
+          // This is the critical check: Azure returns "toolCalls" and "fileSearch" (camelCase)
+          // but OpenAI SDK expects "tool_calls" and "file_search" (snake_case)
+          const toolCallsDetails = stepData.step_details as any
+          assert.ok(toolCallsDetails.tool_calls, 'step_details.tool_calls should exist (snake_case)')
+          assert.ok(Array.isArray(toolCallsDetails.tool_calls), 'tool_calls should be an array')
+
+          // Verify it's NOT still in camelCase
+          assert.strictEqual(toolCallsDetails.toolCalls, undefined, 'toolCalls (camelCase) should not exist')
+
+          // If there are tool calls, validate their structure
+          if (toolCallsDetails.tool_calls.length > 0) {
+            const fileSearchCall = toolCallsDetails.tool_calls.find((tc: any) => tc.type === 'file_search')
+            if (fileSearchCall) {
+              assert.ok(fileSearchCall.id, 'tool call should have an id')
+              assert.equal(fileSearchCall.type, 'file_search', 'tool call type should be file_search')
+              assert.ok(fileSearchCall.file_search, 'file_search field should exist (snake_case)')
+              assert.strictEqual(fileSearchCall.fileSearch, undefined, 'fileSearch (camelCase) should not exist')
+
+              console.log('✅ file_search step_details properly transformed from camelCase to snake_case')
+            }
+          }
+        }
+
+        // Verify the agent found the answer
+        const messages = await client.beta.threads.messages.list(thread.id)
+        const assistantMessage = messages.data
+          .filter((m) => m.role === 'assistant')
+          .at(-1)
+
+        assert.ok(assistantMessage, 'Should have an assistant message')
+        const text = (
+          assistantMessage?.content[0] as OpenAI.Beta.Threads.MessageContentText
+        ).text.value.trim()
+
+        assert.ok(
+          text.includes('SUPERCOMPAT_FILE_SEARCH_2024'),
+          `Response should include the secret code, got: ${text}`,
+        )
+      } finally {
+        await azureAiProject.agents.deleteAgent(fileSearchAgent.id)
+      }
+    } finally {
+      await azureAiProject.agents.files.delete(file.id)
+    }
+  } finally {
+    await azureAiProject.agents.vectorStores.delete(vectorStore.id)
+  }
+})
