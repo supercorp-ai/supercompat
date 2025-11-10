@@ -47,9 +47,10 @@ export const post =
       textContent,
     )
 
-    const openaiAssistant = await runAdapter.getOpenaiAssistant({
-      select: { id: true },
-    })
+    // Use assistantId and runId from the Azure message response
+    // Azure docs show Message includes assistantId and runId fields
+    const assistantId = (message as any).assistantId || (message as any).assistant_id || null
+    const runId = (message as any).runId || (message as any).run_id || null
 
     const openaiMessage: OpenAI.Beta.Threads.Message = {
       id: message.id,
@@ -69,8 +70,8 @@ export const post =
         }
         return c
       }),
-      assistant_id: openaiAssistant.id,
-      run_id: null,
+      assistant_id: assistantId,
+      run_id: runId,
       attachments: [],
       metadata: message.metadata || {},
       status: 'completed',

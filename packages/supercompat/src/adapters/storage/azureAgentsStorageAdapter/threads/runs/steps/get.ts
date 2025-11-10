@@ -22,17 +22,17 @@ export const get =
 
     const azureSteps = await azureAiProject.agents.runSteps.list(threadId, runId)
 
-    const openaiAssistant = await runAdapter.getOpenaiAssistant({
-      select: { id: true },
-    })
-
     const stepsList: OpenAI.Beta.Threads.Runs.RunStep[] = []
     for await (const step of azureSteps) {
+      // Use assistantId from the Azure step response
+      // Azure docs show RunStep includes assistantId field
+      const assistantId = (step as any).assistantId || (step as any).assistant_id || ''
+
       stepsList.push({
         id: step.id,
         object: 'thread.run.step',
         created_at: dayjs(step.createdAt).unix(),
-        assistant_id: openaiAssistant.id,
+        assistant_id: assistantId,
         thread_id: threadId,
         run_id: runId,
         type: step.type === 'tool_calls' ? 'tool_calls' : 'message_creation',

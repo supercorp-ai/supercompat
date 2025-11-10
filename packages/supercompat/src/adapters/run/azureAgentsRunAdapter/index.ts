@@ -346,10 +346,6 @@ export const azureAgentsRunAdapter = ({
 }: {
   azureAiProject: AIProjectClient
 }) => {
-  const getOpenaiAssistant = async ({ assistantId }: { assistantId: string }) => {
-    return { id: assistantId }
-  }
-
   const handleRun = async ({
     threadId,
     assistantId,
@@ -439,6 +435,5 @@ export const azureAgentsRunAdapter = ({
 
   return {
     handleRun,
-    getOpenaiAssistant,
   }
 }
