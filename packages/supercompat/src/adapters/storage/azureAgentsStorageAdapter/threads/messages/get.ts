@@ -41,11 +41,38 @@ export const get =
         role: message.role as 'user' | 'assistant',
         content: message.content.map((c: any) => {
           if (c.type === 'text' && 'text' in c) {
+            // Map annotations from Azure's camelCase to OpenAI's snake_case
+            const annotations = (c.text.annotations || []).map((ann: any) => {
+              if (ann.type === 'file_citation') {
+                return {
+                  type: 'file_citation' as const,
+                  text: ann.text,
+                  start_index: ann.startIndex,
+                  end_index: ann.endIndex,
+                  file_citation: {
+                    file_id: ann.fileCitation?.fileId || ann.file_citation?.file_id,
+                    quote: ann.fileCitation?.quote || ann.file_citation?.quote || '',
+                  },
+                }
+              } else if (ann.type === 'file_path') {
+                return {
+                  type: 'file_path' as const,
+                  text: ann.text,
+                  start_index: ann.startIndex,
+                  end_index: ann.endIndex,
+                  file_path: {
+                    file_id: ann.filePath?.fileId || ann.file_path?.file_id,
+                  },
+                }
+              }
+              return ann
+            })
+
             return {
               type: 'text' as const,
               text: {
                 value: c.text.value,
-                annotations: [],
+                annotations,
               },
             }
           }

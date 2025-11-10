@@ -3,6 +3,35 @@ import type OpenAI from 'openai'
 import type { AIProjectClient } from '@azure/ai-projects'
 import { uid } from 'radash'
 
+// Helper function to transform annotations from Azure's camelCase to OpenAI's snake_case
+function transformAnnotations(annotations: any[]): any[] {
+  return annotations.map((ann: any) => {
+    if (ann.type === 'file_citation') {
+      return {
+        type: 'file_citation' as const,
+        text: ann.text,
+        start_index: ann.startIndex ?? ann.start_index,
+        end_index: ann.endIndex ?? ann.end_index,
+        file_citation: {
+          file_id: ann.fileCitation?.fileId || ann.file_citation?.file_id,
+          quote: ann.fileCitation?.quote || ann.file_citation?.quote || '',
+        },
+      }
+    } else if (ann.type === 'file_path') {
+      return {
+        type: 'file_path' as const,
+        text: ann.text,
+        start_index: ann.startIndex ?? ann.start_index,
+        end_index: ann.endIndex ?? ann.end_index,
+        file_path: {
+          file_id: ann.filePath?.fileId || ann.file_path?.file_id,
+        },
+      }
+    }
+    return ann
+  })
+}
+
 // Convert Azure Agent event to OpenAI Assistant event
 function convertAzureEventToOpenAI(
   azureEvent: any,
@@ -91,7 +120,7 @@ function convertAzureEventToOpenAI(
               type: 'text',
               text: {
                 value: c.text?.value || '',
-                annotations: c.text?.annotations || [],
+                annotations: transformAnnotations(c.text?.annotations || []),
               },
             }
           }
@@ -124,7 +153,7 @@ function convertAzureEventToOpenAI(
                 type: 'text',
                 text: {
                   value: c.text?.value || '',
-                  annotations: c.text?.annotations || [],
+                  annotations: transformAnnotations(c.text?.annotations || []),
                 },
               }
             }
