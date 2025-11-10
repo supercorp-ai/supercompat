@@ -3,6 +3,35 @@ import type OpenAI from 'openai'
 import type { AIProjectClient } from '@azure/ai-projects'
 import { uid } from 'radash'
 
+// Helper function to transform annotations from Azure's camelCase to OpenAI's snake_case
+function transformAnnotations(annotations: any[]): any[] {
+  return annotations.map((ann: any) => {
+    if (ann.type === 'file_citation') {
+      return {
+        type: 'file_citation' as const,
+        text: ann.text,
+        start_index: ann.startIndex ?? ann.start_index,
+        end_index: ann.endIndex ?? ann.end_index,
+        file_citation: {
+          file_id: ann.fileCitation?.fileId || ann.file_citation?.file_id,
+          quote: ann.fileCitation?.quote || ann.file_citation?.quote || '',
+        },
+      }
+    } else if (ann.type === 'file_path') {
+      return {
+        type: 'file_path' as const,
+        text: ann.text,
+        start_index: ann.startIndex ?? ann.start_index,
+        end_index: ann.endIndex ?? ann.end_index,
+        file_path: {
+          file_id: ann.filePath?.fileId || ann.file_path?.file_id,
+        },
+      }
+    }
+    return ann
+  })
+}
+
 // Convert Azure Agent event to OpenAI Assistant event
 function convertAzureEventToOpenAI(
   azureEvent: any,
@@ -14,7 +43,8 @@ function convertAzureEventToOpenAI(
   const eventType = event as string
 
   // Convert Azure data to OpenAI format based on event type
-  if (eventType.startsWith('thread.run.')) {
+  // IMPORTANT: Exclude step events from the general run handler, they have their own handler below
+  if (eventType.startsWith('thread.run.') && !eventType.startsWith('thread.run.step.')) {
     // Convert ThreadRun to OpenAI Run
     return {
       event: eventType as any,
@@ -90,7 +120,7 @@ function convertAzureEventToOpenAI(
               type: 'text',
               text: {
                 value: c.text?.value || '',
-                annotations: c.text?.annotations || [],
+                annotations: transformAnnotations(c.text?.annotations || []),
               },
             }
           }
@@ -123,7 +153,7 @@ function convertAzureEventToOpenAI(
                 type: 'text',
                 text: {
                   value: c.text?.value || '',
-                  annotations: c.text?.annotations || [],
+                  annotations: transformAnnotations(c.text?.annotations || []),
                 },
               }
             }
@@ -136,6 +166,11 @@ function convertAzureEventToOpenAI(
 
   if (eventType === 'thread.run.step.delta') {
     // Handle run step delta events separately - they have delta.stepDetails
+    // Skip delta events where stepDetails is missing or has no type - these are incomplete
+    if (!data.delta?.stepDetails || !data.delta.stepDetails.type) {
+      return null
+    }
+
     let stepDetailsDelta: any = undefined
 
     if (data.delta?.stepDetails) {
@@ -199,6 +234,11 @@ function convertAzureEventToOpenAI(
       }
     }
 
+    // Final safety check: if stepDetailsDelta is still undefined after processing, skip this event
+    if (stepDetailsDelta === undefined) {
+      return null
+    }
+
     return {
       event: 'thread.run.step.delta' as any,
       data: {
@@ -213,6 +253,12 @@ function convertAzureEventToOpenAI(
 
   if (eventType.startsWith('thread.run.step.')) {
     // Convert RunStep events with proper snake_case transformation
+    // Skip events where stepDetails is missing, has no type, or where the step type is undefined
+    // Azure sometimes sends incomplete step events during file_search initialization
+    if (!data.stepDetails || !data.stepDetails.type || !data.type) {
+      return null
+    }
+
     let stepDetails: any = undefined
 
     if (data.stepDetails) {
@@ -278,6 +324,12 @@ function convertAzureEventToOpenAI(
       }
     }
 
+    // Final safety check: if stepDetails is still undefined after processing, skip this event
+    // This prevents OpenAI SDK from crashing on incomplete events
+    if (stepDetails === undefined) {
+      return null
+    }
+
     return {
       event: eventType as any,
       data: {
@@ -323,10 +375,6 @@ export const azureAgentsRunAdapter = ({
 }: {
   azureAiProject: AIProjectClient
 }) => {
-  const getOpenaiAssistant = async ({ assistantId }: { assistantId: string }) => {
-    return { id: assistantId }
-  }
-
   const handleRun = async ({
     threadId,
     assistantId,
@@ -416,6 +464,5 @@ export const azureAgentsRunAdapter = ({
 
   return {
     handleRun,
-    getOpenaiAssistant,
   }
 }

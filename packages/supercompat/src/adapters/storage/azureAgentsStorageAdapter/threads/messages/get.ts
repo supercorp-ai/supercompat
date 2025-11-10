@@ -26,12 +26,13 @@ export const get =
       order: order as 'asc' | 'desc',
     })
 
-    const openaiAssistant = await runAdapter.getOpenaiAssistant({
-      select: { id: true },
-    })
-
     const messagesList: OpenAI.Beta.Threads.Message[] = []
     for await (const message of messages) {
+      // Use assistantId and runId from the Azure message response
+      // Azure docs show Message includes assistantId and runId fields
+      const assistantId = (message as any).assistantId || (message as any).assistant_id || null
+      const runId = (message as any).runId || (message as any).run_id || null
+
       messagesList.push({
         id: message.id,
         object: 'thread.message',
@@ -40,18 +41,45 @@ export const get =
         role: message.role as 'user' | 'assistant',
         content: message.content.map((c: any) => {
           if (c.type === 'text' && 'text' in c) {
+            // Map annotations from Azure's camelCase to OpenAI's snake_case
+            const annotations = (c.text.annotations || []).map((ann: any) => {
+              if (ann.type === 'file_citation') {
+                return {
+                  type: 'file_citation' as const,
+                  text: ann.text,
+                  start_index: ann.startIndex,
+                  end_index: ann.endIndex,
+                  file_citation: {
+                    file_id: ann.fileCitation?.fileId || ann.file_citation?.file_id,
+                    quote: ann.fileCitation?.quote || ann.file_citation?.quote || '',
+                  },
+                }
+              } else if (ann.type === 'file_path') {
+                return {
+                  type: 'file_path' as const,
+                  text: ann.text,
+                  start_index: ann.startIndex,
+                  end_index: ann.endIndex,
+                  file_path: {
+                    file_id: ann.filePath?.fileId || ann.file_path?.file_id,
+                  },
+                }
+              }
+              return ann
+            })
+
             return {
               type: 'text' as const,
               text: {
                 value: c.text.value,
-                annotations: [],
+                annotations,
               },
             }
           }
           return c
         }),
-        assistant_id: openaiAssistant.id,
-        run_id: null,
+        assistant_id: assistantId,
+        run_id: runId,
         attachments: [],
         metadata: message.metadata || {},
         status: 'completed',
