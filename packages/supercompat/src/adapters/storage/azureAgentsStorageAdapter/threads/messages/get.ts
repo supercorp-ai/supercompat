@@ -75,6 +75,15 @@ export const get =
                 annotations,
               },
             }
+          } else if (c.type === 'image_file') {
+            const imageFile = c.image_file || c.imageFile || {}
+            return {
+              type: 'image_file' as const,
+              image_file: {
+                file_id: imageFile.file_id || imageFile.fileId || '',
+                detail: imageFile.detail ?? 'auto',
+              },
+            }
           }
           return c
         }),

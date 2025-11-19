@@ -988,6 +988,62 @@ test('azureAgentsRunAdapter code_interpreter generates and validates image outpu
   assert.ok(assistantMessage, 'Should have an assistant message')
 })
 
+test('azureAgentsRunAdapter normalizes image_file content in assistant messages', async (t) => {
+  const client = supercompat({
+    client: azureAiProjectClientAdapter({ azureAiProject }),
+    runAdapter: azureAgentsRunAdapter({
+      azureAiProject,
+    }),
+    storage: azureAgentsStorageAdapter({ azureAiProject }),
+  })
+
+  const pythonCode = `import matplotlib.pyplot as plt
+values = [240, 185, 90, 326, 60, 42]
+labels = ['A123', 'B212', 'C334', 'D451', 'E598', 'F760']
+plt.figure(figsize=(8, 4))
+plt.bar(labels, values, color='steelblue')
+for idx, val in enumerate(values):
+    plt.text(idx, val + 5, str(val), ha='center')
+plt.title('Voorraad per artikel (test)')
+plt.xlabel('Artikelcode')
+plt.ylabel('Voorraad')
+plt.tight_layout()
+plt.show()`
+
+  const thread = await client.beta.threads.create()
+
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content:
+      'Run the following Python code verbatim using the code interpreter, then describe the resulting chart. Return the generated chart as part of your answer:\n\n```python\n' +
+      pythonCode +
+      '\n```',
+  })
+
+  const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+    assistant_id: CODE_INTERPRETER_AGENT_ID,
+    tools: [{ type: 'code_interpreter' }],
+    instructions:
+      'Execute the provided Python verbatim to build a matplotlib chart, return the image, and also include a short explanation.',
+  })
+
+  assert.equal(run.status, 'completed', 'Run should complete')
+
+  const messages = await client.beta.threads.messages.list(thread.id)
+  const assistantMessage = messages.data.filter((m) => m.role === 'assistant').at(-1)
+
+  assert.ok(assistantMessage, 'Should have an assistant message with the generated chart')
+
+  const imageContent = assistantMessage?.content.find(
+    (item): item is OpenAI.Beta.Threads.MessageContentImageFile => item.type === 'image_file',
+  )
+
+  assert.ok(imageContent, 'Expected code interpreter response to include an image_file item')
+  assert.ok(imageContent.image_file, 'image_file entry should be present (snake_case)')
+  assert.ok(imageContent.image_file?.file_id, 'image_file should carry a file_id')
+  assert.strictEqual((imageContent as any).imageFile, undefined, 'camelCase imageFile should be removed')
+})
+
 test('azureAgentsRunAdapter properly transforms function call step_details', async (t) => {
   const client = supercompat({
     client: azureAiProjectClientAdapter({ azureAiProject }),

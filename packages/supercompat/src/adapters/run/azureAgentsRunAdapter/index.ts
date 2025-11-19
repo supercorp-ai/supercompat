@@ -32,6 +32,58 @@ function transformAnnotations(annotations: any[]): any[] {
   })
 }
 
+function transformMessageContentItem(content: any) {
+  if (content.type === 'text') {
+    return {
+      type: 'text' as const,
+      text: {
+        value: content.text?.value || '',
+        annotations: transformAnnotations(content.text?.annotations || []),
+      },
+    }
+  }
+
+  if (content.type === 'image_file') {
+    const imageFile = content.image_file || content.imageFile || {}
+    return {
+      type: 'image_file' as const,
+      image_file: {
+        file_id: imageFile.file_id || imageFile.fileId || '',
+        detail: imageFile.detail ?? 'auto',
+      },
+    }
+  }
+
+  return content
+}
+
+function transformMessageDeltaContentItem(content: any) {
+  if (content.type === 'text') {
+    return {
+      index: content.index || 0,
+      type: 'text' as const,
+      text: {
+        value: content.text?.value || '',
+        annotations: transformAnnotations(content.text?.annotations || []),
+      },
+    }
+  }
+
+  if (content.type === 'image_file') {
+    const imageFile = content.image_file || content.imageFile || {}
+    return {
+      index: content.index || 0,
+      type: 'image_file' as const,
+      image_file: {
+        file_id: imageFile.file_id || imageFile.fileId || '',
+        detail: imageFile.detail ?? 'auto',
+      },
+    }
+  }
+
+  return content
+}
+
 // Convert Azure Agent event to OpenAI Assistant event
 function convertAzureEventToOpenAI(
   azureEvent: any,
@@ -114,18 +166,7 @@ function convertAzureEventToOpenAI(
         created_at: dayjs(data.createdAt).unix(),
         thread_id: data.threadId,
         role: data.role,
-        content: data.content?.map((c: any) => {
-          if (c.type === 'text') {
-            return {
-              type: 'text',
-              text: {
-                value: c.text?.value || '',
-                annotations: transformAnnotations(c.text?.annotations || []),
-              },
-            }
-          }
-          return c
-        }) || [],
+        content: data.content?.map((c: any) => transformMessageContentItem(c)) || [],
         assistant_id: assistantId,
         run_id: data.runId || null,
         attachments: data.attachments || [],
@@ -146,19 +187,7 @@ function convertAzureEventToOpenAI(
         id: data.id,
         object: 'thread.message.delta',
         delta: {
-          content: data.delta?.content?.map((c: any) => {
-            if (c.type === 'text') {
-              return {
-                index: c.index || 0,
-                type: 'text',
-                text: {
-                  value: c.text?.value || '',
-                  annotations: transformAnnotations(c.text?.annotations || []),
-                },
-              }
-            }
-            return c
-          }) || [],
+          content: data.delta?.content?.map((c: any) => transformMessageDeltaContentItem(c)) || [],
         },
       },
     } as OpenAI.Beta.AssistantStreamEvent
