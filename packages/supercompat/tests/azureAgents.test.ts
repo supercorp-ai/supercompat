@@ -1042,6 +1042,23 @@ plt.show()`
   assert.ok(imageContent.image_file, 'image_file entry should be present (snake_case)')
   assert.ok(imageContent.image_file?.file_id, 'image_file should carry a file_id')
   assert.strictEqual((imageContent as any).imageFile, undefined, 'camelCase imageFile should be removed')
+
+  const fileId = imageContent.image_file.file_id
+  const fileMetadata = await client.files.retrieve(fileId)
+
+  assert.equal(fileMetadata.id, fileId, 'File metadata should be retrievable via files.retrieve')
+  assert.equal(fileMetadata.object, 'file', 'File metadata should normalize the object type')
+  assert.ok(fileMetadata.bytes > 0, 'File metadata should include non-zero byte size')
+  assert.ok(fileMetadata.created_at > 0, 'File metadata should provide a created_at timestamp')
+
+  const fileContentResponse = await client.files.content(fileId)
+  const fileBuffer = Buffer.from(await fileContentResponse.arrayBuffer())
+
+  assert.ok(fileBuffer.byteLength > 0, 'files.content should return file bytes from Azure Agents')
+  assert.ok(
+    fileContentResponse.headers.get('content-type'),
+    'files.content response should include a content-type header',
+  )
 })
 
 test('azureAgentsRunAdapter properly transforms function call step_details', async (t) => {

@@ -13,6 +13,10 @@ import { run } from './threads/run'
 import { steps } from './threads/runs/steps'
 import { submitToolOutputs } from './threads/runs/submitToolOutputs'
 import { assistants } from './assistants'
+import { fileRegexp } from '@/lib/files/fileRegexp'
+import { fileContentRegexp } from '@/lib/files/fileContentRegexp'
+import { file } from './files/get'
+import { fileContent } from './files/content'
 
 type MethodHandlers = { get?: RequestHandler; post?: RequestHandler }
 
@@ -34,6 +38,8 @@ export const azureAgentsStorageAdapter = ({
       [runRegexp]: run({ azureAiProject, runAdapter }),
       [stepsRegexp]: steps({ azureAiProject, runAdapter }),
       [submitToolOutputsRegexp]: submitToolOutputs({ azureAiProject, runAdapter }),
+      [fileRegexp]: file({ azureAiProject }),
+      [fileContentRegexp]: fileContent({ azureAiProject }),
     },
   })
 }
