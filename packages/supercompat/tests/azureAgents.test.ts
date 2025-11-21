@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
 import { AIProjectClient } from '@azure/ai-projects'
 import { ClientSecretCredential } from '@azure/identity'
+import { PrismaClient } from '@prisma/client'
 import {
   azureAgentsRunAdapter,
   azureAiProjectClientAdapter,
@@ -34,6 +35,8 @@ const cred = new ClientSecretCredential(
 )
 
 const azureAiProject = new AIProjectClient(azureEndpoint, cred)
+
+const prisma = new PrismaClient()
 
 // Create agents for testing
 test('setup: create agents', async (t) => {
@@ -116,7 +119,7 @@ test('azureAgentsRunAdapter can create thread, message, and run with simple agen
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject }),
+    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   // In Azure Agents, the assistant is pre-configured in Azure
@@ -159,7 +162,7 @@ test('azureAgentsRunAdapter maintains conversation across runs', async (t) => {
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject }),
+    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -202,7 +205,7 @@ test('azureAgentsStorageAdapter works with streaming', async (t) => {
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject }),
+    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -260,7 +263,7 @@ test('azureAgentsRunAdapter can retrieve run status', async (t) => {
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject }),
+    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -295,6 +298,7 @@ test('azureAgentsRunAdapter handles function calls', async (t) => {
     }),
     storage: azureAgentsStorageAdapter({
       azureAiProject,
+      prisma,
     }),
   })
 
@@ -409,7 +413,7 @@ test('azureAgentsRunAdapter uses Azure agent config when no overrides provided',
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject }),
+    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -447,7 +451,7 @@ test('azureAgentsRunAdapter allows overriding instructions in run', async (t) =>
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject }),
+    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -491,6 +495,7 @@ test('azureAgentsRunAdapter streams function call events correctly', async (t) =
     }),
     storage: azureAgentsStorageAdapter({
       azureAiProject,
+      prisma,
     }),
   })
 
@@ -708,6 +713,7 @@ test('azureAgentsRunAdapter can list run steps', async (t) => {
     }),
     storage: azureAgentsStorageAdapter({
       azureAiProject,
+      prisma,
     }),
   })
 
@@ -749,6 +755,7 @@ test('azureAgentsRunAdapter handles multiple simultaneous tool calls', async (t)
     }),
     storage: azureAgentsStorageAdapter({
       azureAiProject,
+      prisma,
     }),
   })
 
@@ -846,7 +853,7 @@ test('azureAgentsRunAdapter properly transforms step_details for code_interprete
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject }),
+    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -932,7 +939,7 @@ test('azureAgentsRunAdapter code_interpreter generates and validates image outpu
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject }),
+    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -994,7 +1001,7 @@ test('azureAgentsRunAdapter normalizes image_file content in assistant messages'
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject }),
+    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const pythonCode = `import matplotlib.pyplot as plt
@@ -1067,7 +1074,7 @@ test('azureAgentsRunAdapter properly transforms function call step_details', asy
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject }),
+    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -1145,7 +1152,7 @@ test('azureAgentsRunAdapter code_interpreter handles multiple outputs correctly'
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject }),
+    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -1208,7 +1215,7 @@ test('azureAgentsRunAdapter validates message_creation step_details transformati
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject }),
+    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -1272,7 +1279,7 @@ test('azureAgentsRunAdapter handles file_search with empty vector store without 
         runAdapter: azureAgentsRunAdapter({
           azureAiProject,
         }),
-        storage: azureAgentsStorageAdapter({ azureAiProject }),
+        storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
       })
 
       const thread = await client.beta.threads.create()
@@ -1389,7 +1396,7 @@ test.skip('azureAgentsRunAdapter properly transforms step_details for file_searc
           runAdapter: azureAgentsRunAdapter({
             azureAiProject,
           }),
-          storage: azureAgentsStorageAdapter({ azureAiProject }),
+          storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
         })
 
         const thread = await client.beta.threads.create()
@@ -1475,4 +1482,417 @@ test.skip('azureAgentsRunAdapter properly transforms step_details for file_searc
   } finally {
     await azureAiProject.agents.vectorStores.delete(vectorStore.id)
   }
+})
+
+test('azureAgentsRunAdapter preserves function tool call outputs in messages.list', async (t) => {
+  // This test validates whether function tool call information (including outputs)
+  // is available when retrieving messages via messages.list() after completion
+  const client = supercompat({
+    client: azureAiProjectClientAdapter({ azureAiProject }),
+    runAdapter: azureAgentsRunAdapter({
+      azureAiProject,
+    }),
+    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+  })
+
+  const thread = await client.beta.threads.create()
+
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: 'What is the weather in Paris?',
+  })
+
+  // Create run and handle function calls
+  const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+    assistant_id: FUNCTION_AGENT_ID,
+  })
+
+  console.log('Run status:', run.status)
+
+  if (run.status === 'requires_action') {
+    const toolCalls = run.required_action?.submit_tool_outputs.tool_calls ?? []
+    console.log('Tool calls required:', toolCalls.length)
+
+    if (toolCalls.length > 0) {
+      const toolCall = toolCalls[0]
+      console.log('Tool call:', {
+        id: toolCall.id,
+        type: toolCall.type,
+        function: toolCall.function,
+      })
+
+      // Submit tool output
+      const completedRun = await client.beta.threads.runs.submitToolOutputsAndPoll(run.id, {
+        thread_id: thread.id,
+        tool_outputs: [
+          {
+            tool_call_id: toolCall.id,
+            output: JSON.stringify({ temperature: 15, condition: 'rainy' }),
+          },
+        ],
+      })
+
+      console.log('Completed run status:', completedRun.status)
+
+      // Now retrieve messages and check if tool call info is present
+      const messages = await client.beta.threads.messages.list(thread.id)
+      console.log('Total messages:', messages.data.length)
+
+      // Log all messages for debugging
+      for (const msg of messages.data) {
+        console.log(`Message ${msg.id}:`, {
+          role: msg.role,
+          contentTypes: msg.content.map((c: any) => c.type),
+          content: msg.content,
+        })
+      }
+
+      // Check assistant messages
+      const assistantMessages = messages.data.filter((m) => m.role === 'assistant')
+      console.log('Assistant messages:', assistantMessages.length)
+
+      // Check if any assistant message contains tool call information
+      const hasToolCallInfo = assistantMessages.some((msg) =>
+        msg.content.some((c: any) => {
+          // Check if content mentions the tool call or output
+          if (c.type === 'text') {
+            const text = c.text?.value?.toLowerCase() || ''
+            return text.includes('temperature') || text.includes('weather') || text.includes('rainy')
+          }
+          return false
+        })
+      )
+
+      console.log('Messages contain tool output info:', hasToolCallInfo)
+
+      // Now check run steps to see if tool call outputs are there
+      const steps = await client.beta.threads.runs.steps.list(completedRun.id, {
+        thread_id: completedRun.thread_id,
+      })
+
+      console.log('Total run steps:', steps.data.length)
+
+      const toolCallSteps = steps.data.filter((step) => step.type === 'tool_calls')
+      console.log('Tool call steps:', toolCallSteps.length)
+
+      if (toolCallSteps.length > 0) {
+        const toolStep = toolCallSteps[0]
+        const stepDetails = toolStep.step_details as any
+        console.log('Tool call step details:', JSON.stringify(stepDetails, null, 2))
+
+        if (stepDetails.tool_calls) {
+          const functionCall = stepDetails.tool_calls.find((tc: any) => tc.type === 'function')
+          if (functionCall) {
+            console.log('Function call in step:', {
+              name: functionCall.function?.name,
+              arguments: functionCall.function?.arguments,
+              output: functionCall.function?.output,
+            })
+
+            // Check if output is present in run step
+            if (functionCall.function?.output) {
+              console.log('✅ Tool call output IS present in run steps')
+            } else {
+              console.log('❌ Tool call output is NOT present in run steps')
+            }
+          }
+        }
+      }
+
+      // Summary
+      console.log('\n=== SUMMARY ===')
+      console.log('Tool outputs in messages.list():', hasToolCallInfo ? 'YES (in text)' : 'NO')
+      console.log('Tool outputs in steps.list():', toolCallSteps.length > 0 ? 'Available via steps' : 'NOT available')
+    }
+  } else {
+    console.log(`Note: Run did not require action, status: ${run.status}`)
+  }
+})
+
+test('azureAgentsRunAdapter stores and retrieves function tool outputs', async (t) => {
+  const client = supercompat({
+    client: azureAiProjectClientAdapter({ azureAiProject }),
+    runAdapter: azureAgentsRunAdapter({
+      azureAiProject,
+    }),
+    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+  })
+
+  // Create a thread
+  const thread = await client.beta.threads.create()
+  assert.ok(thread.id, 'Thread should be created')
+
+  // Add a message that will trigger the function tool
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: 'What is the weather in San Francisco?',
+  })
+
+  // Start a run with the function agent
+  let run = await client.beta.threads.runs.createAndPoll(thread.id, {
+    assistant_id: FUNCTION_AGENT_ID,
+  })
+
+  assert.strictEqual(run.status, 'requires_action', 'Run should require action')
+  assert.ok(run.required_action, 'Run should have required action')
+  assert.strictEqual(
+    run.required_action?.type,
+    'submit_tool_outputs',
+    'Required action should be submit_tool_outputs',
+  )
+
+  const toolCalls = run.required_action?.submit_tool_outputs?.tool_calls || []
+  assert.ok(toolCalls.length > 0, 'Should have tool calls')
+
+  const weatherToolCall = toolCalls[0]
+  assert.strictEqual(weatherToolCall.type, 'function', 'Tool call should be function type')
+  assert.strictEqual(
+    weatherToolCall.function.name,
+    'get_weather',
+    'Function should be get_weather',
+  )
+
+  const toolCallId = weatherToolCall.id
+  const weatherOutput = JSON.stringify({ temperature: 72, condition: 'sunny' })
+
+  // Submit tool outputs
+  run = await client.beta.threads.runs.submitToolOutputsAndPoll(run.id, {
+    thread_id: thread.id,
+    tool_outputs: [
+      {
+        tool_call_id: toolCallId,
+        output: weatherOutput,
+      },
+    ],
+  })
+
+  assert.ok(['completed', 'requires_action'].includes(run.status), 'Run should complete or require more action')
+
+  // Verify output is stored in database
+  const storedOutput = await prisma.azureAgentsFunctionOutput.findUnique({
+    where: {
+      runId_toolCallId: {
+        runId: run.id,
+        toolCallId: toolCallId,
+      },
+    },
+  })
+
+  assert.ok(storedOutput, 'Output should be stored in database')
+  assert.strictEqual(storedOutput.output, weatherOutput, 'Stored output should match submitted output')
+  assert.strictEqual(storedOutput.runId, run.id, 'Stored runId should match')
+  assert.strictEqual(storedOutput.toolCallId, toolCallId, 'Stored toolCallId should match')
+
+  // Retrieve run steps and verify output is attached
+  const steps = await client.beta.threads.runs.steps.list(run.id, {
+    thread_id: thread.id,
+  })
+  const toolCallSteps = steps.data.filter(
+    (step) => step.type === 'tool_calls' && step.step_details.type === 'tool_calls',
+  )
+
+  assert.ok(toolCallSteps.length > 0, 'Should have tool call steps')
+
+  const functionToolCalls = toolCallSteps
+    .flatMap((step) =>
+      step.step_details.type === 'tool_calls' ? step.step_details.tool_calls : [],
+    )
+    .filter((tc) => tc.type === 'function' && tc.id === toolCallId)
+
+  assert.ok(functionToolCalls.length > 0, 'Should find the function tool call in steps')
+
+  const retrievedToolCall = functionToolCalls[0]
+  assert.strictEqual(retrievedToolCall.type, 'function', 'Retrieved tool call should be function type')
+  assert.strictEqual(
+    retrievedToolCall.function.output,
+    weatherOutput,
+    'Retrieved function output should match submitted output',
+  )
+
+  console.log('✓ Function output storage and retrieval test passed')
+  console.log(`  - Tool call ID: ${toolCallId}`)
+  console.log(`  - Stored in database: ✓`)
+  console.log(`  - Retrieved from steps: ✓`)
+  console.log(`  - Output matches: ✓`)
+})
+
+test('Azure function outputs match OpenAI format exactly', async (t) => {
+  const openaiApiKey = process.env.TEST_OPENAI_API_KEY
+  if (!openaiApiKey) {
+    console.log('⊘ Skipping OpenAI comparison test - TEST_OPENAI_API_KEY not set')
+    return
+  }
+
+  // Setup OpenAI client
+  const openaiClient = new OpenAI({ apiKey: openaiApiKey })
+
+  // Setup Azure client
+  const azureClient = supercompat({
+    client: azureAiProjectClientAdapter({ azureAiProject }),
+    runAdapter: azureAgentsRunAdapter({ azureAiProject }),
+    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+  })
+
+  // Define the same function tool for both
+  const weatherTool = {
+    type: 'function' as const,
+    function: {
+      name: 'get_weather',
+      description: 'Get the current weather',
+      parameters: {
+        type: 'object',
+        properties: {
+          location: { type: 'string', description: 'City name' },
+        },
+        required: ['location'],
+      },
+    },
+  }
+
+  // Test different output formats
+  const testOutputs = [
+    {
+      name: 'JSON object',
+      output: JSON.stringify({ temperature: 72, condition: 'sunny', humidity: 65 }),
+    },
+    {
+      name: 'JSON array',
+      output: JSON.stringify(['sunny', 'warm', 'clear']),
+    },
+    {
+      name: 'Plain string',
+      output: 'The weather is sunny and warm',
+    },
+    {
+      name: 'Number as string',
+      output: '72',
+    },
+    {
+      name: 'Empty string',
+      output: '',
+    },
+  ]
+
+  console.log('\n=== Testing output format compatibility ===\n')
+
+  for (const testCase of testOutputs) {
+    console.log(`Testing: ${testCase.name}`)
+
+    // Create OpenAI assistant
+    const openaiAssistant = await openaiClient.beta.assistants.create({
+      model: 'gpt-4o-mini',
+      instructions: 'Call the weather function when asked.',
+      tools: [weatherTool],
+    })
+
+    // Create OpenAI thread and run
+    const openaiThread = await openaiClient.beta.threads.create()
+    await openaiClient.beta.threads.messages.create(openaiThread.id, {
+      role: 'user',
+      content: 'What is the weather in Paris?',
+    })
+
+    let openaiRun = await openaiClient.beta.threads.runs.createAndPoll(
+      openaiThread.id,
+      { assistant_id: openaiAssistant.id }
+    )
+
+    // Submit tool output to OpenAI
+    if (openaiRun.status === 'requires_action') {
+      const openaiToolCall = openaiRun.required_action?.submit_tool_outputs.tool_calls[0]
+      assert.ok(openaiToolCall, 'OpenAI should have tool call')
+
+      openaiRun = await openaiClient.beta.threads.runs.submitToolOutputsAndPoll(
+        openaiRun.id,
+        {
+          thread_id: openaiThread.id,
+          tool_outputs: [
+            {
+              tool_call_id: openaiToolCall.id,
+              output: testCase.output,
+            },
+          ],
+        }
+      )
+    }
+
+    // Get OpenAI steps
+    const openaiSteps = await openaiClient.beta.threads.runs.steps.list(openaiRun.id, {
+      thread_id: openaiThread.id,
+    })
+    const openaiToolStep = openaiSteps.data.find(
+      (s) => s.type === 'tool_calls' && s.step_details.type === 'tool_calls'
+    )
+    assert.ok(openaiToolStep, 'OpenAI should have tool step')
+    const openaiOutput =
+      openaiToolStep.step_details.type === 'tool_calls'
+        ? openaiToolStep.step_details.tool_calls[0]?.type === 'function'
+          ? openaiToolStep.step_details.tool_calls[0].function.output
+          : null
+        : null
+
+    // Create Azure thread and run
+    const azureThread = await azureClient.beta.threads.create()
+    await azureClient.beta.threads.messages.create(azureThread.id, {
+      role: 'user',
+      content: 'What is the weather in Paris?',
+    })
+
+    let azureRun = await azureClient.beta.threads.runs.createAndPoll(azureThread.id, {
+      assistant_id: FUNCTION_AGENT_ID,
+    })
+
+    // Submit tool output to Azure
+    if (azureRun.status === 'requires_action') {
+      const azureToolCall = azureRun.required_action?.submit_tool_outputs.tool_calls[0]
+      assert.ok(azureToolCall, 'Azure should have tool call')
+
+      azureRun = await azureClient.beta.threads.runs.submitToolOutputsAndPoll(azureRun.id, {
+        thread_id: azureThread.id,
+        tool_outputs: [
+          {
+            tool_call_id: azureToolCall.id,
+            output: testCase.output,
+          },
+        ],
+      })
+    }
+
+    // Get Azure steps
+    const azureSteps = await azureClient.beta.threads.runs.steps.list(azureRun.id, {
+      thread_id: azureThread.id,
+    })
+    const azureToolStep = azureSteps.data.find(
+      (s) => s.type === 'tool_calls' && s.step_details.type === 'tool_calls'
+    )
+    assert.ok(azureToolStep, 'Azure should have tool step')
+    const azureOutput =
+      azureToolStep.step_details.type === 'tool_calls'
+        ? azureToolStep.step_details.tool_calls[0]?.type === 'function'
+          ? azureToolStep.step_details.tool_calls[0].function.output
+          : null
+        : null
+
+    // Compare outputs
+    assert.strictEqual(
+      azureOutput,
+      openaiOutput,
+      `Output format mismatch for ${testCase.name}: Azure="${azureOutput}" vs OpenAI="${openaiOutput}"`
+    )
+
+    // Verify output types match
+    assert.strictEqual(
+      typeof azureOutput,
+      typeof openaiOutput,
+      `Output type mismatch for ${testCase.name}`
+    )
+
+    console.log(`  ✓ ${testCase.name}: Azure and OpenAI match (${typeof openaiOutput})`)
+    console.log(`    Value: ${JSON.stringify(openaiOutput)}`)
+
+    // Cleanup
+    await openaiClient.beta.assistants.delete(openaiAssistant.id)
+  }
+
+  console.log('\n✅ All output formats match between Azure and OpenAI\n')
 })

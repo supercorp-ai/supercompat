@@ -1,5 +1,6 @@
 import type OpenAI from 'openai'
 import type { AIProjectClient } from '@azure/ai-projects'
+import type { PrismaClient } from '@prisma/client'
 import dayjs from 'dayjs'
 import type { RunAdapterWithAssistant } from '@/types'
 import { stepsRegexp } from '@/lib/steps/stepsRegexp'
@@ -12,15 +13,27 @@ export const get =
   ({
     azureAiProject,
     runAdapter,
+    prisma,
   }: {
     azureAiProject: AIProjectClient
     runAdapter: RunAdapterWithAssistant
+    prisma: PrismaClient
   }) =>
   async (urlString: string): Promise<StepListResponse> => {
     const url = new URL(urlString)
     const [, threadId, runId] = url.pathname.match(new RegExp(stepsRegexp))!
 
     const azureSteps = await azureAiProject.agents.runSteps.list(threadId, runId)
+
+    // Retrieve all stored function outputs for this run in a single query
+    const storedOutputs = await prisma.azureAgentsFunctionOutput.findMany({
+      where: { runId },
+    })
+
+    // Create a lookup map for efficient retrieval: toolCallId -> output
+    const outputsMap = new Map(
+      storedOutputs.map((o) => [o.toolCallId, o.output])
+    )
 
     const stepsList: OpenAI.Beta.Threads.Runs.RunStep[] = []
     for await (const step of azureSteps) {
@@ -81,7 +94,9 @@ export const get =
                         function: {
                           name: tc.function.name,
                           arguments: tc.function.arguments,
-                          output: tc.function.output || null,
+                          // Retrieve output from database if Azure doesn't provide it
+                          // Use nullish coalescing (??) to preserve empty strings
+                          output: tc.function.output ?? outputsMap.get(tc.id) ?? null,
                         },
                       }
                     }

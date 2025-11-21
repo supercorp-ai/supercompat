@@ -147,3 +147,18 @@ model Assistant {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 }
+
+// Azure Agents-specific table for storing function tool call outputs
+// since Azure API doesn't persist these after submission
+model AzureAgentsFunctionOutput {
+  id           String   @id @default(dbgenerated("gen_random_uuid()"))
+  runId        String   // The run ID where the tool was called
+  toolCallId   String   // The specific tool call ID
+  output       String   // The output that was submitted
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([runId, toolCallId])
+  @@index([runId])
+  @@index([createdAt(sort: Desc)])
+}

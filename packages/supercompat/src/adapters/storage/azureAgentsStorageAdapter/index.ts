@@ -1,4 +1,5 @@
 import type { AIProjectClient } from '@azure/ai-projects'
+import type { PrismaClient } from '@prisma/client'
 import { StorageAdapterArgs, RunAdapterWithAssistant } from '@/types'
 import type { RequestHandler } from '@/types'
 import { messagesRegexp } from '@/lib/messages/messagesRegexp'
@@ -26,8 +27,10 @@ type AzureAgentsStorageAdapterArgs = StorageAdapterArgs & {
 
 export const azureAgentsStorageAdapter = ({
   azureAiProject,
+  prisma,
 }: {
   azureAiProject: AIProjectClient
+  prisma: PrismaClient
 }) => {
   return ({ runAdapter }: AzureAgentsStorageAdapterArgs) => ({
     requestHandlers: {
@@ -36,8 +39,8 @@ export const azureAgentsStorageAdapter = ({
       [messagesRegexp]: messages({ azureAiProject, runAdapter }),
       [runsRegexp]: runs({ azureAiProject, runAdapter }),
       [runRegexp]: run({ azureAiProject, runAdapter }),
-      [stepsRegexp]: steps({ azureAiProject, runAdapter }),
-      [submitToolOutputsRegexp]: submitToolOutputs({ azureAiProject, runAdapter }),
+      [stepsRegexp]: steps({ azureAiProject, runAdapter, prisma }),
+      [submitToolOutputsRegexp]: submitToolOutputs({ azureAiProject, runAdapter, prisma }),
       [fileRegexp]: file({ azureAiProject }),
       [fileContentRegexp]: fileContent({ azureAiProject }),
     },

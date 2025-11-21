@@ -1,5 +1,6 @@
 import type OpenAI from 'openai'
 import type { AIProjectClient } from '@azure/ai-projects'
+import type { PrismaClient } from '@prisma/client'
 import { uid } from 'radash'
 import dayjs from 'dayjs'
 import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
@@ -346,9 +347,11 @@ export const post =
   ({
     azureAiProject,
     runAdapter,
+    prisma,
   }: {
     azureAiProject: AIProjectClient
     runAdapter: RunAdapterWithAssistant
+    prisma: PrismaClient
   }) =>
   async (
     urlString: string,
@@ -365,6 +368,29 @@ export const post =
 
     const body = JSON.parse(options.body)
     const { tool_outputs, stream } = body
+
+    // Store function tool outputs in database for later retrieval
+    // since Azure API doesn't persist them
+    await Promise.all(
+      tool_outputs.map((output: { tool_call_id: string; output: string }) =>
+        prisma.azureAgentsFunctionOutput.upsert({
+          where: {
+            runId_toolCallId: {
+              runId,
+              toolCallId: output.tool_call_id,
+            },
+          },
+          create: {
+            runId,
+            toolCallId: output.tool_call_id,
+            output: output.output,
+          },
+          update: {
+            output: output.output,
+          },
+        })
+      )
+    )
 
     // Get the existing run to find the assistant_id (agent ID)
     const existingRun = await azureAiProject.agents.runs.get(threadId, runId)
