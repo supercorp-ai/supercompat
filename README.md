@@ -227,6 +227,7 @@ Use Azure AI Foundry's native Agents API:
 import { azureAiProjectClientAdapter, azureAgentsStorageAdapter, azureAgentsRunAdapter, supercompat } from 'supercompat'
 import { AIProjectClient } from '@azure/ai-projects'
 import { ClientSecretCredential } from '@azure/identity'
+import { PrismaClient } from '@prisma/client'
 
 const credential = new ClientSecretCredential(
   process.env.AZURE_TENANT_ID!,
@@ -239,11 +240,12 @@ const azureAiProject = new AIProjectClient(
   credential
 )
 
+const prisma = new PrismaClient()
 const runAdapter = azureAgentsRunAdapter({ azureAiProject })
 
 const client = supercompat({
   client: azureAiProjectClientAdapter({ azureAiProject }),
-  storage: azureAgentsStorageAdapter({ azureAiProject, runAdapter }),
+  storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   runAdapter,
 })
 ```
@@ -562,12 +564,13 @@ const client = supercompat({
 
 ### Azure AI Agents Storage Adapter
 
-Use Azure AI Foundry's native storage (no database needed):
+Use Azure AI Foundry's native storage with Prisma for function output persistence:
 
 ```typescript
 import { supercompat, azureAiProjectClientAdapter, azureAgentsStorageAdapter, azureAgentsRunAdapter } from 'supercompat'
 import { AIProjectClient } from '@azure/ai-projects'
 import { ClientSecretCredential } from '@azure/identity'
+import { PrismaClient } from '@prisma/client'
 
 const credential = new ClientSecretCredential(
   process.env.AZURE_TENANT_ID!,
@@ -580,13 +583,33 @@ const azureAiProject = new AIProjectClient(
   credential
 )
 
+const prisma = new PrismaClient()
 const runAdapter = azureAgentsRunAdapter({ azureAiProject })
 
 const client = supercompat({
   client: azureAiProjectClientAdapter({ azureAiProject }),
-  storage: azureAgentsStorageAdapter({ azureAiProject, runAdapter }),
+  storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   runAdapter,
 })
+```
+
+**Important:** Azure AI Agents storage requires Prisma to persist function tool call outputs. Azure's API does not persist function outputs after submission, so they are stored in a database table and reattached when run steps are retrieved. Add the `AzureAgentsFunctionOutput` model to your Prisma schema:
+
+```prisma
+// Azure Agents-specific table for storing function tool call outputs
+// since Azure API doesn't persist these after submission
+model AzureAgentsFunctionOutput {
+  id           String   @id @default(dbgenerated("gen_random_uuid()"))
+  runId        String   // The run ID where the tool was called
+  toolCallId   String   // The specific tool call ID
+  output       String   // The output that was submitted
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([runId, toolCallId])
+  @@index([runId])
+  @@index([createdAt(sort: Desc)])
+}
 ```
 
 See the [Azure AI Agents setup instructions](#azure-ai-agents) above for details on creating a service principal and configuring permissions.
@@ -625,15 +648,18 @@ const client = supercompat({
 
 ### Azure Agents Run Adapter
 
-Use with Azure AI Agents storage:
+Use with Azure AI Agents storage (requires Prisma):
 
 ```typescript
 import { azureAgentsRunAdapter } from 'supercompat'
+import { PrismaClient } from '@prisma/client'
 
+const prisma = new PrismaClient()
 const runAdapter = azureAgentsRunAdapter({ azureAiProject })
+
 const client = supercompat({
   client: azureAiProjectClientAdapter({ azureAiProject }),
-  storage: azureAgentsStorageAdapter({ azureAiProject, runAdapter }),
+  storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   runAdapter,
 })
 ```

@@ -368,6 +368,7 @@ test('azureAgentsRunAdapter handles code interpreter', async (t) => {
     }),
     storage: azureAgentsStorageAdapter({
       azureAiProject,
+      prisma,
     }),
   })
 
@@ -581,6 +582,7 @@ test('azureAgentsRunAdapter streams code interpreter events correctly', async (t
     }),
     storage: azureAgentsStorageAdapter({
       azureAiProject,
+      prisma,
     }),
   })
 
@@ -660,6 +662,7 @@ test('azureAgentsRunAdapter exposes run steps during streaming', async (t) => {
     }),
     storage: azureAgentsStorageAdapter({
       azureAiProject,
+      prisma,
     }),
   })
 

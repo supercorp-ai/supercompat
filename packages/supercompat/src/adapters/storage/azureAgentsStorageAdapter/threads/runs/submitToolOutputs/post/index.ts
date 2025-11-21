@@ -11,6 +11,7 @@ import { RunAdapterWithAssistant } from '@/types'
 function convertAzureEventToOpenAI(
   azureEvent: any,
   assistantId: string,
+  outputsMap: Map<string, string>,
 ): OpenAI.Beta.AssistantStreamEvent | null {
   const { event, data } = azureEvent
   const eventType = event as string
@@ -191,7 +192,7 @@ function convertAzureEventToOpenAI(
                 function: {
                   name: tc.function?.name || '',
                   arguments: tc.function?.arguments || '',
-                  output: tc.function?.output || null,
+                  output: tc.function?.output ?? outputsMap.get(tc.id) ?? null,
                 },
               }
             }
@@ -280,7 +281,7 @@ function convertAzureEventToOpenAI(
                 function: {
                   name: tc.function?.name || '',
                   arguments: tc.function?.arguments || '',
-                  output: tc.function?.output || null,
+                  output: tc.function?.output ?? outputsMap.get(tc.id) ?? null,
                 },
               }
             }
@@ -369,6 +370,14 @@ export const post =
     const body = JSON.parse(options.body)
     const { tool_outputs, stream } = body
 
+    // Create a map of tool outputs for efficient lookup during streaming
+    const outputsMap = new Map(
+      tool_outputs.map((output: { tool_call_id: string; output: string }) => [
+        output.tool_call_id,
+        output.output,
+      ])
+    )
+
     // Store function tool outputs in database for later retrieval
     // since Azure API doesn't persist them
     await Promise.all(
@@ -414,7 +423,7 @@ export const post =
 
         // Convert Azure events to OpenAI events and emit them
         for await (const azureEvent of stream) {
-          const openaiEvent = convertAzureEventToOpenAI(azureEvent, assistantId)
+          const openaiEvent = convertAzureEventToOpenAI(azureEvent, assistantId, outputsMap)
           if (openaiEvent) {
             await onEvent(openaiEvent)
           }
