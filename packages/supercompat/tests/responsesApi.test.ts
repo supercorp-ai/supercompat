@@ -682,3 +682,70 @@ test('responsesStorageAdapter exposes run steps with tools', async (t) => {
   )
   assert.equal(toolStep?.step_details?.tool_calls[0]?.type, 'function')
 })
+test('responsesStorageAdapter saves metadata during streaming', async (t) => {
+  const realOpenAI = new OpenAI({
+    apiKey,
+    ...(process.env.HTTPS_PROXY
+      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+      : {}),
+  })
+
+  const openaiAssistant = {
+    id: 'some-assistant-id',
+    object: 'assistant' as const,
+    model: 'gpt-4.1-mini',
+    instructions: 'You are a concise, helpful assistant.',
+    description: null,
+    name: 'Some Assistant',
+    metadata: {},
+    tools: [],
+    created_at: dayjs().unix(),
+  }
+
+  const client = supercompat({
+    client: openaiClientAdapter({ openai: realOpenAI }),
+    runAdapter: responsesRunAdapter({
+      getOpenaiAssistant: () => openaiAssistant,
+    }),
+    storage: responsesStorageAdapter(),
+  })
+
+  const thread = await client.beta.threads.create()
+
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: 'Say hello in one short sentence.',
+  })
+
+  const run = await client.beta.threads.runs.create(thread.id, {
+    assistant_id: 'unused',
+    model: 'gpt-4.1-mini',
+    instructions: 'You are a concise, helpful assistant.',
+    stream: true,
+  })
+
+  let sawCompleted = false
+  for await (const event of run) {
+    if (event.event === 'thread.run.completed') {
+      sawCompleted = true
+    }
+  }
+  assert.ok(sawCompleted, 'Run should complete')
+
+  // Wait a bit for metadata to be saved (it's in waitUntil)
+  await new Promise((r) => setTimeout(r, 2000))
+
+  // Verify that conversation metadata was updated with response items
+  const conversation = await realOpenAI.conversations.retrieve(thread.id)
+
+  // The metadata should contain responseItemsMap buckets
+  const metadataKeys = Object.keys(conversation.metadata || {})
+  const hasResponseItemsMap = metadataKeys.some((key) => key.startsWith('responseItemsMap'))
+
+  assert.ok(
+    hasResponseItemsMap,
+    `Conversation metadata should contain responseItemsMap after streaming. Found keys: ${metadataKeys.join(', ')}`
+  )
+
+  console.log('✅ Metadata saved during streaming:', metadataKeys)
+})

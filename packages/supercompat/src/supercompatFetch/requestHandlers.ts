@@ -24,6 +24,7 @@ const storageRequestHandlers = ({
       handleRun: partob(runAdapter.handleRun, { client: wrappedClient }),
     },
     client: wrappedClient,
+    originalClient: client,
   })
   return result.requestHandlers
 }
