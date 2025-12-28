@@ -52,10 +52,10 @@ export const post =
               assistantId: azureAgentId,
               instructions,
               tools,
-              onEvent: async (event) => {
+              onEvent: async (event: any) => {
                 controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
               },
-            })
+            } as any)
           } catch (error: any) {
             console.error(error)
 

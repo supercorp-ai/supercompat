@@ -376,7 +376,7 @@ export const post =
         output.tool_call_id,
         output.output,
       ])
-    )
+    ) as Map<string, string>
 
     // Store function tool outputs in database for later retrieval
     // since Azure API doesn't persist them

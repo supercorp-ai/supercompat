@@ -58,7 +58,7 @@ export const get = ({
 
   const data = response.output.flatMap((item) => {
     const step = serializeItemAsMessageCreationRunStep({
-      item,
+      item: item as any,
       threadId,
       openaiAssistant,
       runId: response.id,

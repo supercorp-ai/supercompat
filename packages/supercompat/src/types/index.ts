@@ -59,6 +59,7 @@ export type RunAdapterWithAssistant = RunAdapterPartobClient & {
 export type StorageAdapterArgs = {
   client: OpenAI
   runAdapter: RunAdapterPartobClient
+  originalClient?: any
 }
 
 export type RequestHandler = (

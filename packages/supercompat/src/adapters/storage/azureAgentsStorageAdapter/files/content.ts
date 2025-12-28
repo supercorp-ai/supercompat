@@ -23,7 +23,7 @@ const headersToRecord = (headers: any): Record<string, string> => {
 
 const toBody = async (nodeStream: NodeJS.ReadableStream) => {
   if (typeof (Readable as any).toWeb === 'function') {
-    return Readable.toWeb(nodeStream) as unknown as BodyInit
+    return Readable.toWeb(nodeStream as any) as unknown as BodyInit
   }
 
   const chunks: Buffer[] = []
