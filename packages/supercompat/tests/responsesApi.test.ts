@@ -11,13 +11,17 @@ import {
   responsesStorageAdapter,
 } from '../src/index'
 
+// Skip slow tests if SKIP_SLOW_TESTS is set
+const shouldSkipSlowTests = process.env.SKIP_SLOW_TESTS === 'true'
+const testOrSkip = shouldSkipSlowTests ? test.skip : test
+
 const apiKey = process.env.TEST_OPENAI_API_KEY
 
 if (process.env.HTTPS_PROXY) {
   setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY))
 }
 
-test('responsesRunAdapter can create thread message and run via OpenAI', async (t) => {
+testOrSkip('responsesRunAdapter can create thread message and run via OpenAI', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -71,7 +75,7 @@ test('responsesRunAdapter can create thread message and run via OpenAI', async (
   assert.equal(text, '4')
 })
 
-test('responsesRunAdapter maintains conversation across runs', async (t) => {
+testOrSkip('responsesRunAdapter maintains conversation across runs', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -257,7 +261,7 @@ test('responsesRunAdapter streams tool calls via OpenAI', async () => {
   // assert.ok(finalText.includes('70'))
 })
 
-test('responsesRunAdapter handles multiple simultaneous tool calls', async (t) => {
+testOrSkip('responsesRunAdapter handles multiple simultaneous tool calls', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -372,7 +376,7 @@ test('responsesRunAdapter handles multiple simultaneous tool calls', async (t) =
   )
 })
 
-test('responsesStorageAdapter works with polling', async (t) => {
+testOrSkip('responsesStorageAdapter works with polling', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -615,7 +619,7 @@ test('responsesStorageAdapter streams with tool', async (t) => {
   assert.ok(latestMessage.content[0].text.value.includes('70'))
 })
 
-test('responsesStorageAdapter exposes run steps with tools', async (t) => {
+testOrSkip('responsesStorageAdapter exposes run steps with tools', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -748,4 +752,200 @@ test('responsesStorageAdapter saves metadata during streaming', async (t) => {
   )
 
   console.log('✅ Metadata saved during streaming:', metadataKeys)
+})
+
+test('responsesStorageAdapter handles thread creation with array content', async (t) => {
+  const realOpenAI = new OpenAI({
+    apiKey,
+    ...(process.env.HTTPS_PROXY
+      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+      : {}),
+  })
+
+  const openaiAssistant = {
+    id: `asst_test_${Date.now()}`,
+    object: 'assistant' as const,
+    created_at: dayjs().unix(),
+    name: 'Test Assistant',
+    description: null,
+    model: 'gpt-4o-mini',
+    instructions: 'You are a test assistant',
+    tools: [],
+    metadata: {},
+  }
+
+  const client = supercompat({
+    client: openaiClientAdapter({ openai: realOpenAI }),
+    runAdapter: responsesRunAdapter({
+      getOpenaiAssistant: async () => openaiAssistant,
+    }),
+    storage: responsesStorageAdapter(),
+  })
+
+  // Create thread with array content (multiple text parts)
+  const thread = await client.beta.threads.create({
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'Hello,' },
+          { type: 'text', text: ' how are you?' },
+        ],
+      },
+    ],
+  })
+
+  assert.ok(thread.id, 'Thread should be created with array content')
+  console.log('✅ Thread created with array text content')
+})
+
+test('responsesStorageAdapter handles thread creation with multi-part array content', async (t) => {
+  const realOpenAI = new OpenAI({
+    apiKey,
+    ...(process.env.HTTPS_PROXY
+      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+      : {}),
+  })
+
+  const openaiAssistant = {
+    id: `asst_test_${Date.now()}`,
+    object: 'assistant' as const,
+    created_at: dayjs().unix(),
+    name: 'Test Assistant',
+    description: null,
+    model: 'gpt-4o-mini',
+    instructions: 'You are a test assistant',
+    tools: [],
+    metadata: {},
+  }
+
+  const client = supercompat({
+    client: openaiClientAdapter({ openai: realOpenAI }),
+    runAdapter: responsesRunAdapter({
+      getOpenaiAssistant: async () => openaiAssistant,
+    }),
+    storage: responsesStorageAdapter(),
+  })
+
+  // Create thread with text content only (testing content format handling)
+  // Note: Not testing actual image because OpenAI requires downloadable URLs
+  const thread = await client.beta.threads.create({
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'Hello' },
+          { type: 'text', text: ' from array content!' },
+        ],
+      },
+    ],
+  })
+
+  assert.ok(thread.id, 'Thread should be created with multi-part array content')
+  console.log('✅ Thread created with multi-part array content')
+})
+
+test('responsesStorageAdapter handles thread creation with image_url content', async (t) => {
+  const realOpenAI = new OpenAI({
+    apiKey,
+    ...(process.env.HTTPS_PROXY
+      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+      : {}),
+  })
+
+  const openaiAssistant = {
+    id: `asst_test_${Date.now()}`,
+    object: 'assistant' as const,
+    created_at: dayjs().unix(),
+    name: 'Test Assistant',
+    description: null,
+    model: 'gpt-4o-mini',
+    instructions: 'You are a test assistant',
+    tools: [],
+    metadata: {},
+  }
+
+  const client = supercompat({
+    client: openaiClientAdapter({ openai: realOpenAI }),
+    runAdapter: responsesRunAdapter({
+      getOpenaiAssistant: async () => openaiAssistant,
+    }),
+    storage: responsesStorageAdapter(),
+  })
+
+  // Use a small, reliable image URL that OpenAI can access
+  // This is a 1x1 transparent PNG as a data URL
+  const thread = await client.beta.threads.create({
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'What do you see?' },
+          {
+            type: 'image_url',
+            image_url: {
+              url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+              detail: 'low',
+            },
+          },
+        ],
+      },
+    ],
+  })
+
+  assert.ok(thread.id, 'Thread should be created with image_url content')
+  console.log('✅ Thread created with image_url content')
+})
+
+test('responsesStorageAdapter handles thread creation with mixed text and image content', async (t) => {
+  const realOpenAI = new OpenAI({
+    apiKey,
+    ...(process.env.HTTPS_PROXY
+      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
+      : {}),
+  })
+
+  const openaiAssistant = {
+    id: `asst_test_${Date.now()}`,
+    object: 'assistant' as const,
+    created_at: dayjs().unix(),
+    name: 'Test Assistant',
+    description: null,
+    model: 'gpt-4o-mini',
+    instructions: 'You are a test assistant',
+    tools: [],
+    metadata: {},
+  }
+
+  const client = supercompat({
+    client: openaiClientAdapter({ openai: realOpenAI }),
+    runAdapter: responsesRunAdapter({
+      getOpenaiAssistant: async () => openaiAssistant,
+    }),
+    storage: responsesStorageAdapter(),
+  })
+
+  // Test with multiple content parts including image
+  const thread = await client.beta.threads.create({
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'First part, ' },
+          { type: 'text', text: 'second part, ' },
+          {
+            type: 'image_url',
+            image_url: {
+              url: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+              detail: 'low',
+            },
+          },
+          { type: 'text', text: 'and final text.' },
+        ],
+      },
+    ],
+  })
+
+  assert.ok(thread.id, 'Thread should be created with mixed text and image content')
+  console.log('✅ Thread created with mixed text and image content')
 })

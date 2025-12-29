@@ -101,10 +101,20 @@ export const azureResponsesStorageAdapter = (): ((
     const createWrappedHandlers = (
       handlerFactory: (args: any) => any,
       methods: Array<'get' | 'post'>,
+      additionalArgs: any = {},
     ): MethodHandlers => {
       const wrapped: MethodHandlers = {}
       for (const method of methods) {
-        wrapped[method] = wrapHandlerMethod(handlerFactory, method)
+        wrapped[method] = async (urlString: string, options: RequestInit) => {
+          const openaiClient = await getAzureClient()
+          const handler = handlerFactory({
+            client: openaiClient,
+            runAdapter: wrappedRunAdapter,
+            createResponseItems,
+            ...additionalArgs,
+          })
+          return handler[method](urlString, options)
+        }
       }
       return wrapped
     }
@@ -112,7 +122,7 @@ export const azureResponsesStorageAdapter = (): ((
     return {
       requestHandlers: {
         '^/(?:v1|/?openai)/assistants$': assistants({ runAdapter: wrappedRunAdapter }),
-        '^/(?:v1|/?openai)/threads$': createWrappedHandlers(threads, ['post']),
+        '^/(?:v1|/?openai)/threads$': createWrappedHandlers(threads, ['post'], { addAnnotations: true }),
         [messagesRegexp]: createWrappedHandlers(messages, ['get', 'post']),
         [runsRegexp]: createWrappedHandlers(runs, ['post']),
         [runRegexp]: createWrappedHandlers(run, ['get']),

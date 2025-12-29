@@ -11,16 +11,22 @@ type MessageCreateResponse = Response & {
 
 const contentBlocksFromContent = ({
   content,
+  addAnnotations = false,
 }: {
   content: string | OpenAI.Beta.Threads.Messages.MessageContentPartParam[]
+  addAnnotations?: boolean
 }) => {
   if (isArray(content)) {
     return content.map((item) => {
       if (item.type === 'text') {
-        return {
+        const textItem: any = {
           type: 'input_text' as 'input_text',
           text: item.text,
         }
+        if (addAnnotations) {
+          textItem.annotations = []
+        }
+        return textItem
       }
 
       if (item.type === 'image_file') {
@@ -39,19 +45,25 @@ const contentBlocksFromContent = ({
         }
       }
 
-      return {
+      const textItem: any = {
         type: 'input_text' as 'input_text',
         text: '',
       }
+      if (addAnnotations) {
+        textItem.annotations = []
+      }
+      return textItem
     })
   }
 
-  return [
-    {
-      type: 'input_text' as 'input_text',
-      text: content ?? '',
-    },
-  ]
+  const textItem: any = {
+    type: 'input_text' as 'input_text',
+    text: content ?? '',
+  }
+  if (addAnnotations) {
+    textItem.annotations = []
+  }
+  return [textItem]
 }
 
 const contentBlocksFromAttachments = ({
@@ -68,19 +80,23 @@ const contentBlocksFromAttachments = ({
 const messageContentBlocks = ({
   content,
   attachments,
+  addAnnotations = false,
 }: {
   content: string | OpenAI.Beta.Threads.Messages.MessageContentPartParam[]
   attachments: OpenAI.Beta.Threads.Messages.MessageCreateParams.Attachment[]
+  addAnnotations?: boolean
 }) => ([
-  ...contentBlocksFromContent({ content }),
+  ...contentBlocksFromContent({ content, addAnnotations }),
   ...contentBlocksFromAttachments({ attachments }),
 ])
 export const post = ({
   runAdapter,
   createResponseItems,
+  addAnnotations = false,
 }: {
   runAdapter: RunAdapterWithAssistant
   createResponseItems: OpenAI.Responses.ResponseInputItem[]
+  addAnnotations?: boolean
 }) => async (urlString: string, options: RequestInit & { body?: string }): Promise<MessageCreateResponse> => {
   const url = new URL(urlString)
 
@@ -99,6 +115,7 @@ export const post = ({
     content: messageContentBlocks({
       content,
       attachments,
+      addAnnotations,
     }),
   }
 

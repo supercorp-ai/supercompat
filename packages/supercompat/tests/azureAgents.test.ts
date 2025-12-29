@@ -16,6 +16,10 @@ const azureTenantId = process.env.AZURE_TENANT_ID
 const azureClientId = process.env.AZURE_CLIENT_ID
 const azureClientSecret = process.env.AZURE_CLIENT_SECRET
 
+// Skip slow tests if SKIP_SLOW_TESTS is set
+const shouldSkipSlowTests = process.env.SKIP_SLOW_TESTS === 'true'
+const testOrSkip = shouldSkipSlowTests ? test.skip : test
+
 // Agents will be created dynamically during test setup
 let SIMPLE_AGENT_ID: string
 let FUNCTION_AGENT_ID: string
@@ -111,6 +115,10 @@ after(async () => {
       console.error(`Failed to delete agent ${agentId}:`, error.message)
     }
   }
+
+  // Disconnect Prisma to avoid hanging
+  await prisma.$disconnect()
+  console.log('Disconnected Prisma client')
 })
 
 test('azureAgentsRunAdapter can create thread, message, and run with simple agent', async (t) => {
@@ -1669,7 +1677,7 @@ test('azureAgentsRunAdapter stores and retrieves function tool outputs', async (
     ],
   })
 
-  assert.ok(['completed', 'requires_action'].includes(run.status), 'Run should complete or require more action')
+  assert.ok(['completed', 'requires_action'].includes(run.status), `Run should complete or require more action, but got status: ${run.status}`)
 
   // Verify output is stored in database
   const storedOutput = await prisma.azureAgentsFunctionOutput.findUnique({
@@ -1719,7 +1727,7 @@ test('azureAgentsRunAdapter stores and retrieves function tool outputs', async (
   console.log(`  - Output matches: ✓`)
 })
 
-test('Azure function outputs match OpenAI format exactly', async (t) => {
+testOrSkip('Azure function outputs match OpenAI format exactly', async (t) => {
   const openaiApiKey = process.env.TEST_OPENAI_API_KEY
   if (!openaiApiKey) {
     console.log('⊘ Skipping OpenAI comparison test - TEST_OPENAI_API_KEY not set')

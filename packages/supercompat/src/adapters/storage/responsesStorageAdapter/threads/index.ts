@@ -4,8 +4,10 @@ import type { RequestHandler } from '@/types'
 
 export const threads = ({
   client,
+  addAnnotations = false,
 }: {
   client: OpenAI
+  addAnnotations?: boolean
 }): { post: RequestHandler } => ({
-  post: post({ client }),
+  post: post({ client, addAnnotations }),
 })

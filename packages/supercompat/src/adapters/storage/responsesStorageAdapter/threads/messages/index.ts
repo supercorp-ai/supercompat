@@ -7,11 +7,13 @@ export const messages = ({
   client,
   runAdapter,
   createResponseItems,
+  addAnnotations = false,
 }: {
   client: OpenAI
   runAdapter: RunAdapterWithAssistant
   createResponseItems: OpenAI.Responses.ResponseInputItem[]
+  addAnnotations?: boolean
 }): { post: RequestHandler; get: RequestHandler } => ({
-  post: post({ runAdapter, createResponseItems }),
+  post: post({ runAdapter, createResponseItems, addAnnotations }),
   get: get({ client, runAdapter }),
 })

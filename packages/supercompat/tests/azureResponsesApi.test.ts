@@ -11,6 +11,10 @@ import {
   azureAiProjectClientAdapter,
 } from '../src/index'
 
+// Skip slow tests if SKIP_SLOW_TESTS is set
+const shouldSkipSlowTests = process.env.SKIP_SLOW_TESTS === 'true'
+const testOrSkip = shouldSkipSlowTests ? test.skip : test
+
 const azureEndpoint = process.env.AZURE_PROJECT_ENDPOINT
 const azureTenantId = process.env.AZURE_TENANT_ID
 const azureClientId = process.env.AZURE_CLIENT_ID
@@ -30,7 +34,7 @@ const cred = new ClientSecretCredential(
 
 const azureAiProject = new AIProjectClient(azureEndpoint, cred)
 
-test('Azure Responses API - basic conversation', async (t) => {
+testOrSkip('Azure Responses API - basic conversation', async (t) => {
   console.log('Testing Azure Responses API with basic conversation...')
 
   // Get OpenAI-compatible client from Azure AI Project
@@ -101,7 +105,7 @@ test('Azure Responses API - basic conversation', async (t) => {
   }
 })
 
-test('Azure Responses API - maintains conversation across runs', async (t) => {
+testOrSkip('Azure Responses API - maintains conversation across runs', async (t) => {
   console.log('Testing Azure Responses API conversation memory...')
 
   const openAIClient = await azureAiProject.getOpenAIClient()

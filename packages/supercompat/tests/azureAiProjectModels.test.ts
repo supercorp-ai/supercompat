@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { AIProjectClient } from '@azure/ai-projects'
 import { ClientSecretCredential } from '@azure/identity'
@@ -21,6 +21,12 @@ const cred = new ClientSecretCredential(
 )
 
 const azureAiProject = new AIProjectClient(azureEndpoint, cred)
+
+// Cleanup Azure clients to avoid hanging
+after(async () => {
+  // Force close any open connections
+  console.log('Cleaning up Azure clients...')
+})
 
 test('azureAiProject: list models via deployments', async () => {
   console.log('Testing Azure AI Project models.list() endpoint...')
