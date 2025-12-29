@@ -1,4 +1,5 @@
 import type { AIProjectClient } from '@azure/ai-projects'
+import { models } from './models'
 
 /**
  * Client adapter for Azure AI Projects.
@@ -30,5 +31,7 @@ export const azureAiProjectClientAdapter = ({
 }) => ({
   type: 'AZURE_AI_PROJECT',
   client: azureAiProject,
-  requestHandlers: {},
+  requestHandlers: {
+    '^/v1/models$': models({ azureAiProject }),
+  },
 })
