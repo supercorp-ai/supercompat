@@ -3,7 +3,7 @@ import type { RunAdapterWithAssistant } from '@/types'
 import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
 import { serializeItemAsFunctionCallRunStep } from '@/lib/items/serializeItemAsFunctionCallRunStep'
 import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsComputerCallRunStep'
-import { getToolCallOutputItems, serializeTools, truncation } from '../shared'
+import { getToolCallOutputItems, serializeTools, truncation } from '@/adapters/storage/responsesStorageAdapter/threads/runs/submitToolOutputs/shared'
 
 export const post = ({
   client,
@@ -28,19 +28,42 @@ export const post = ({
   const previousResponse = await client.responses.retrieve(runId)
 
   const openaiAssistant = await runAdapter.getOpenaiAssistant()
+  const azureAgentId = (
+    openaiAssistant &&
+    typeof openaiAssistant === 'object' &&
+    typeof openaiAssistant.id === 'string' &&
+    typeof openaiAssistant.name === 'string' &&
+    openaiAssistant.id.trim().length > 0 &&
+    openaiAssistant.id === openaiAssistant.name
+  ) ? openaiAssistant.id : undefined
 
-  const shouldSendInstructions = typeof openaiAssistant.instructions === 'string' &&
+  const shouldSendInstructions = !azureAgentId &&
+    typeof openaiAssistant.instructions === 'string' &&
     openaiAssistant.instructions.trim().length > 0
 
-  const responseBody: OpenAI.Responses.ResponseCreateParams = {
+  const responseBody: OpenAI.Responses.ResponseCreateParams & {
+    agent?: {
+      name: string
+      type: 'agent_reference'
+    }
+  } = {
     conversation: threadId,
     stream,
     input,
   }
 
-  responseBody.model = openaiAssistant.model
-  Object.assign(responseBody, serializeTools({ tools: openaiAssistant.tools }))
-  responseBody.truncation = truncation({ openaiAssistant })
+  if (azureAgentId) {
+    responseBody.agent = {
+      name: azureAgentId,
+      type: 'agent_reference',
+    }
+  }
+
+  if (!azureAgentId) {
+    responseBody.model = openaiAssistant.model
+    Object.assign(responseBody, serializeTools({ tools: openaiAssistant.tools }))
+    responseBody.truncation = truncation({ openaiAssistant })
+  }
 
   if (shouldSendInstructions && typeof openaiAssistant.instructions === 'string') {
     responseBody.instructions = openaiAssistant.instructions

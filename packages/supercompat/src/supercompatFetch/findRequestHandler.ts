@@ -9,8 +9,9 @@ export const findRequestHandler = ({
 
   for (const key in requestHandlers) {
     const regex = new RegExp(key)
+    const matches = regex.test(pathname)
 
-    if (regex.test(pathname)) {
+    if (matches) {
       return requestHandlers[key]
     }
   }

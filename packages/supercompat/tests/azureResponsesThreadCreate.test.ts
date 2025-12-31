@@ -271,3 +271,62 @@ test('azureResponses: create thread with multiple text parts', async () => {
     console.log('Note: Could not delete thread (expected if delete not implemented)')
   }
 })
+
+test('azureResponses: retrieve messages from thread', async () => {
+  console.log('Testing Azure Responses message retrieval...')
+
+  const mockAssistant = {
+    id: 'test-assistant-id',
+    object: 'assistant' as const,
+    created_at: Date.now(),
+    name: 'Test Assistant',
+    description: null,
+    model: 'gpt-4.1',
+    instructions: 'You are a test assistant',
+    tools: [],
+    tool_resources: {},
+    metadata: {},
+    temperature: 1,
+    top_p: 1,
+    response_format: 'auto' as const,
+  }
+
+  const client = supercompat({
+    client: azureAiProjectClientAdapter({
+      azureAiProject,
+    }),
+    storage: azureResponsesStorageAdapter(),
+    runAdapter: responsesRunAdapter({
+      getOpenaiAssistant: async () => mockAssistant,
+    }),
+  })
+
+  // Create thread with a message
+  const thread = await client.beta.threads.create({
+    messages: [
+      {
+        role: 'user',
+        content: 'Hello! This is a test message.',
+      },
+    ],
+  })
+
+  console.log('Thread created:', thread.id)
+
+  // Retrieve messages
+  const messages = await client.beta.threads.messages.list(thread.id)
+  console.log('Retrieved messages:', messages.data.length)
+
+  // Verify we got the message
+  assert.ok(messages.data.length > 0, 'Should have at least one message')
+  assert.strictEqual(messages.data[0].role, 'user', 'Message should be from user')
+
+  console.log('Successfully retrieved messages from thread')
+
+  // Clean up
+  try {
+    await client.beta.threads.del(thread.id)
+  } catch (error) {
+    console.log('Note: Could not delete thread (expected if delete not implemented)')
+  }
+})

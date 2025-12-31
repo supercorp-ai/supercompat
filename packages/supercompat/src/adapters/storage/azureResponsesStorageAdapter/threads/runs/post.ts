@@ -6,7 +6,7 @@ import { runsRegexp } from '@/lib/runs/runsRegexp'
 import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
 import { RunAdapterWithAssistant } from '@/types'
 import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveResponseItemsToConversationMetadata'
-import { defaultAssistant, serializeTools, textConfig, truncation } from './shared'
+import { defaultAssistant, serializeTools, textConfig, truncation } from '@/adapters/storage/responsesStorageAdapter/threads/runs/shared'
 
 type RunCreateResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Run>
@@ -34,6 +34,7 @@ export const post = ({
     stream,
   } = body
 
+  const assistantId = typeof assistant_id === 'string' ? assistant_id.trim() : ''
   const openaiAssistant = await runAdapter.getOpenaiAssistant()
 
   const {
@@ -49,23 +50,49 @@ export const post = ({
     ...openaiAssistant,
   }, body)
 
-  const shouldSendInstructions = typeof instructions === 'string' &&
+  const azureAgentId = (
+    openaiAssistant &&
+    typeof openaiAssistant === 'object' &&
+    typeof openaiAssistant.id === 'string' &&
+    typeof openaiAssistant.name === 'string' &&
+    openaiAssistant.id.trim().length > 0 &&
+    openaiAssistant.id === openaiAssistant.name &&
+    openaiAssistant.id === assistantId
+  ) ? openaiAssistant.id : undefined
+  const shouldSendInstructions = !azureAgentId &&
+    typeof instructions === 'string' &&
     instructions.trim().length > 0
 
-  const responseBody: OpenAI.Responses.ResponseCreateParams = {
+  const responseBody: OpenAI.Responses.ResponseCreateParams & {
+    agent?: {
+      name: string
+      type: 'agent_reference'
+    }
+  } = {
     conversation: threadId,
     stream,
     input: createResponseItems,
   }
 
-  responseBody.model = model
-  responseBody.metadata = metadata
-  Object.assign(responseBody, serializeTools({ tools }))
-  responseBody.truncation = truncation({ truncation_strategy })
+  if (azureAgentId) {
+    responseBody.agent = {
+      name: azureAgentId,
+      type: 'agent_reference',
+    }
+  }
 
-  const normalizedText = textConfig({ response_format })
-  if (normalizedText) {
-    responseBody.text = normalizedText
+  if (!azureAgentId) {
+    responseBody.model = model
+    responseBody.metadata = metadata
+    Object.assign(responseBody, serializeTools({ tools }))
+    responseBody.truncation = truncation({ truncation_strategy })
+
+    const normalizedText = textConfig({ response_format })
+    if (normalizedText) {
+      responseBody.text = normalizedText
+    }
+  } else if (metadata && Object.keys(metadata).length > 0) {
+    responseBody.metadata = metadata
   }
 
   if (shouldSendInstructions && typeof instructions === 'string') {

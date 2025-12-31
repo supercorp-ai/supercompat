@@ -6,14 +6,16 @@ import { runsRegexp } from '@/lib/runs/runsRegexp'
 import { runRegexp } from '@/lib/runs/runRegexp'
 import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
 import { stepsRegexp } from '@/lib/steps/stepsRegexp'
+import { responseRegexp } from '@/lib/responses/responseRegexp'
 // Reuse handlers from responsesStorageAdapter - they're already generic!
 import { threads } from '../responsesStorageAdapter/threads'
 import { messages } from '../responsesStorageAdapter/threads/messages'
-import { runs } from '../responsesStorageAdapter/threads/runs'
+import { runs } from './threads/runs'
 import { run } from '../responsesStorageAdapter/threads/run'
 import { steps } from '../responsesStorageAdapter/threads/runs/steps'
-import { submitToolOutputs } from '../responsesStorageAdapter/threads/runs/submitToolOutputs'
+import { submitToolOutputs } from './threads/runs/submitToolOutputs'
 import { assistants } from '../responsesStorageAdapter/assistants'
+import { responses } from './responses'
 
 type MethodHandlers = { get?: RequestHandler; post?: RequestHandler }
 
@@ -64,9 +66,25 @@ export const azureResponsesStorageAdapter = (): ((
 
       const aiProjectClient = getAIProjectClient()
 
-      // Check if it's an AIProjectClient (has getOpenAIClient method)
-      if (aiProjectClient && typeof aiProjectClient === 'object' && 'getOpenAIClient' in aiProjectClient && typeof aiProjectClient.getOpenAIClient === 'function') {
-        const azureClient = await (aiProjectClient as any).getOpenAIClient()
+      const apiVersion =
+        typeof aiProjectClient === 'object'
+          ? ((aiProjectClient as any)._options?.apiVersion as string | undefined)
+          : undefined
+
+      // Check if it's an AIProjectClient (has getAzureOpenAIClient method)
+      if (aiProjectClient && typeof aiProjectClient === 'object' && 'getAzureOpenAIClient' in aiProjectClient && typeof (aiProjectClient as any).getAzureOpenAIClient === 'function') {
+        const azureClient = await (aiProjectClient as any).getAzureOpenAIClient(
+          apiVersion ? { apiVersion } : undefined,
+        )
+        cachedClient = azureClient
+        return azureClient
+      }
+
+      // Older AIProjectClient versions
+      if (aiProjectClient && typeof aiProjectClient === 'object' && 'getOpenAIClient' in aiProjectClient && typeof (aiProjectClient as any).getOpenAIClient === 'function') {
+        const azureClient = await (aiProjectClient as any).getOpenAIClient(
+          apiVersion ? { apiVersion } : undefined,
+        )
         cachedClient = azureClient
         return azureClient
       }
@@ -77,8 +95,9 @@ export const azureResponsesStorageAdapter = (): ((
     }
 
     // Wrap runAdapter.handleRun to use Azure client instead of placeholder
-    const wrappedRunAdapter = {
+    const wrappedRunAdapter: RunAdapterWithAssistant = {
       ...runAdapter,
+      getOpenaiAssistant: runAdapter.getOpenaiAssistant,
       handleRun: async (args: any) => {
         const azureClient = await getAzureClient()
         return runAdapter.handleRun({ ...args, client: azureClient })
@@ -98,6 +117,7 @@ export const azureResponsesStorageAdapter = (): ((
     }
 
     // Create wrapped handlers for specified methods
+    // Use the REAL Azure client so all API calls have proper authentication
     const createWrappedHandlers = (
       handlerFactory: (args: any) => any,
       methods: Array<'get' | 'post'>,
@@ -106,9 +126,10 @@ export const azureResponsesStorageAdapter = (): ((
       const wrapped: MethodHandlers = {}
       for (const method of methods) {
         wrapped[method] = async (urlString: string, options: RequestInit) => {
-          const openaiClient = await getAzureClient()
+          // Use real Azure client so API calls are properly authenticated
+          const azureClient = await getAzureClient()
           const handler = handlerFactory({
-            client: openaiClient,
+            client: azureClient,  // Real Azure client with proper auth
             runAdapter: wrappedRunAdapter,
             createResponseItems,
             ...additionalArgs,
@@ -124,10 +145,11 @@ export const azureResponsesStorageAdapter = (): ((
         '^/(?:v1|/?openai)/assistants$': assistants({ runAdapter: wrappedRunAdapter }),
         '^/(?:v1|/?openai)/threads$': createWrappedHandlers(threads, ['post'], { addAnnotations: true }),
         [messagesRegexp]: createWrappedHandlers(messages, ['get', 'post']),
-        [runsRegexp]: createWrappedHandlers(runs, ['post']),
+        [runsRegexp]: createWrappedHandlers(runs, ['get', 'post']),  // Added GET for runs.list()
         [runRegexp]: createWrappedHandlers(run, ['get']),
         [stepsRegexp]: createWrappedHandlers(steps, ['get']),
         [submitToolOutputsRegexp]: createWrappedHandlers(submitToolOutputs, ['post']),
+        [responseRegexp]: createWrappedHandlers(responses, ['get']),
       },
     }
   }
