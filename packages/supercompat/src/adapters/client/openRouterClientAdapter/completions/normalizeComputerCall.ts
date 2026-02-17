@@ -9,6 +9,7 @@ const MODEL_QUIRKS: Record<string, {
 }> = {
   'z-ai/glm-4.6v': { normalizedCoords: true, cleanArtifacts: true },
   'qwen/': { fuzzyFallback: true },
+  'google/': { normalizedCoords: true },
 }
 
 export const getQuirks = (model: string) => {

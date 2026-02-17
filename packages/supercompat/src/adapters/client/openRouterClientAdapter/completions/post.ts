@@ -74,11 +74,34 @@ export const post = ({
           for (const tc of choice.delta.tool_calls) {
             if (tc.function?.name === 'computer_call') {
               computerCallIndices.add(tc.index)
-              argumentBuffers.set(tc.index, '')
+              // Preserve any arguments that arrive in the same chunk as the name
+              // (Gemini and some models send complete arguments in one chunk)
+              const initialArgs = tc.function?.arguments ?? ''
+              argumentBuffers.set(tc.index, initialArgs)
               passThrough.push({
                 ...tc,
                 function: { ...tc.function, arguments: '' },
               })
+
+              // If arguments are already complete, denormalize immediately
+              if (initialArgs) {
+                try {
+                  JSON.parse(initialArgs)
+                  const denormalized = denormalizeComputerCallArguments({
+                    argumentsText: initialArgs,
+                    displayWidth,
+                    displayHeight,
+                    model,
+                  })
+                  passThrough.push({
+                    index: tc.index,
+                    function: { arguments: denormalized },
+                  })
+                  emittedIndices.add(tc.index)
+                } catch {
+                  // Not complete JSON yet — will be handled in subsequent chunks
+                }
+              }
               continue
             }
 
