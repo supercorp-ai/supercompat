@@ -74,16 +74,12 @@ export const post = ({
           for (const tc of choice.delta.tool_calls) {
             if (tc.function?.name === 'computer_call') {
               computerCallIndices.add(tc.index)
-              // Preserve any arguments that arrive in the same chunk as the name
-              // (Gemini and some models send complete arguments in one chunk)
               const initialArgs = tc.function?.arguments ?? ''
               argumentBuffers.set(tc.index, initialArgs)
-              passThrough.push({
-                ...tc,
-                function: { ...tc.function, arguments: '' },
-              })
 
-              // If arguments are already complete, denormalize immediately
+              // If arguments are already complete, denormalize and emit in the
+              // same entry as the name (must be ONE entry per index per chunk,
+              // otherwise completionsRunAdapter creates two separate tool calls).
               if (initialArgs) {
                 try {
                   JSON.parse(initialArgs)
@@ -94,14 +90,21 @@ export const post = ({
                     model,
                   })
                   passThrough.push({
-                    index: tc.index,
-                    function: { arguments: denormalized },
+                    ...tc,
+                    function: { ...tc.function, arguments: denormalized },
                   })
                   emittedIndices.add(tc.index)
+                  continue
                 } catch {
                   // Not complete JSON yet — will be handled in subsequent chunks
                 }
               }
+
+              // Emit name with empty args; arguments will follow in later chunks
+              passThrough.push({
+                ...tc,
+                function: { ...tc.function, arguments: '' },
+              })
               continue
             }
 
