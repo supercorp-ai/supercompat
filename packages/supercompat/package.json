@@ -1,6 +1,6 @@
 {
   "name": "supercompat",
-  "version": "3.16.2",
+  "version": "3.17.0",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

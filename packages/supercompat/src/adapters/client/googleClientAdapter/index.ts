@@ -1,11 +1,11 @@
-import type OpenAI from 'openai'
+import type { GoogleGenAI } from '@google/genai'
 import { models } from './models'
 import { completions } from './completions'
 
 export const googleClientAdapter = ({
   google,
 }: {
-  google: OpenAI
+  google: GoogleGenAI
 }) => ({
   client: google,
   requestHandlers: {

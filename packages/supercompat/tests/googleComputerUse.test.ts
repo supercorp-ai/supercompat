@@ -1,32 +1,21 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
-import OpenAI from 'openai'
+import { GoogleGenAI } from '@google/genai'
 import { PrismaClient } from '@prisma/client'
-import { HttpsProxyAgent } from 'https-proxy-agent'
 import {
   supercompat,
-  openRouterClientAdapter,
+  googleClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
 } from '../src/index.ts'
 
-const openrouterApiKey = process.env.OPENROUTER_API_KEY
+const googleApiKey = process.env.GOOGLE_API_KEY
 
-if (!openrouterApiKey) {
-  throw new Error('OPENROUTER_API_KEY is required to run this test')
+if (!googleApiKey) {
+  throw new Error('GOOGLE_API_KEY is required to run this test')
 }
 
 const MCP_SERVER_URL = process.env.MCP_SERVER_URL ?? 'http://localhost:3101'
-
-function makeOpenRouter() {
-  return new OpenAI({
-    apiKey: openrouterApiKey,
-    baseURL: 'https://openrouter.ai/api/v1',
-    ...(process.env.HTTPS_PROXY
-      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
-      : {}),
-  })
-}
 
 const tools = [
   {
@@ -98,15 +87,29 @@ class McpClient {
   }
 }
 
+/** Actions the MCP server actually handles */
+const KNOWN_MCP_ACTIONS = new Set([
+  'screenshot', 'click', 'double_click', 'triple_click', 'type',
+  'keypress', 'scroll', 'move', 'drag', 'wait',
+])
+
 /**
  * Execute a computer_call action on the MCP server and return the
  * serialized screenshot output (same format handleComputerCall uses).
+ *
+ * For Gemini-specific high-level actions (open_web_browser, navigate, etc.)
+ * that the MCP server doesn't understand, we fall back to a screenshot so
+ * the model can see the current state and proceed with basic actions.
  */
 async function executeComputerCall(
   mcpClient: McpClient,
   action: Record<string, any>,
 ): Promise<string> {
-  const result = await mcpClient.callTool('computer_call', { action })
+  const effectiveAction = KNOWN_MCP_ACTIONS.has(action?.type)
+    ? action
+    : { type: 'screenshot' }
+
+  const result = await mcpClient.callTool('computer_call', { action: effectiveAction })
 
   const content = result.result?.content ?? []
   const imageContent = content.find((c: any) => c.type === 'image')
@@ -125,9 +128,9 @@ async function executeComputerCall(
 }
 
 // =========================================================================
-// Full e2e: GLM → real MCP server → validate model sees screen content
+// Full e2e: Gemini native SDK → real MCP server → validate model sees screen
 // =========================================================================
-test('openRouter GLM: full e2e with real MCP computer use server', { timeout: 120_000 }, async () => {
+test('Google native SDK Gemini: full e2e with real MCP computer use server', { timeout: 120_000 }, async () => {
   const prisma = new PrismaClient()
   const mcpClient = new McpClient(MCP_SERVER_URL)
   await mcpClient.initialize()
@@ -135,15 +138,17 @@ test('openRouter GLM: full e2e with real MCP computer use server', { timeout: 12
   // Trigger browser launch and wait for defaultUrl to load
   await mcpClient.warmUp()
 
+  const google = new GoogleGenAI({ apiKey: googleApiKey })
+
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    client: googleClientAdapter({ google }),
     storage: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 
   const assistant = await client.beta.assistants.create({
-    model: 'z-ai/glm-4.6v',
-    instructions: 'You are a computer use assistant. You can control a computer with a browser. Use the computer_call tool to interact with it. When you see a page, describe the page title or main content you observe.',
+    model: 'gemini-3-flash-preview',
+    instructions: 'You are a computer use assistant. A browser is already open with a page loaded. Start by taking a screenshot to see the current state. Describe the page title or main content you observe.',
     tools,
   })
 
@@ -161,19 +166,13 @@ test('openRouter GLM: full e2e with real MCP computer use server', { timeout: 12
     tools,
   })
 
-  console.log('GLM Step 1 - Run status:', run.status)
-
-  if (run.status !== 'requires_action') {
-    console.log('GLM did not call computer_call, skipping')
-    await prisma.$disconnect()
-    return
-  }
+  console.log('Google native Step 1 - Run status:', run.status)
 
   let iterations = 0
   while (run.status === 'requires_action' && iterations < 5) {
     iterations++
     const toolCalls = run.required_action?.submit_tool_outputs.tool_calls ?? []
-    console.log(`GLM Iteration ${iterations} - Tool calls:`, toolCalls.length)
+    console.log(`Google native Iteration ${iterations} - Tool calls:`, toolCalls.length)
 
     const toolOutputs = []
     for (const tc of toolCalls) {
@@ -194,25 +193,25 @@ test('openRouter GLM: full e2e with real MCP computer use server', { timeout: 12
       thread_id: thread.id,
       tool_outputs: toolOutputs,
     })
-    console.log(`GLM Iteration ${iterations} - Status after submit:`, run.status)
+    console.log(`Google native Iteration ${iterations} - Status after submit:`, run.status)
   }
 
   assert.notEqual(run.status, 'failed', `Run should not fail (was: ${JSON.stringify(run.last_error)})`)
+  assert.equal(run.status, 'completed', `Expected completed, got ${run.status}`)
 
-  if (run.status === 'completed') {
-    const messages = await client.beta.threads.messages.list(thread.id)
-    const assistantMessages = messages.data.filter((m) => m.role === 'assistant')
-    const textMessage = assistantMessages.find((m) => {
-      const text = (m.content[0] as any)?.text?.value ?? ''
-      return text.length > 0
-    })
-    const text = (textMessage?.content[0] as any)?.text?.value ?? ''
-    console.log('GLM final response:', text.slice(0, 500))
+  // Validate model actually described what it saw on supercorp.ai
+  const messages = await client.beta.threads.messages.list(thread.id)
+  const assistantMessages = messages.data.filter((m) => m.role === 'assistant')
+  const textMessage = assistantMessages.find((m) => {
+    const text = (m.content[0] as any)?.text?.value ?? ''
+    return text.length > 0
+  })
+  const text = (textMessage?.content[0] as any)?.text?.value ?? ''
+  console.log('Google native final response:', text.slice(0, 500))
 
-    const lower = text.toLowerCase()
-    const seesPage = lower.includes('supercorp') || lower.includes('accelerat') || lower.includes('ai agent')
-    assert.ok(seesPage, `Model should mention supercorp.ai content (got: "${text.slice(0, 300)}")`)
-  }
+  const lower = text.toLowerCase()
+  const seesPage = lower.includes('supercorp') || lower.includes('accelerat') || lower.includes('ai agent')
+  assert.ok(seesPage, `Model should mention supercorp.ai content (got: "${text.slice(0, 300)}")`)
 
   await prisma.$disconnect()
 })

@@ -1,10 +1,10 @@
-import type OpenAI from 'openai'
+import type { GoogleGenAI } from '@google/genai'
 import { post } from './post'
 
 export const completions = ({
   google,
 }: {
-  google: OpenAI
+  google: GoogleGenAI
 }) => ({
   post: post({ google }),
 })

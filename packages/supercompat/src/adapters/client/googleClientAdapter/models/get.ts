@@ -1,17 +1,17 @@
-import type OpenAI from 'openai'
+import type { GoogleGenAI } from '@google/genai'
 
 export const get = ({
   google,
 }: {
-  google: OpenAI
+  google: GoogleGenAI
 }) => async (_url: string, _options: any) => {
   try {
-    const response = await google.models.list()
+    const pager = await google.models.list()
 
     return new Response(JSON.stringify({
       type: 'list',
-      data: response.data.map((model) => ({
-        id: model.id,
+      data: pager.page.map((model) => ({
+        id: model.name ?? '',
         object: 'model',
       })),
     }), {

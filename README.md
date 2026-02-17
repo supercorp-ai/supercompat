@@ -42,7 +42,7 @@ npm install @mistralai/mistralai
 npm install @azure/ai-projects @azure/identity
 
 # For Google Gemini
-npm install @google/generative-ai
+npm install @google/genai
 
 # For OpenRouter (access 200+ models via one API)
 # (Uses OpenAI-compatible API, no additional SDK needed)
@@ -285,17 +285,19 @@ To use Azure AI Agents, you need to:
 ```typescript
 import { googleClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
 import { PrismaClient } from '@prisma/client'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenAI } from '@google/genai'
 
 const prisma = new PrismaClient()
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY)
+const google = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY })
 
 const client = supercompat({
-  client: googleClientAdapter({ genAI }),
+  client: googleClientAdapter({ google }),
   storage: prismaStorageAdapter({ prisma }),
   runAdapter: completionsRunAdapter(),
 })
 ```
+
+Supports computer use (`computer_use_preview`) via the native Gemini SDK with automatic coordinate denormalization.
 
 #### OpenRouter
 

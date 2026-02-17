@@ -6,6 +6,7 @@ type ToolCall = OpenAI.Beta.Threads.Runs.Steps.ToolCall
 
 const validToolCallContentTypes = [
   'image',
+  'image_url',
   'text',
 ]
 
@@ -26,6 +27,20 @@ const serializeToolContent = ({
     }
 
     return JSON.stringify(toolCall.function.output)
+  }
+
+  // Convert computer_screenshot to image_url content part.
+  // OpenRouter supports image_url in tool message content
+  // (see ToolResponseMessageContent in OpenRouter SDK).
+  if (typeof toolCall.function.output === 'string') {
+    try {
+      const parsed = JSON.parse(toolCall.function.output)
+      if (parsed.type === 'computer_screenshot' && parsed.image_url) {
+        return [
+          { type: 'image_url', image_url: { url: parsed.image_url } },
+        ]
+      }
+    } catch {}
   }
 
   return toolCall.function.output ?? ''

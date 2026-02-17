@@ -1,7 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import OpenAI from "openai";
-import { HttpsProxyAgent } from "https-proxy-agent";
+import { GoogleGenAI } from "@google/genai";
 import { supercompat, googleClientAdapter } from "../src/index.ts";
 
 const apiKey = process.env.GOOGLE_API_KEY;
@@ -11,13 +10,7 @@ if (!apiKey) {
 }
 
 test("supercompat can list models via Google", async () => {
-  const google = new OpenAI({
-    apiKey,
-    baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-    ...(process.env.HTTPS_PROXY
-      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY as string) }
-      : {}),
-  });
+  const google = new GoogleGenAI({ apiKey });
 
   const client = supercompat({
     client: googleClientAdapter({ google }),

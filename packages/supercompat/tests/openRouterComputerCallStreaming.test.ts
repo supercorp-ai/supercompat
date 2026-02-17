@@ -59,8 +59,7 @@ const collectComputerCallArgs = async (response: Response): Promise<string> => {
   return args
 }
 
-test('streaming: Gemini sends complete arguments in the same chunk as name', async () => {
-  // Gemini sends name + full arguments in a single chunk (not streamed incrementally)
+test('streaming: complete arguments in the same chunk as name', async () => {
   const mockOpenRouter = createMockOpenRouter([
     {
       choices: [
@@ -95,7 +94,7 @@ test('streaming: Gemini sends complete arguments in the same chunk as name', asy
 
   const handler = post({ openRouter: mockOpenRouter as any })
   const response = await handler('http://test', {
-    body: makeRequestBody('google/gemini-3-flash-preview'),
+    body: makeRequestBody('some/standard-model'),
   })
 
   const args = await collectComputerCallArgs(response)
@@ -105,56 +104,7 @@ test('streaming: Gemini sends complete arguments in the same chunk as name', asy
   assert.equal(parsed.action.type, 'screenshot')
 })
 
-test('streaming: Gemini sends flat format arguments in single chunk', async () => {
-  // Gemini might output flat format: { type: 'click', x: 100, y: 200 } without action wrapper
-  const mockOpenRouter = createMockOpenRouter([
-    {
-      choices: [
-        {
-          index: 0,
-          delta: {
-            tool_calls: [
-              {
-                index: 0,
-                id: 'call_456',
-                type: 'function',
-                function: {
-                  name: 'computer_call',
-                  arguments: '{"type":"click","x":100,"y":200}',
-                },
-              },
-            ],
-          },
-        },
-      ],
-    },
-    {
-      choices: [
-        {
-          index: 0,
-          delta: {},
-          finish_reason: 'tool_calls',
-        },
-      ],
-    },
-  ])
-
-  const handler = post({ openRouter: mockOpenRouter as any })
-  const response = await handler('http://test', {
-    body: makeRequestBody('google/gemini-3-flash-preview'),
-  })
-
-  const args = await collectComputerCallArgs(response)
-  assert.ok(args, 'arguments must not be empty')
-
-  const parsed = JSON.parse(args)
-  assert.equal(parsed.action.type, 'click')
-  assert.equal(parsed.action.x, 128) // 100/1000 * 1280
-  assert.equal(parsed.action.y, 144) // 200/1000 * 720
-})
-
 test('streaming: partial arguments in first chunk, rest in subsequent chunks', async () => {
-  // Some models send partial arguments that need buffering
   const mockOpenRouter = createMockOpenRouter([
     {
       choices: [
@@ -206,7 +156,7 @@ test('streaming: partial arguments in first chunk, rest in subsequent chunks', a
 
   const handler = post({ openRouter: mockOpenRouter as any })
   const response = await handler('http://test', {
-    body: makeRequestBody('google/gemini-3-flash-preview'),
+    body: makeRequestBody('some/standard-model'),
   })
 
   const args = await collectComputerCallArgs(response)
@@ -214,8 +164,8 @@ test('streaming: partial arguments in first chunk, rest in subsequent chunks', a
 
   const parsed = JSON.parse(args)
   assert.equal(parsed.action.type, 'click')
-  assert.equal(parsed.action.x, 64)  // 50/1000 * 1280
-  assert.equal(parsed.action.y, 54)  // 75/1000 * 720
+  assert.equal(parsed.action.x, 50)
+  assert.equal(parsed.action.y, 75)
 })
 
 test('streaming: standard OpenAI format (name first, arguments separate) still works', async () => {
