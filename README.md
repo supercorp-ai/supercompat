@@ -6,7 +6,7 @@ Supercompat is a universal adapter that lets you use OpenAI's Assistants API wit
 
 ## Features
 
-- 🔄 **Universal AI Provider Support** - Works with OpenAI, Anthropic, Groq, Mistral, Azure, Google, Perplexity, Together AI, Ollama, and more
+- 🔄 **Universal AI Provider Support** - Works with OpenAI, Anthropic, Groq, Mistral, Azure, Google, OpenRouter, Perplexity, Together AI, Ollama, and more
 - 📦 **Flexible Storage** - Use Prisma with your own database, OpenAI's Responses API, or Azure AI Agents
 - 🔌 **Plug-and-Play Architecture** - Mix and match client adapters, storage adapters, and run adapters
 - 🌊 **Streaming Support** - Real-time streaming responses for all providers
@@ -43,6 +43,9 @@ npm install @azure/ai-projects @azure/identity
 
 # For Google Gemini
 npm install @google/generative-ai
+
+# For OpenRouter (access 200+ models via one API)
+# (Uses OpenAI-compatible API, no additional SDK needed)
 
 # For Perplexity, Together AI, Ollama, etc.
 # (These use OpenAI-compatible APIs, no additional SDK needed)
@@ -91,6 +94,7 @@ Supercompat uses a modular architecture with three types of adapters that plug i
 │  • Anthropic             │    │
 │  • Groq                  │    │
 │  • OpenAI                │    │
+│  • OpenRouter            │    │
 │  • Mistral, etc.         │    │
 └──────────────────────────┘    │
                                 │
@@ -290,6 +294,49 @@ const client = supercompat({
   client: googleClientAdapter({ genAI }),
   storage: prismaStorageAdapter({ prisma }),
   runAdapter: completionsRunAdapter(),
+})
+```
+
+#### OpenRouter
+
+Access 200+ models (Gemini, DeepSeek, Qwen, Grok, MiniMax, Kimi, GLM, and more) through a single API:
+
+```typescript
+import { openRouterClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
+import { PrismaClient } from '@prisma/client'
+import OpenAI from 'openai'
+
+const prisma = new PrismaClient()
+const openRouter = new OpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
+})
+
+const client = supercompat({
+  client: openRouterClientAdapter({ openRouter }),
+  storage: prismaStorageAdapter({ prisma }),
+  runAdapter: completionsRunAdapter(),
+})
+```
+
+The OpenRouter adapter also works without storage/run adapters for direct chat completions:
+
+```typescript
+import { supercompat, openRouterClientAdapter } from 'supercompat'
+import OpenAI from 'openai'
+
+const openRouter = new OpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
+})
+
+const client = supercompat({
+  client: openRouterClientAdapter({ openRouter }),
+})
+
+const result = await client.chat.completions.create({
+  model: 'google/gemini-3-flash-preview',
+  messages: [{ role: 'user', content: 'Hello!' }],
 })
 ```
 
