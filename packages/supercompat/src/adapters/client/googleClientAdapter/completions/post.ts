@@ -3,6 +3,7 @@ import { createId } from '@paralleldrive/cuid2'
 import { uid } from 'radash'
 import { nonEmptyMessages } from '@/lib/messages/nonEmptyMessages'
 import { normalizeComputerToolCallPayload } from '../../anthropicClientAdapter/normalizeComputerToolCallPayload'
+import { normalizeGeminiAction, isGeminiAction } from '../normalizeGeminiAction'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -90,22 +91,24 @@ const serializeMessages = (messages: any[]): { contents: Content[]; systemInstru
             args = JSON.parse(tc.function?.arguments ?? '{}')
           } catch {}
 
+          // Extract private fields stashed by our streaming handler
+          const thoughtSignature = args._thoughtSignature as string | undefined
+          const geminiActionName = args._geminiAction as string | undefined
+          const cleanArgs = { ...args }
+          delete cleanArgs._thoughtSignature
+          delete cleanArgs._geminiAction
+
           // Restore the original Gemini function name from computer_call wrapping
           let geminiName = name
           if (name === 'computer_call' && args.action && typeof args.action === 'object') {
-            geminiName = (args.action as any).type ?? name
+            geminiName = geminiActionName ?? (args.action as any).type ?? name
           }
-
-          // Extract thought signature stashed by our streaming handler
-          const thoughtSignature = args._thoughtSignature as string | undefined
-          const cleanArgs = { ...args }
-          delete cleanArgs._thoughtSignature
 
           // Reconstruct original Gemini args from our normalized format
           let geminiArgs: Record<string, unknown>
           if (name === 'computer_call' && cleanArgs.action && typeof cleanArgs.action === 'object') {
             const action = cleanArgs.action as Record<string, unknown>
-            const { type: _type, ...rest } = action
+            const { type: _type, pending_actions: _pa, ...rest } = action
             geminiArgs = rest
           } else {
             geminiArgs = cleanArgs
@@ -300,6 +303,9 @@ const denormalizeCoords = (
     result.end_coordinate = [denormX(result.end_coordinate[0]), denormY(result.end_coordinate[1])]
   }
 
+  if (typeof result.destination_x === 'number') result.destination_x = denormX(result.destination_x)
+  if (typeof result.destination_y === 'number') result.destination_y = denormY(result.destination_y)
+
   return result
 }
 
@@ -332,15 +338,18 @@ const functionCallToToolCallDelta = (
 
   if (isComputerUseFunction(name, tools)) {
     const denormed = denormalizeCoords(fc.args ?? {}, tools)
-    const normalized = normalizeComputerToolCallPayload({
-      ...denormed,
-      type: name,
-    })
+
+    const normalized = isGeminiAction(name)
+      ? normalizeGeminiAction(name, denormed)
+      : normalizeComputerToolCallPayload({ ...denormed, type: name })
 
     // Stash thought signature so it survives the OpenAI round-trip
     const payload: Record<string, unknown> = { ...normalized }
     if (thoughtSignature) {
       payload._thoughtSignature = thoughtSignature
+    }
+    if (isGeminiAction(name)) {
+      payload._geminiAction = name
     }
 
     return {
