@@ -24,7 +24,7 @@ const makeMessage = ({
   },
 })
 
-test('computer_screenshot: image_url content in tool message, no extra user message', () => {
+test('computer_screenshot: passed through as raw JSON string', () => {
   const screenshotOutput = JSON.stringify({
     type: 'computer_screenshot',
     image_url: 'data:image/png;base64,iVBORw0KGgoAAAANS',
@@ -47,43 +47,16 @@ test('computer_screenshot: image_url content in tool message, no extra user mess
     }),
   } as any)
 
-  // Should produce: assistant message + tool message (no extra user message)
+  // Should produce: assistant message + tool message
   assert.equal(messages.length, 2, `Expected 2 messages, got ${messages.length}`)
 
-  // Tool message should have image_url content, not the raw base64 JSON string
+  // Tool message passes through as raw string; client adapters handle conversion
   const toolMsg = messages[1] as any
   assert.equal(toolMsg.role, 'tool')
-  assert.ok(Array.isArray(toolMsg.content), 'Tool message content should be an array')
-  assert.equal(toolMsg.content[0].type, 'image_url')
-  assert.equal(toolMsg.content[0].image_url.url, 'data:image/png;base64,iVBORw0KGgoAAAANS')
-})
-
-test('computer_screenshot: base64 string is NOT sent as text', () => {
-  const screenshotOutput = JSON.stringify({
-    type: 'computer_screenshot',
-    image_url: 'data:image/png;base64,AAAA',
-  })
-
-  const toolCall = {
-    id: 'tc_1',
-    type: 'function',
-    function: {
-      name: 'computer_call',
-      arguments: '{"action":{"type":"screenshot"}}',
-      output: screenshotOutput,
-    },
-  }
-
-  const messages = serializeMessage({
-    message: makeMessage({
-      toolCalls: [toolCall],
-      runStepToolCalls: [toolCall],
-    }),
-  } as any)
-
-  const toolMsg = messages[1] as any
-  // Content should NOT be the raw JSON string
-  assert.notEqual(typeof toolMsg.content, 'string', 'Content should not be a raw string')
+  assert.equal(typeof toolMsg.content, 'string')
+  const parsed = JSON.parse(toolMsg.content)
+  assert.equal(parsed.type, 'computer_screenshot')
+  assert.equal(parsed.image_url, 'data:image/png;base64,iVBORw0KGgoAAAANS')
 })
 
 test('regular function output: unchanged', () => {

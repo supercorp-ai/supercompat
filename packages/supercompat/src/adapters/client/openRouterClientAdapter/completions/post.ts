@@ -9,6 +9,28 @@ const sanitizeContent = (content: string | null | undefined): string | null | un
   return content.replace(ARTIFACT_TAGS, '').trim()
 }
 
+// Convert computer_screenshot JSON in tool messages to image_url content
+// so the model can see screenshot images. This is OpenRouter-specific because
+// each provider handles image content in tool messages differently.
+const convertScreenshotToolMessages = (messages: any[]): any[] =>
+  messages.map((msg: any) => {
+    if (msg.role !== 'tool' || typeof msg.content !== 'string') return msg
+
+    try {
+      const parsed = JSON.parse(msg.content)
+      if (parsed.type === 'computer_screenshot' && parsed.image_url) {
+        return {
+          ...msg,
+          content: [
+            { type: 'image_url', image_url: { url: parsed.image_url } },
+          ],
+        }
+      }
+    } catch {}
+
+    return msg
+  })
+
 export const post = ({
   openRouter,
 }: {
@@ -21,6 +43,7 @@ export const post = ({
 
   const resultOptions = {
     ...body,
+    ...(computerUseConfig && body.messages ? { messages: convertScreenshotToolMessages(body.messages) } : {}),
     ...(transformedTools.length > 0 ? { tools: transformedTools } : {}),
   } as OpenAI.Chat.ChatCompletionCreateParams
 

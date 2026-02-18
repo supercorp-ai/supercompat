@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
 import { AIProjectClient } from '@azure/ai-projects-v2'
@@ -33,6 +33,15 @@ const cred = new ClientSecretCredential(
 )
 
 const azureAiProject = new AIProjectClient(azureEndpoint, cred)
+
+// Unref Azure SDK's MSAL timer handles so the test runner can proceed
+after(() => {
+  for (const h of (process as any)._getActiveHandles?.() ?? []) {
+    if (h?.constructor?.name === 'Timeout' && typeof h.unref === 'function') {
+      h.unref()
+    }
+  }
+})
 
 testOrSkip('Azure Responses API - basic conversation', async (t) => {
   console.log('Testing Azure Responses API with basic conversation...')

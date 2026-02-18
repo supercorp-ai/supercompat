@@ -30,7 +30,7 @@ const HEALTH_POLL_MS = 1_000
 const DISPLAY_WIDTH = 1280
 const DISPLAY_HEIGHT = 720
 const MAX_AGENT_ITERATIONS = 10
-const DOCKER_CONTEXT_DIR = '/Users/domas/Developer/supercorp/computer-use-mcp'
+const DOCKER_CONTEXT_DIR = process.env.COMPUTER_USE_MCP_DIR ?? '../computer-use-mcp'
 const DEFAULT_URL = 'https://supercorp.ai'
 
 const TASK_PROMPT =

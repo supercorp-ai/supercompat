@@ -119,6 +119,16 @@ after(async () => {
   // Disconnect Prisma to avoid hanging
   await prisma.$disconnect()
   console.log('Disconnected Prisma client')
+
+  // Azure SDK's MSAL creates proactive token-refresh timers that keep the
+  // event loop alive. Since tsx runs all test files in a single process
+  // (no test isolation), these timers prevent the runner from advancing to
+  // the next file. Unref them so the event loop can drain.
+  for (const h of (process as any)._getActiveHandles?.() ?? []) {
+    if (h?.constructor?.name === 'Timeout' && typeof h.unref === 'function') {
+      h.unref()
+    }
+  }
 })
 
 test('azureAgentsRunAdapter can create thread, message, and run with simple agent', async (t) => {

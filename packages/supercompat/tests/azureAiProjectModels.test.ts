@@ -22,10 +22,13 @@ const cred = new ClientSecretCredential(
 
 const azureAiProject = new AIProjectClient(azureEndpoint, cred)
 
-// Cleanup Azure clients to avoid hanging
+// Unref Azure SDK's MSAL timer handles so the test runner can proceed
 after(async () => {
-  // Force close any open connections
-  console.log('Cleaning up Azure clients...')
+  for (const h of (process as any)._getActiveHandles?.() ?? []) {
+    if (h?.constructor?.name === 'Timeout' && typeof h.unref === 'function') {
+      h.unref()
+    }
+  }
 })
 
 test('azureAiProject: list models via deployments', async () => {

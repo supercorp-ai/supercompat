@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { AIProjectClient } from '@azure/ai-projects-v2'
 import { ClientSecretCredential } from '@azure/identity'
@@ -26,6 +26,15 @@ const cred = new ClientSecretCredential(
 )
 
 const azureAiProject = new AIProjectClient(azureEndpoint, cred)
+
+// Unref Azure SDK's MSAL timer handles so the test runner can proceed
+after(() => {
+  for (const h of (process as any)._getActiveHandles?.() ?? []) {
+    if (h?.constructor?.name === 'Timeout' && typeof h.unref === 'function') {
+      h.unref()
+    }
+  }
+})
 
 test('azureResponses: create thread with array content', async () => {
   console.log('Testing Azure Responses thread creation with array content...')

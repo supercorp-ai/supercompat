@@ -1,5 +1,6 @@
-import { test } from 'node:test'
+import { test, before, after } from 'node:test'
 import { strict as assert } from 'node:assert'
+import { execSync, spawn, type ChildProcess } from 'node:child_process'
 import { GoogleGenAI } from '@google/genai'
 import { PrismaClient } from '@prisma/client'
 import {
@@ -15,7 +16,17 @@ if (!googleApiKey) {
   throw new Error('GOOGLE_API_KEY is required to run this test')
 }
 
-const MCP_SERVER_URL = process.env.MCP_SERVER_URL ?? 'http://localhost:3101'
+// ---------------------------------------------------------------------------
+// Docker configuration
+// ---------------------------------------------------------------------------
+const CONTAINER_NAME = 'computer-use-mcp-google-test'
+const DOCKER_IMAGE = 'computer-use-mcp-dev'
+const MCP_PORT = 3102
+const MCP_SERVER_URL = `http://localhost:${MCP_PORT}`
+const DOCKER_CONTEXT_DIR = process.env.COMPUTER_USE_MCP_DIR ?? '../computer-use-mcp'
+const DEFAULT_URL = 'https://supercorp.ai'
+const HEALTH_TIMEOUT_MS = 60_000
+const HEALTH_POLL_MS = 1_000
 
 const tools = [
   {
@@ -26,6 +37,57 @@ const tools = [
     },
   },
 ] as any[]
+
+// ---------------------------------------------------------------------------
+// Docker lifecycle helpers
+// ---------------------------------------------------------------------------
+
+function cleanupContainer() {
+  try {
+    execSync(`docker rm -f ${CONTAINER_NAME}`, { stdio: 'ignore' })
+  } catch {
+    // container may not exist
+  }
+}
+
+function buildImage() {
+  if (process.env.SKIP_DOCKER_BUILD === 'true') return
+  execSync(`docker build --platform=linux/amd64 -t ${DOCKER_IMAGE} .`, {
+    cwd: DOCKER_CONTEXT_DIR,
+    stdio: 'ignore',
+  })
+}
+
+function startContainer(): ChildProcess {
+  const child = spawn(
+    'docker',
+    [
+      'run', '--rm',
+      '--name', CONTAINER_NAME,
+      '--platform', 'linux/amd64',
+      '-p', `${MCP_PORT}:8000`,
+      DOCKER_IMAGE,
+      '--transport', 'http',
+      '--toolSchema', 'loose',
+      '--imageOutputFormat', 'openai-responses-api',
+      '--defaultUrl', DEFAULT_URL,
+    ],
+    { stdio: ['ignore', 'pipe', 'pipe'] },
+  )
+  return child
+}
+
+async function waitForHealth(): Promise<void> {
+  const deadline = Date.now() + HEALTH_TIMEOUT_MS
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`${MCP_SERVER_URL}/healthz`)
+      if (res.ok) return
+    } catch {}
+    await new Promise((r) => setTimeout(r, HEALTH_POLL_MS))
+  }
+  throw new Error(`Container did not become healthy within ${HEALTH_TIMEOUT_MS}ms`)
+}
 
 // =========================================================================
 // MCP client helper — talks to computer-use-mcp Docker server via JSON-RPC
@@ -51,12 +113,10 @@ class McpClient {
       body: JSON.stringify({ jsonrpc: '2.0', id, method, params }),
     })
 
-    // Capture session ID from first response
     const sid = res.headers.get('mcp-session-id')
     if (sid) this.sessionId = sid
 
     const text = await res.text()
-    // SSE format: parse the data line
     const dataLine = text.split('\n').find((l) => l.startsWith('data: '))
     if (dataLine) {
       return JSON.parse(dataLine.slice(6))
@@ -76,13 +136,9 @@ class McpClient {
     return this.rpc('tools/call', { name, arguments: args }, 2)
   }
 
-  /** Warm up the browser session — triggers lazy browser launch and waits for defaultUrl to load */
   async warmUp() {
-    // First screenshot triggers browser launch + page.goto(defaultUrl)
     await this.callTool('computer_call', { action: { type: 'screenshot' } })
-    // Wait for page to fully load (x86 emulation on ARM is slow)
-    await new Promise((r) => setTimeout(r, 15000))
-    // Take another screenshot to confirm page is loaded
+    await new Promise((r) => setTimeout(r, 30000))
     await this.callTool('computer_call', { action: { type: 'screenshot' } })
   }
 }
@@ -93,14 +149,6 @@ const KNOWN_MCP_ACTIONS = new Set([
   'keypress', 'scroll', 'move', 'drag', 'wait',
 ])
 
-/**
- * Execute a computer_call action on the MCP server and return the
- * serialized screenshot output (same format handleComputerCall uses).
- *
- * For Gemini-specific high-level actions (open_web_browser, navigate, etc.)
- * that the MCP server doesn't understand, we fall back to a screenshot so
- * the model can see the current state and proceed with basic actions.
- */
 async function executeComputerCall(
   mcpClient: McpClient,
   action: Record<string, any>,
@@ -111,6 +159,18 @@ async function executeComputerCall(
 
   const result = await mcpClient.callTool('computer_call', { action: effectiveAction })
 
+  // --imageOutputFormat openai-responses-api returns structuredContent with input_image
+  const structured = result.result?.structuredContent?.content ?? []
+  const imageItem = structured.find((c: any) => c.type === 'input_image' && c.image_url)
+
+  if (imageItem) {
+    return JSON.stringify({
+      type: 'computer_screenshot',
+      image_url: imageItem.image_url,
+    })
+  }
+
+  // Fallback: check standard MCP content format
   const content = result.result?.content ?? []
   const imageContent = content.find((c: any) => c.type === 'image')
 
@@ -122,15 +182,33 @@ async function executeComputerCall(
     })
   }
 
-  // Fallback: return text content
   const textContent = content.find((c: any) => c.type === 'text')
   return textContent?.text ?? 'No screenshot returned'
 }
 
+// ---------------------------------------------------------------------------
+// Docker lifecycle (shared across all tests in this file)
+// ---------------------------------------------------------------------------
+let containerProcess: ChildProcess | undefined
+
+before(async () => {
+  cleanupContainer()
+  buildImage()
+  containerProcess = startContainer()
+  await waitForHealth()
+}, { timeout: 120_000 })
+
+after(async () => {
+  try {
+    execSync(`docker stop ${CONTAINER_NAME}`, { stdio: 'ignore' })
+  } catch {}
+  containerProcess?.kill()
+})
+
 // =========================================================================
 // Full e2e: Gemini native SDK → real MCP server → validate model sees screen
 // =========================================================================
-test('Google native SDK Gemini: full e2e with real MCP computer use server', { timeout: 120_000 }, async () => {
+test('Google native SDK Gemini: full e2e with real MCP computer use server', { timeout: 300_000 }, async () => {
   const prisma = new PrismaClient()
   const mcpClient = new McpClient(MCP_SERVER_URL)
   await mcpClient.initialize()
