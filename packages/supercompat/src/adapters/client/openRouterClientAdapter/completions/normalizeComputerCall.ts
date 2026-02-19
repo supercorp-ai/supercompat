@@ -2,6 +2,8 @@
 const MODEL_QUIRKS: Record<string, {
   // Coordinates are 0-1000 normalized (not pixels)
   normalizedCoords?: boolean
+  // Coordinates are 0.0-1.0 relative OR in a reference resolution (e.g. 1920x1080)
+  relativeCoords?: { referenceWidth: number; referenceHeight: number }
   // Model injects native tool format tags (<arg_key>, <arg_value>, <|begin_of_box|>)
   cleanArtifacts?: boolean
   // Model sometimes produces malformed JSON that needs fuzzy extraction
@@ -9,6 +11,7 @@ const MODEL_QUIRKS: Record<string, {
 }> = {
   'z-ai/glm-4.6v': { normalizedCoords: true, cleanArtifacts: true },
   'qwen/': { fuzzyFallback: true },
+  'moonshotai/kimi-k2.5': { relativeCoords: { referenceWidth: 1920, referenceHeight: 1080 } },
 }
 
 export const getQuirks = (model: string) => {
@@ -228,6 +231,51 @@ const denormalizeAction = (
   return result
 }
 
+// --- Relative / reference-resolution coordinate rescaling (Kimi K2.5) ---
+
+const rescaleCoord = (
+  value: number,
+  displayDim: number,
+  referenceDim: number,
+): number => {
+  // ≤ 1.0 → relative (0.0-1.0), multiply by display dimension
+  if (value <= 1.0) return Math.round(value * displayDim)
+  // > 1.0 → reference resolution pixels, rescale to display dimension
+  return Math.round((value / referenceDim) * displayDim)
+}
+
+const rescaleRelativeAction = (
+  action: Record<string, unknown>,
+  displayWidth: number,
+  displayHeight: number,
+  referenceWidth: number,
+  referenceHeight: number,
+): Record<string, unknown> => {
+  const result = { ...action }
+
+  if (typeof result.x === 'number') {
+    result.x = rescaleCoord(result.x as number, displayWidth, referenceWidth)
+  }
+  if (typeof result.y === 'number') {
+    result.y = rescaleCoord(result.y as number, displayHeight, referenceHeight)
+  }
+
+  if (Array.isArray(result.path)) {
+    result.path = (result.path as any[]).map((point) => {
+      if (point && typeof point === 'object') {
+        return {
+          ...point,
+          ...(typeof point.x === 'number' ? { x: rescaleCoord(point.x, displayWidth, referenceWidth) } : {}),
+          ...(typeof point.y === 'number' ? { y: rescaleCoord(point.y, displayHeight, referenceHeight) } : {}),
+        }
+      }
+      return point
+    })
+  }
+
+  return result
+}
+
 // --- Structure normalization (universal — any model might produce flat format) ---
 
 const COORD_FIELDS = ['x', 'y', 'text', 'keys', 'button', 'direction', 'scroll_x', 'scroll_y', 'path']
@@ -323,6 +371,19 @@ export const denormalizeComputerCallArguments = ({
         normalized.action as Record<string, unknown>,
         displayWidth,
         displayHeight,
+      ),
+    })
+  }
+
+  if (quirks.relativeCoords && normalized.action && typeof normalized.action === 'object') {
+    return JSON.stringify({
+      ...normalized,
+      action: rescaleRelativeAction(
+        normalized.action as Record<string, unknown>,
+        displayWidth,
+        displayHeight,
+        quirks.relativeCoords.referenceWidth,
+        quirks.relativeCoords.referenceHeight,
       ),
     })
   }

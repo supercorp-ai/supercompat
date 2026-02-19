@@ -7,15 +7,21 @@ const buildComputerCallFunction = (model: string, displayWidth: number, displayH
 
   const coordDesc = quirks.normalizedCoords
     ? 'Coordinates use 0-1000 normalized scale (0,0=top-left, 1000,1000=bottom-right).'
-    : `Coordinates are in pixels (screen is ${displayWidth}x${displayHeight}).`
+    : quirks.relativeCoords
+      ? `Coordinates are relative (0.0-1.0) where 0.0,0.0 is top-left and 1.0,1.0 is bottom-right. Screen is ${displayWidth}x${displayHeight}.`
+      : `Coordinates are in pixels (screen is ${displayWidth}x${displayHeight}).`
 
   const xDesc = quirks.normalizedCoords
     ? 'X coordinate (0-1000 normalized)'
-    : `X coordinate in pixels (0-${displayWidth})`
+    : quirks.relativeCoords
+      ? 'X coordinate (0.0-1.0 relative, where 0.0=left edge, 1.0=right edge)'
+      : `X coordinate in pixels (0-${displayWidth})`
 
   const yDesc = quirks.normalizedCoords
     ? 'Y coordinate (0-1000 normalized)'
-    : `Y coordinate in pixels (0-${displayHeight})`
+    : quirks.relativeCoords
+      ? 'Y coordinate (0.0-1.0 relative, where 0.0=top edge, 1.0=bottom edge)'
+      : `Y coordinate in pixels (0-${displayHeight})`
 
   return {
     name: 'computer_call',

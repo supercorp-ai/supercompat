@@ -31,11 +31,16 @@ const hasComputerUseTool = (tools: any[] | undefined): boolean =>
 // OpenAI → Gemini message conversion
 // ---------------------------------------------------------------------------
 
-const serializeMessages = (messages: any[]): { contents: Content[]; systemInstruction?: string } => {
+export const serializeMessages = (messages: any[]): { contents: Content[]; systemInstruction?: string } => {
   const systemParts: string[] = []
   const contents: Content[] = []
   // Track tool_call_id → function name for tool responses
   const toolCallIdToName = new Map<string, string>()
+
+  // Compound sub-action tracking for round-trip serialization
+  const geminiCallGroups = new Map<string, { name: string; primaryId: string }>()
+  const skipToolResultIds = new Set<string>()
+  const lastSubActionMap = new Map<string, string>() // last sub-action tool_call_id → geminiCallId
 
   for (const msg of messages) {
     if (msg.role === 'system' || msg.role === 'developer') {
@@ -94,21 +99,50 @@ const serializeMessages = (messages: any[]): { contents: Content[]; systemInstru
           // Extract private fields stashed by our streaming handler
           const thoughtSignature = args._thoughtSignature as string | undefined
           const geminiActionName = args._geminiAction as string | undefined
+          const geminiCallId = args._geminiCallId as string | undefined
+          const subActionIndex = args._subActionIndex as number | undefined
+          const subActionTotal = args._subActionTotal as number | undefined
+          const geminiOrigArgs = args._geminiArgs as Record<string, unknown> | undefined
           const cleanArgs = { ...args }
           delete cleanArgs._thoughtSignature
           delete cleanArgs._geminiAction
+          delete cleanArgs._geminiCallId
+          delete cleanArgs._subActionIndex
+          delete cleanArgs._subActionTotal
+          delete cleanArgs._geminiArgs
 
-          // Restore the original Gemini function name from computer_call wrapping
+          // Handle compound sub-actions (multiple tool calls from one Gemini function)
+          if (geminiCallId && typeof subActionIndex === 'number' && typeof subActionTotal === 'number') {
+            if (subActionIndex === 0) {
+              // Primary: create one functionCall for the original Gemini action
+              const fcName = geminiActionName ?? name
+              geminiCallGroups.set(geminiCallId, { name: fcName, primaryId: id })
+              toolCallIdToName.set(id, fcName)
+              if (subActionTotal > 1) skipToolResultIds.add(id)
+
+              const fcPart: Part = { functionCall: { name: fcName, args: geminiOrigArgs ?? {}, id } }
+              if (thoughtSignature) (fcPart as any).thoughtSignature = thoughtSignature
+              parts.push(fcPart)
+            } else if (subActionIndex === subActionTotal - 1) {
+              // Last: its tool result maps back to the group
+              lastSubActionMap.set(id, geminiCallId)
+            } else {
+              // Middle: skip functionCall and tool result
+              skipToolResultIds.add(id)
+            }
+            continue
+          }
+
+          // Normal (non-compound) tool call
           let geminiName = name
           if (name === 'computer_call' && args.action && typeof args.action === 'object') {
             geminiName = geminiActionName ?? (args.action as any).type ?? name
           }
 
-          // Reconstruct original Gemini args from our normalized format
           let geminiArgs: Record<string, unknown>
           if (name === 'computer_call' && cleanArgs.action && typeof cleanArgs.action === 'object') {
             const action = cleanArgs.action as Record<string, unknown>
-            const { type: _type, pending_actions: _pa, ...rest } = action
+            const { type: _type, ...rest } = action
             geminiArgs = rest
           } else {
             geminiArgs = cleanArgs
@@ -116,7 +150,6 @@ const serializeMessages = (messages: any[]): { contents: Content[]; systemInstru
 
           toolCallIdToName.set(id, geminiName)
 
-          // thoughtSignature goes on the SAME Part as the functionCall
           const fcPart: Part = { functionCall: { name: geminiName, args: geminiArgs, id } }
           if (thoughtSignature) {
             (fcPart as any).thoughtSignature = thoughtSignature
@@ -133,7 +166,23 @@ const serializeMessages = (messages: any[]): { contents: Content[]; systemInstru
 
     if (msg.role === 'tool') {
       const toolCallId = msg.tool_call_id ?? ''
-      const name = toolCallIdToName.get(toolCallId) ?? ''
+
+      // Skip tool results for non-last compound sub-actions
+      if (skipToolResultIds.has(toolCallId)) continue
+
+      // Determine name and ID — remap last sub-action to original Gemini call
+      let responseName: string
+      let responseId: string
+      if (lastSubActionMap.has(toolCallId)) {
+        const gcId = lastSubActionMap.get(toolCallId)!
+        const group = geminiCallGroups.get(gcId)!
+        responseName = group.name
+        responseId = group.primaryId
+      } else {
+        responseName = toolCallIdToName.get(toolCallId) ?? ''
+        responseId = toolCallId
+      }
+
       const parts: Part[] = []
 
       // Check for image content (screenshots from computer use)
@@ -148,8 +197,8 @@ const serializeMessages = (messages: any[]): { contents: Content[]; systemInstru
         }]
         parts.push({
           functionResponse: {
-            id: toolCallId,
-            name,
+            id: responseId,
+            name: responseName,
             response: { output: 'Screenshot captured.' },
             parts: responseParts,
           },
@@ -158,8 +207,8 @@ const serializeMessages = (messages: any[]): { contents: Content[]; systemInstru
         const output = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
         parts.push({
           functionResponse: {
-            id: toolCallId,
-            name,
+            id: responseId,
+            name: responseName,
             response: { output },
           },
         })
@@ -256,7 +305,16 @@ const serializeTools = (tools: any[] | undefined): Tool[] => {
 
   if (computerUseEnabled) {
     geminiTools.push({
-      computerUse: { environment: 'ENVIRONMENT_BROWSER' as any },
+      computerUse: {
+        environment: 'ENVIRONMENT_BROWSER' as any,
+        excludedPredefinedFunctions: [
+          'navigate',
+          'go_back',
+          'go_forward',
+          'search',
+          'open_web_browser',
+        ],
+      } as any,
     })
   }
 
@@ -327,40 +385,77 @@ const isComputerUseFunction = (
   return !userFns.has(name)
 }
 
-const functionCallToToolCallDelta = (
+const functionCallToToolCallDeltas = (
   fc: any,
-  index: number,
+  startIndex: number,
   tools: any[] | undefined,
   thoughtSignature?: string,
-) => {
+): any[] => {
   const rawName: string = fc.name ?? ''
   const name = stripFunctionPrefix(rawName)
 
   if (isComputerUseFunction(name, tools)) {
     const denormed = denormalizeCoords(fc.args ?? {}, tools)
 
-    const normalized = isGeminiAction(name)
-      ? normalizeGeminiAction(name, denormed)
-      : normalizeComputerToolCallPayload({ ...denormed, type: name })
-
-    // Stash thought signature so it survives the OpenAI round-trip
-    const payload: Record<string, unknown> = { ...normalized }
-    if (thoughtSignature) {
-      payload._thoughtSignature = thoughtSignature
-    }
     if (isGeminiAction(name)) {
-      payload._geminiAction = name
+      const normalizedActions = normalizeGeminiAction(name, denormed)
+
+      if (normalizedActions.length === 1) {
+        // Single action — simple metadata
+        const payload: Record<string, unknown> = { ...normalizedActions[0] }
+        payload._geminiAction = name
+        if (thoughtSignature) payload._thoughtSignature = thoughtSignature
+
+        return [{
+          index: startIndex,
+          id: fc.id ?? `call_${createId()}`,
+          type: 'function',
+          function: {
+            name: 'computer_call',
+            arguments: JSON.stringify(payload),
+          },
+        }]
+      }
+
+      // Compound action — emit multiple tool calls with grouping metadata
+      const geminiCallId = `gcall_${createId()}`
+      return normalizedActions.map((normalized, i) => {
+        const payload: Record<string, unknown> = { ...normalized }
+        payload._geminiCallId = geminiCallId
+        payload._geminiAction = name
+        payload._subActionIndex = i
+        payload._subActionTotal = normalizedActions.length
+        if (i === 0) {
+          payload._geminiArgs = denormed
+          if (thoughtSignature) payload._thoughtSignature = thoughtSignature
+        }
+
+        return {
+          index: startIndex + i,
+          id: i === 0 ? (fc.id ?? `call_${createId()}`) : `call_${createId()}`,
+          type: 'function',
+          function: {
+            name: 'computer_call',
+            arguments: JSON.stringify(payload),
+          },
+        }
+      })
     }
 
-    return {
-      index,
+    // Non-Gemini computer use — use Anthropic normalizer
+    const normalized = normalizeComputerToolCallPayload({ ...denormed, type: name })
+    const payload: Record<string, unknown> = { ...normalized }
+    if (thoughtSignature) payload._thoughtSignature = thoughtSignature
+
+    return [{
+      index: startIndex,
       id: fc.id ?? `call_${createId()}`,
       type: 'function',
       function: {
         name: 'computer_call',
         arguments: JSON.stringify(payload),
       },
-    }
+    }]
   }
 
   const args = fc.args ?? {}
@@ -368,27 +463,99 @@ const functionCallToToolCallDelta = (
     args._thoughtSignature = thoughtSignature
   }
 
-  return {
-    index,
+  return [{
+    index: startIndex,
     id: fc.id ?? `call_${createId()}`,
     type: 'function',
     function: {
       name,
       arguments: JSON.stringify(args),
     },
-  }
+  }]
 }
 
 // ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Synthetic response for pending compound sub-actions
+// ---------------------------------------------------------------------------
+
+const syntheticToolCallResponse = (toolCallDelta: any, stream: boolean) => {
+  // Reset index to 0 since this is the only tool call in the response
+  const delta = { ...toolCallDelta, index: 0 }
+  const encoder = new TextEncoder()
+
+  if (stream) {
+    const chunks = [
+      `data: ${JSON.stringify({
+        id: `chatcmpl-${uid(29)}`,
+        object: 'chat.completion.chunk',
+        choices: [{
+          index: 0,
+          delta: { content: null, tool_calls: [delta] },
+        }],
+      })}\n\n`,
+      `data: ${JSON.stringify({
+        id: `chatcmpl-${uid(29)}`,
+        object: 'chat.completion.chunk',
+        choices: [{
+          index: 0,
+          delta: {},
+          finish_reason: 'stop',
+        }],
+      })}\n\n`,
+    ]
+
+    return new Response(
+      new ReadableStream({
+        start(controller) {
+          for (const chunk of chunks) controller.enqueue(encoder.encode(chunk))
+          controller.close()
+        },
+      }),
+      { headers: { 'Content-Type': 'text/event-stream' } },
+    )
+  }
+
+  return new Response(JSON.stringify({
+    data: {
+      id: `chatcmpl-${uid(29)}`,
+      object: 'chat.completion',
+      choices: [{
+        index: 0,
+        message: {
+          role: 'assistant',
+          content: null,
+          tool_calls: [delta],
+        },
+        finish_reason: 'stop',
+      }],
+    },
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
 export const post = ({
   google,
 }: {
   google: GoogleGenAI
-}) => async (_url: string, options: any) => {
+}) => {
+  // Queued sub-actions for compound Gemini actions (e.g. type_text_at)
+  // Emitted one at a time so superinterface executes them sequentially
+  let pendingSubActions: any[] = []
+
+  return async (_url: string, options: any) => {
   const body = JSON.parse(options.body)
+
+  // If there are pending sub-actions, return the next one without calling the model
+  if (pendingSubActions.length > 0) {
+    const next = pendingSubActions.shift()!
+    return syntheticToolCallResponse(next, !!body.stream)
+  }
 
   const messages = nonEmptyMessages({ messages: body.messages })
   const { contents, systemInstruction } = serializeMessages(messages)
@@ -441,25 +608,35 @@ export const post = ({
             }
 
             if (part.functionCall) {
-              const toolCallDelta = functionCallToToolCallDelta(
+              const deltas = functionCallToToolCallDeltas(
                 part.functionCall,
                 chunkIndex,
                 body.tools,
                 lastThoughtSignature,
               )
-              const messageDelta = {
-                id: `chatcmpl-${uid(29)}`,
-                object: 'chat.completion.chunk',
-                choices: [{
-                  index: 0,
-                  delta: {
-                    content: null,
-                    tool_calls: [toolCallDelta],
-                  },
-                }],
+
+              // For compound actions, only emit the first sub-action;
+              // queue the rest for sequential execution
+              const emitDeltas = deltas.length > 1 ? [deltas[0]] : deltas
+              if (deltas.length > 1) {
+                pendingSubActions.push(...deltas.slice(1))
               }
-              controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
-              chunkIndex++
+
+              for (const toolCallDelta of emitDeltas) {
+                const messageDelta = {
+                  id: `chatcmpl-${uid(29)}`,
+                  object: 'chat.completion.chunk',
+                  choices: [{
+                    index: 0,
+                    delta: {
+                      content: null,
+                      tool_calls: [toolCallDelta],
+                    },
+                  }],
+                }
+                controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
+              }
+              chunkIndex += emitDeltas.length
               lastThoughtSignature = undefined
             }
           }
@@ -506,12 +683,21 @@ export const post = ({
           lastSig = p.thoughtSignature
         }
         if (p.functionCall) {
-          toolCalls.push(functionCallToToolCallDelta(
+          const deltas = functionCallToToolCallDeltas(
             p.functionCall,
             toolCalls.length,
             body.tools,
             lastSig,
-          ))
+          )
+
+          // For compound actions, only include the first sub-action;
+          // queue the rest for sequential execution
+          if (deltas.length > 1) {
+            toolCalls.push(deltas[0])
+            pendingSubActions.push(...deltas.slice(1))
+          } else {
+            toolCalls.push(...deltas)
+          }
           lastSig = undefined
         }
       }
@@ -552,5 +738,6 @@ export const post = ({
         },
       })
     }
+  }
   }
 }

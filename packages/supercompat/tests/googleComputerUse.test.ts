@@ -247,7 +247,7 @@ test('Google native SDK Gemini: full e2e with real MCP computer use server', { t
   console.log('Google native Step 1 - Run status:', run.status)
 
   let iterations = 0
-  while (run.status === 'requires_action' && iterations < 5) {
+  while (run.status === 'requires_action' && iterations < 15) {
     iterations++
     const toolCalls = run.required_action?.submit_tool_outputs.tool_calls ?? []
     console.log(`Google native Iteration ${iterations} - Tool calls:`, toolCalls.length)
