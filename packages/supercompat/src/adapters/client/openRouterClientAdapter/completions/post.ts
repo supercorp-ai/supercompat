@@ -110,8 +110,10 @@ const rawFetch = async (
 
 export const post = ({
   openRouter,
+  provider,
 }: {
   openRouter: OpenRouter
+  provider?: Record<string, unknown>
 }) => async (_url: string, options: { body: string }) => {
   const body = JSON.parse(options.body)
   const model = body.model as string
@@ -120,6 +122,7 @@ export const post = ({
 
   const resultOptions = {
     ...body,
+    ...(provider && !body.provider ? { provider } : {}),
     ...(computerUseConfig && body.messages ? { messages: convertScreenshotToolMessages(body.messages) } : {}),
     ...(transformedTools.length > 0 ? { tools: transformedTools } : {}),
   }
