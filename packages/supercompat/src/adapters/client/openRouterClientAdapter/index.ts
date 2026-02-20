@@ -1,11 +1,11 @@
-import type OpenAI from 'openai'
+import type { OpenRouter } from '@openrouter/sdk'
 import { models } from './models'
 import { completions } from './completions'
 
 export const openRouterClientAdapter = ({
   openRouter,
 }: {
-  openRouter: OpenAI
+  openRouter: OpenRouter
 }) => ({
   client: openRouter,
   requestHandlers: {

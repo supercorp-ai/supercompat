@@ -1,9 +1,8 @@
 import { test, before, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { execSync, spawn, type ChildProcess } from 'node:child_process'
-import OpenAI from 'openai'
+import { OpenRouter, HTTPClient } from '@openrouter/sdk'
 import { PrismaClient } from '@prisma/client'
-import { HttpsProxyAgent } from 'https-proxy-agent'
 import {
   supercompat,
   openRouterClientAdapter,
@@ -29,14 +28,15 @@ const DEFAULT_URL = 'https://supercorp.ai'
 const HEALTH_TIMEOUT_MS = 60_000
 const HEALTH_POLL_MS = 1_000
 
+const httpClient = new HTTPClient({
+  fetcher: (request: Request) => {
+    request.headers.set('Connection', 'close')
+    return fetch(request)
+  },
+})
+
 function makeOpenRouter() {
-  return new OpenAI({
-    apiKey: openrouterApiKey,
-    baseURL: 'https://openrouter.ai/api/v1',
-    ...(process.env.HTTPS_PROXY
-      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
-      : {}),
-  })
+  return new OpenRouter({ apiKey: openrouterApiKey!, httpClient })
 }
 
 const tools = [

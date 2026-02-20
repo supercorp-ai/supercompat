@@ -45,7 +45,7 @@ npm install @azure/ai-projects @azure/identity
 npm install @google/genai
 
 # For OpenRouter (access 200+ models via one API)
-# (Uses OpenAI-compatible API, no additional SDK needed)
+npm install @openrouter/sdk
 
 # For Perplexity, Together AI, Ollama, etc.
 # (These use OpenAI-compatible APIs, no additional SDK needed)
@@ -306,12 +306,11 @@ Access 200+ models (Gemini, DeepSeek, Qwen, Grok, MiniMax, Kimi, GLM, and more) 
 ```typescript
 import { openRouterClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
 import { PrismaClient } from '@prisma/client'
-import OpenAI from 'openai'
+import { OpenRouter } from '@openrouter/sdk'
 
 const prisma = new PrismaClient()
-const openRouter = new OpenAI({
+const openRouter = new OpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: 'https://openrouter.ai/api/v1',
 })
 
 const client = supercompat({
@@ -325,11 +324,10 @@ The OpenRouter adapter also works without storage/run adapters for direct chat c
 
 ```typescript
 import { supercompat, openRouterClientAdapter } from 'supercompat'
-import OpenAI from 'openai'
+import { OpenRouter } from '@openrouter/sdk'
 
-const openRouter = new OpenAI({
+const openRouter = new OpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: 'https://openrouter.ai/api/v1',
 })
 
 const client = supercompat({

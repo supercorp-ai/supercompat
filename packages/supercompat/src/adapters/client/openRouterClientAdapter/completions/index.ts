@@ -1,10 +1,10 @@
-import type OpenAI from 'openai'
+import type { OpenRouter } from '@openrouter/sdk'
 import { post } from './post'
 
 export const completions = ({
   openRouter,
 }: {
-  openRouter: OpenAI
+  openRouter: OpenRouter
 }) => ({
   post: post({ openRouter }),
 })

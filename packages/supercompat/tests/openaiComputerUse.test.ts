@@ -2,6 +2,7 @@ import { test, before, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { spawn, execSync } from 'node:child_process'
 import OpenAI from 'openai'
+import { OpenRouter, HTTPClient } from '@openrouter/sdk'
 import Anthropic from '@anthropic-ai/sdk'
 import { GoogleGenAI } from '@google/genai'
 import { PrismaClient } from '@prisma/client'
@@ -1304,12 +1305,15 @@ async function runOpenRouterAdapterTest(opts: {
   const { model, label, sessionId, maxIterations = 5 } = opts
   const totalBench = bench(`${label} total`)
 
+  const openRouterHttpClient = new HTTPClient({
+    fetcher: (request: Request) => {
+      request.headers.set('Connection', 'close')
+      return fetch(request)
+    },
+  })
   const client = supercompat({
     client: openRouterClientAdapter({
-      openRouter: new OpenAI({
-        apiKey: openrouterApiKey!,
-        baseURL: 'https://openrouter.ai/api/v1',
-      }),
+      openRouter: new OpenRouter({ apiKey: openrouterApiKey!, httpClient: openRouterHttpClient }),
     }),
   })
 

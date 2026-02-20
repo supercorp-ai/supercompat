@@ -1,8 +1,8 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
+import { OpenRouter, HTTPClient } from '@openrouter/sdk'
 import { PrismaClient } from '@prisma/client'
-import { HttpsProxyAgent } from 'https-proxy-agent'
 import {
   supercompat,
   openRouterClientAdapter,
@@ -18,14 +18,15 @@ if (!openrouterApiKey) {
 
 const MODEL = 'minimax/minimax-m2.5'
 
+const httpClient = new HTTPClient({
+  fetcher: (request: Request) => {
+    request.headers.set('Connection', 'close')
+    return fetch(request)
+  },
+})
+
 function makeOpenRouter() {
-  return new OpenAI({
-    apiKey: openrouterApiKey,
-    baseURL: 'https://openrouter.ai/api/v1',
-    ...(process.env.HTTPS_PROXY
-      ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
-      : {}),
-  })
+  return new OpenRouter({ apiKey: openrouterApiKey!, httpClient })
 }
 
 // =========================================================================

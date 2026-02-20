@@ -2,20 +2,31 @@ import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { post } from '../src/adapters/client/openRouterClientAdapter/completions/post.ts'
 
-// Mock OpenRouter client that returns streaming chunks
-const createMockOpenRouter = (chunks: any[]) => ({
-  chat: {
-    completions: {
-      create: async () => ({
-        [Symbol.asyncIterator]: async function* () {
-          for (const chunk of chunks) {
-            yield chunk
-          }
-        },
-      }),
+// Mock OpenRouter client that returns streaming chunks via a mock HTTPClient.
+// The streaming path uses raw fetch (bypassing SDK Zod validation), so we mock
+// at the HTTPClient level. Chunks use OpenAI snake_case format.
+const createMockOpenRouter = (chunks: any[]) => {
+  const sseBody = chunks.map((c) => `data: ${JSON.stringify(c)}`).join('\n\n') + '\n\ndata: [DONE]\n\n'
+
+  return {
+    _options: {
+      apiKey: 'test-key',
+      httpClient: {
+        request: async () =>
+          new Response(sseBody, {
+            status: 200,
+            headers: { 'Content-Type': 'text/event-stream' },
+          }),
+      },
     },
-  },
-})
+    _baseURL: new URL('https://openrouter.ai/api/v1'),
+    chat: {
+      send: async () => {
+        throw new Error('Streaming should use raw fetch, not chat.send()')
+      },
+    },
+  }
+}
 
 const makeRequestBody = (model: string) =>
   JSON.stringify({

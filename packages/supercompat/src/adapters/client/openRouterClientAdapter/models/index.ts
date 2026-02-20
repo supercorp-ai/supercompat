@@ -1,10 +1,10 @@
-import type OpenAI from 'openai'
+import type { OpenRouter } from '@openrouter/sdk'
 import { get } from './get'
 
 export const models = ({
   openRouter,
 }: {
-  openRouter: OpenAI
+  openRouter: OpenRouter
 }) => ({
   get: get({ openRouter }),
 })
