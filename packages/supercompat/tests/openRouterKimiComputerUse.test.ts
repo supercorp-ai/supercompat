@@ -20,9 +20,12 @@ if (!openrouterApiKey) {
 // Docker configuration
 // ---------------------------------------------------------------------------
 const CONTAINER_NAME = 'computer-use-mcp-kimi-test'
+const CONTAINER_NAME_SMALL = 'computer-use-mcp-kimi-test-720x500'
 const DOCKER_IMAGE = 'computer-use-mcp-dev'
 const MCP_PORT = 3104
+const MCP_PORT_SMALL = 3105
 const MCP_SERVER_URL = `http://localhost:${MCP_PORT}`
+const MCP_SERVER_URL_SMALL = `http://localhost:${MCP_PORT_SMALL}`
 const DOCKER_CONTEXT_DIR = process.env.COMPUTER_USE_MCP_DIR ?? '../computer-use-mcp'
 const DEFAULT_URL = 'https://supercorp.ai'
 const HEALTH_TIMEOUT_MS = 60_000
@@ -64,9 +67,9 @@ CRITICAL RULES:
 // Docker lifecycle helpers
 // ---------------------------------------------------------------------------
 
-function cleanupContainer() {
+function cleanupContainer(name: string = CONTAINER_NAME) {
   try {
-    execSync(`docker rm -f ${CONTAINER_NAME}`, { stdio: 'ignore' })
+    execSync(`docker rm -f ${name}`, { stdio: 'ignore' })
   } catch {
     // container may not exist
   }
@@ -80,30 +83,40 @@ function buildImage() {
   })
 }
 
-function startContainer(): ChildProcess {
-  const child = spawn(
-    'docker',
-    [
-      'run', '--rm',
-      '--name', CONTAINER_NAME,
-      '--platform', 'linux/amd64',
-      '-p', `${MCP_PORT}:8000`,
-      DOCKER_IMAGE,
-      '--transport', 'http',
-      '--toolSchema', 'loose',
-      '--imageOutputFormat', 'openai-responses-api',
-      '--defaultUrl', DEFAULT_URL,
-    ],
-    { stdio: ['ignore', 'pipe', 'pipe'] },
-  )
+function startContainer({
+  name = CONTAINER_NAME,
+  port = MCP_PORT,
+  displayWidth,
+  displayHeight,
+}: {
+  name?: string
+  port?: number
+  displayWidth?: number
+  displayHeight?: number
+} = {}): ChildProcess {
+  const args = [
+    'run', '--rm',
+    '--name', name,
+    '--platform', 'linux/amd64',
+    '-p', `${port}:8000`,
+    DOCKER_IMAGE,
+    '--transport', 'http',
+    '--toolSchema', 'loose',
+    '--imageOutputFormat', 'openai-responses-api',
+    '--defaultUrl', DEFAULT_URL,
+  ]
+  if (displayWidth != null) args.push('--displayWidth', String(displayWidth))
+  if (displayHeight != null) args.push('--displayHeight', String(displayHeight))
+
+  const child = spawn('docker', args, { stdio: ['ignore', 'pipe', 'pipe'] })
   return child
 }
 
-async function waitForHealth(): Promise<void> {
+async function waitForHealth(serverUrl: string = MCP_SERVER_URL): Promise<void> {
   const deadline = Date.now() + HEALTH_TIMEOUT_MS
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(`${MCP_SERVER_URL}/healthz`)
+      const res = await fetch(`${serverUrl}/healthz`)
       if (res.ok) return
     } catch {}
     await new Promise((r) => setTimeout(r, HEALTH_POLL_MS))
@@ -214,6 +227,7 @@ async function runComputerUseLoop({
   userMessage,
   maxIterations = 15,
   testLabel = 'Kimi',
+  customTools,
 }: {
   client: any
   prisma: PrismaClient
@@ -222,11 +236,14 @@ async function runComputerUseLoop({
   userMessage: string
   maxIterations?: number
   testLabel?: string
+  customTools?: any[]
 }) {
+  const useTools = customTools ?? tools
+
   const assistant = await client.beta.assistants.create({
     model: 'moonshotai/kimi-k2.5',
     instructions,
-    tools,
+    tools: useTools,
   })
 
   const thread = await prisma.thread.create({
@@ -240,7 +257,7 @@ async function runComputerUseLoop({
 
   let run = await client.beta.threads.runs.createAndPoll(thread.id, {
     assistant_id: assistant.id,
-    tools,
+    tools: useTools,
   })
 
   console.log(`${testLabel} Step 1 - Run status:`, run.status)
@@ -297,19 +314,27 @@ async function runComputerUseLoop({
 // Docker lifecycle (shared across all tests in this file)
 // ---------------------------------------------------------------------------
 let containerProcess: ChildProcess | undefined
+let containerProcessSmall: ChildProcess | undefined
 
 before(async () => {
-  cleanupContainer()
+  cleanupContainer(CONTAINER_NAME)
+  cleanupContainer(CONTAINER_NAME_SMALL)
   buildImage()
   containerProcess = startContainer()
-  await waitForHealth()
+  containerProcessSmall = startContainer({
+    name: CONTAINER_NAME_SMALL,
+    port: MCP_PORT_SMALL,
+    displayWidth: 720,
+    displayHeight: 500,
+  })
+  await Promise.all([waitForHealth(MCP_SERVER_URL), waitForHealth(MCP_SERVER_URL_SMALL)])
 }, { timeout: 120_000 })
 
 after(async () => {
-  try {
-    execSync(`docker stop ${CONTAINER_NAME}`, { stdio: 'ignore' })
-  } catch {}
+  try { execSync(`docker stop ${CONTAINER_NAME}`, { stdio: 'ignore' }) } catch {}
+  try { execSync(`docker stop ${CONTAINER_NAME_SMALL}`, { stdio: 'ignore' }) } catch {}
   containerProcess?.kill()
+  containerProcessSmall?.kill()
 })
 
 // =========================================================================
@@ -387,6 +412,55 @@ test('openRouter Kimi K2.5: click Subscribe button on supercorp.ai and describe 
   assert.ok(clickCount >= 1, `Expected at least 1 click (got ${clickCount}). Actions: ${allActions.join(' → ')}`)
 
   // Model should describe name and email fields from the modal
+  const lower = text.toLowerCase()
+  const seesFields = lower.includes('name') && lower.includes('email')
+  assert.ok(seesFields, `Model should mention name and email fields in the modal (got: "${text.slice(0, 300)}")`)
+
+  await prisma.$disconnect()
+})
+
+// =========================================================================
+// Test 3: Click subscribe button at 720x500 resolution
+// =========================================================================
+test('openRouter Kimi K2.5: click Subscribe at 720x500 and describe modal fields', { timeout: 300_000 }, async () => {
+  const prisma = new PrismaClient()
+  const mcpClient = new McpClient(MCP_SERVER_URL_SMALL)
+  await mcpClient.initialize()
+
+  // Warm up the 720x500 container (browser launch + defaultUrl load)
+  await mcpClient.warmUp()
+
+  const client = supercompat({
+    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    storage: prismaStorageAdapter({ prisma }),
+    runAdapter: completionsRunAdapter(),
+  })
+
+  const { run, allActions, text } = await runComputerUseLoop({
+    client,
+    prisma,
+    mcpClient,
+    instructions: SYSTEM_INSTRUCTIONS,
+    userMessage: 'First, call computer_call with type "screenshot" to see the current screen. You should see a page with a "Subscribe to new launches" button. Click that button. After clicking, take another screenshot to see what appeared. Then tell me: what are the exact labels of every input field and every button in the dialog/modal that opened?',
+    maxIterations: 15,
+    testLabel: 'Kimi 720x500',
+    customTools: [
+      {
+        type: 'computer_use_preview',
+        computer_use_preview: {
+          display_width: 720,
+          display_height: 500,
+        },
+      },
+    ],
+  })
+
+  assert.notEqual(run.status, 'failed', `Run should not fail (was: ${JSON.stringify(run.last_error)})`)
+  assert.equal(run.status, 'completed', `Expected completed, got ${run.status}`)
+
+  const clickCount = allActions.filter((a) => a === 'click').length
+  assert.ok(clickCount >= 1, `Expected at least 1 click (got ${clickCount}). Actions: ${allActions.join(' → ')}`)
+
   const lower = text.toLowerCase()
   const seesFields = lower.includes('name') && lower.includes('email')
   assert.ok(seesFields, `Model should mention name and email fields in the modal (got: "${text.slice(0, 300)}")`)
