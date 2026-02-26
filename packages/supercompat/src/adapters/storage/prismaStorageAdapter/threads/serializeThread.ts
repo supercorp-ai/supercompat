@@ -11,6 +11,12 @@ export const serializeThread = ({
   object: 'thread' as 'thread',
   created_at: dayjs(thread.createdAt).unix(),
   metadata: thread.metadata,
-  // TODO
-  tool_resources: null,
+  tool_resources: {
+    code_interpreter: {
+      file_ids: [],
+    },
+    file_search: {
+      vector_store_ids: [],
+    },
+  },
 })

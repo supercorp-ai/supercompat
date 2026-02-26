@@ -19,7 +19,7 @@ export const serializeRunStep = ({
   // @ts-ignore-next-line
   step_details: runStep.stepDetails as OpenAI.Beta.Threads.Runs.RunStep['step_details'],
   last_error: runStep.lastError as OpenAI.Beta.Threads.Runs.RunStep['last_error'],
-  expired_at: runStep.expiredAt ? dayjs(runStep.expiredAt).unix() : null,
+  expires_at: runStep.expiredAt ? dayjs(runStep.expiredAt).unix() : null,
   cancelled_at: runStep.cancelledAt ? dayjs(runStep.cancelledAt).unix() : null,
   failed_at: runStep.failedAt ? dayjs(runStep.failedAt).unix() : null,
   completed_at: runStep.completedAt ? dayjs(runStep.completedAt).unix() : null,

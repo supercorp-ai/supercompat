@@ -82,7 +82,9 @@ export const completionsRunAdapter = () => {
         }),
         model: run.model,
         stream: true,
-        response_format: run.response_format,
+        ...(typeof run.response_format === 'object' && run.response_format !== null
+          ? { response_format: run.response_format }
+          : {}),
         ...(isEmpty(run.tools) ? {} : { tools: run.tools }),
       } as OpenAI.ChatCompletionCreateParamsStreaming
 

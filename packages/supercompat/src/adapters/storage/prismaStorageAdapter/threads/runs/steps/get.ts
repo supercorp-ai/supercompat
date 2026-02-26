@@ -37,9 +37,11 @@ export const get = ({
   const runSteps = runStepsPlusOne.slice(0, pageSize)
 
   return new Response(JSON.stringify({
+    object: 'list',
     data: runSteps.map((runStep: RunStep) => serializeRunStep({ runStep })),
-    has_more: runStepsPlusOne.length > pageSize,
+    first_id: runSteps[0]?.id ?? null,
     last_id: runSteps.at(-1)?.id ?? null,
+    has_more: runStepsPlusOne.length > pageSize,
   }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },

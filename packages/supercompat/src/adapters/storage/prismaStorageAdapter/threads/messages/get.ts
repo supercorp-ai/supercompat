@@ -43,11 +43,13 @@ export const get = ({
   const messages = messagesPlusOne.slice(0, pageSize)
 
   return new Response(JSON.stringify({
+    object: 'list',
     data: messages.map((message: Message) => (
       serializeMessage({ message })
     )),
-    has_more: messagesPlusOne.length > pageSize,
+    first_id: messages[0]?.id ?? null,
     last_id: last(messages)?.id ?? null,
+    has_more: messagesPlusOne.length > pageSize,
   }), {
     status: 200,
     headers: {

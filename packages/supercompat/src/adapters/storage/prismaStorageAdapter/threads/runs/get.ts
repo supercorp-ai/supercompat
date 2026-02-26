@@ -43,9 +43,11 @@ export const get = ({
   const runs = runsPlusOne.slice(0, pageSize)
 
   return new Response(JSON.stringify({
+    object: 'list',
     data: runs.map((run) => serializeRun({ run: mapPrismaRun(run) })),
-    has_more: runsPlusOne.length > pageSize,
+    first_id: runs[0]?.id ?? null,
     last_id: runs.at(-1)?.id ?? null,
+    has_more: runsPlusOne.length > pageSize,
   }), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },

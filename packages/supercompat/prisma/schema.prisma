@@ -137,15 +137,18 @@ model RunStep {
 }
 
 model Assistant {
-  id         String    @id @default(dbgenerated("gen_random_uuid()"))
-  modelSlug  String?
+  id           String    @id @default(dbgenerated("gen_random_uuid()"))
+  modelSlug    String?
   instructions String?
-  threads    Thread[]
-  runs       Run[]
-  runSteps   RunStep[]
-  messages   Message[]
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  name         String?
+  description  String?
+  metadata     Json?
+  threads      Thread[]
+  runs         Run[]
+  runSteps     RunStep[]
+  messages     Message[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 // Azure Agents-specific table for storing function tool call outputs

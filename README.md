@@ -575,13 +575,18 @@ model RunStep {
 }
 
 model Assistant {
-  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  threads   Thread[]
-  runs      Run[]
-  runSteps  RunStep[]
-  messages  Message[]
-  createdAt DateTime  @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @db.Timestamptz(6)
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  modelSlug    String?
+  instructions String?
+  name         String?
+  description  String?
+  metadata     Json?
+  threads      Thread[]
+  runs         Run[]
+  runSteps     RunStep[]
+  messages     Message[]
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
 }
 ```
 
@@ -810,7 +815,9 @@ const run = await client.beta.threads.runs.createAndPoll(thread.id, {
 })
 
 // Get run steps to see code execution
-const steps = await client.beta.threads.runs.steps.list(thread.id, run.id)
+const steps = await client.beta.threads.runs.steps.list(run.id, {
+  thread_id: thread.id,
+})
 for (const step of steps.data) {
   if (step.type === 'tool_calls') {
     console.log(step.step_details.tool_calls)
@@ -913,42 +920,41 @@ Supercompat implements the OpenAI Assistants API, so you can use the [official O
 
 ### Supported Endpoints
 
-- ✅ `beta.threads.create()`
-- ✅ `beta.threads.messages.create()`
-- ✅ `beta.threads.messages.list()`
-- ✅ `beta.threads.runs.create()`
-- ✅ `beta.threads.runs.createAndPoll()`
-- ✅ `beta.threads.runs.retrieve()`
-- ✅ `beta.threads.runs.submitToolOutputs()`
-- ✅ `beta.threads.runs.submitToolOutputsAndPoll()`
-- ✅ `beta.threads.runs.steps.list()`
-- ✅ `beta.assistants.create()`
-
-### Not Yet Supported
-
-The following endpoints are not yet implemented:
+**Assistants:**
+- ✅ `beta.assistants.create()` - Create an assistant
+- ✅ `beta.assistants.retrieve()` - Get a specific assistant
+- ✅ `beta.assistants.update()` - Update an assistant
+- ✅ `beta.assistants.list()` - List all assistants
+- ✅ `beta.assistants.delete()` - Delete an assistant
 
 **Threads:**
-- ❌ `beta.threads.retrieve()` - Get a specific thread
-- ❌ `beta.threads.update()` - Update thread metadata
-- ❌ `beta.threads.delete()` - Delete a thread
+- ✅ `beta.threads.create()` - Create a thread (with optional initial messages)
+- ✅ `beta.threads.retrieve()` - Get a specific thread
+- ✅ `beta.threads.update()` - Update thread metadata
+- ✅ `beta.threads.delete()` - Delete a thread
 
 **Messages:**
-- ❌ `beta.threads.messages.retrieve()` - Get a specific message
-- ❌ `beta.threads.messages.update()` - Update message metadata
-- ❌ `beta.threads.messages.delete()` - Delete a message
+- ✅ `beta.threads.messages.create()` - Add a message to a thread
+- ✅ `beta.threads.messages.retrieve()` - Get a specific message
+- ✅ `beta.threads.messages.update()` - Update message metadata
+- ✅ `beta.threads.messages.list()` - List messages with pagination
+- ✅ `beta.threads.messages.delete()` - Delete a message
 
 **Runs:**
-- ❌ `beta.threads.runs.list()` - List all runs for a thread
-- ❌ `beta.threads.runs.update()` - Update run metadata
-- ❌ `beta.threads.runs.cancel()` - Cancel an in-progress run
-- ❌ `beta.threads.runs.steps.retrieve()` - Get a specific step
+- ✅ `beta.threads.runs.create()` - Create a run
+- ✅ `beta.threads.runs.createAndPoll()` - Create and poll until completion
+- ✅ `beta.threads.runs.retrieve()` - Get a specific run
+- ✅ `beta.threads.runs.update()` - Update run metadata
+- ✅ `beta.threads.runs.list()` - List runs for a thread
+- ✅ `beta.threads.runs.cancel()` - Cancel an in-progress run
+- ✅ `beta.threads.runs.submitToolOutputs()` - Submit tool call results
+- ✅ `beta.threads.runs.submitToolOutputsAndPoll()` - Submit and poll
 
-**Assistants:**
-- ❌ `beta.assistants.list()` - List all assistants
-- ❌ `beta.assistants.retrieve()` - Get a specific assistant
-- ❌ `beta.assistants.update()` - Update an assistant
-- ❌ `beta.assistants.delete()` - Delete an assistant
+**Run Steps:**
+- ✅ `beta.threads.runs.steps.list()` - List run steps
+- ✅ `beta.threads.runs.steps.retrieve()` - Get a specific run step
+
+### Not Yet Supported
 
 **Vector Stores & Files:**
 - ❌ `beta.vectorStores.*` - All vector store operations
