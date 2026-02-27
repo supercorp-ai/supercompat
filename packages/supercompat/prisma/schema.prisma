@@ -165,3 +165,156 @@ model AzureAgentsFunctionOutput {
   @@index([runId])
   @@index([createdAt(sort: Desc)])
 }
+
+// ── Responses API Models ─────────────────────────────────────────
+
+model Conversation {
+  id          String     @id @default(dbgenerated("gen_random_uuid()"))
+  metadata    Json?
+  responses   Response[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+enum ResponseStatus {
+  QUEUED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+  INCOMPLETE
+}
+
+enum TruncationType {
+  AUTO
+  LAST_MESSAGES
+  DISABLED
+}
+
+model Response {
+  id                          String           @id @default(dbgenerated("gen_random_uuid()"))
+  conversationId              String?
+  conversation                Conversation?    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  model                       String
+  status                      ResponseStatus
+  error                       Json?
+  metadata                    Json?
+  usage                       Json?
+  instructions                String?
+  temperature                 Float?
+  topP                        Float?
+  maxOutputTokens             Int?
+  truncationType              TruncationType   @default(DISABLED)
+  truncationLastMessagesCount Int?
+  textFormatType              String?          @default("text")
+  textFormatSchema            Json?
+  input                       Json?
+  outputItems                 ResponseOutputItem[]
+  tools                       ResponseTool[]
+  createdAt                   DateTime         @default(now())
+  updatedAt                   DateTime         @updatedAt
+
+  @@index([conversationId])
+}
+
+enum ResponseOutputItemType {
+  MESSAGE
+  FUNCTION_CALL
+}
+
+enum ResponseOutputItemStatus {
+  IN_PROGRESS
+  COMPLETED
+  INCOMPLETE
+}
+
+model ResponseOutputItem {
+  id          String                   @id @default(dbgenerated("gen_random_uuid()"))
+  responseId  String
+  response    Response                 @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  type        ResponseOutputItemType
+  status      ResponseOutputItemStatus @default(IN_PROGRESS)
+  role        String?
+  content     Json?
+  callId      String?
+  name        String?
+  arguments   String?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+
+  @@index([responseId])
+  @@index([createdAt(sort: Asc)])
+}
+
+enum ResponseToolType {
+  FUNCTION
+  FILE_SEARCH
+  WEB_SEARCH
+  CODE_INTERPRETER
+  COMPUTER_USE
+}
+
+model ResponseTool {
+  id                  String              @id @default(dbgenerated("gen_random_uuid()"))
+  type                ResponseToolType
+  responseId          String
+  response            Response            @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  functionTool        ResponseFunctionTool?
+  fileSearchTool      ResponseFileSearchTool?
+  webSearchTool       ResponseWebSearchTool?
+  codeInterpreterTool ResponseCodeInterpreterTool?
+  computerUseTool     ResponseComputerUseTool?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([responseId])
+}
+
+model ResponseFunctionTool {
+  id          String       @id @default(dbgenerated("gen_random_uuid()"))
+  name        String
+  description String?
+  parameters  Json
+  strict      Boolean      @default(false)
+  toolId      String       @unique
+  tool        ResponseTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model ResponseFileSearchTool {
+  id             String       @id @default(dbgenerated("gen_random_uuid()"))
+  vectorStoreIds String[]     @default([])
+  maxNumResults  Int          @default(20)
+  toolId         String       @unique
+  tool           ResponseTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model ResponseWebSearchTool {
+  id          String       @id @default(dbgenerated("gen_random_uuid()"))
+  toolId      String       @unique
+  tool        ResponseTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model ResponseCodeInterpreterTool {
+  id          String       @id @default(dbgenerated("gen_random_uuid()"))
+  toolId      String       @unique
+  tool        ResponseTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model ResponseComputerUseTool {
+  id            String       @id @default(dbgenerated("gen_random_uuid()"))
+  displayHeight Int          @default(720)
+  displayWidth  Int          @default(1280)
+  environment   String       @default("linux")
+  toolId        String       @unique
+  tool          ResponseTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}

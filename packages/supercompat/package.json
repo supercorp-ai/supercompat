@@ -8,7 +8,9 @@
   "exports": {
     ".": "./dist/index.js",
     "./*": "./dist/*.js",
-    "./types": "./dist/types/index.js"
+    "./types": "./dist/types/index.js",
+    "./openaiAssistants": "./dist/openaiAssistants/index.js",
+    "./openaiResponses": "./dist/openaiResponses/index.js"
   },
   "files": [
     "dist"
