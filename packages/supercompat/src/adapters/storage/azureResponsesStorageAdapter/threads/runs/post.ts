@@ -6,7 +6,13 @@ import { runsRegexp } from '@/lib/runs/runsRegexp'
 import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
 import { RunAdapterWithAssistant } from '@/types'
 import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveResponseItemsToConversationMetadata'
-import { defaultAssistant, serializeTools, textConfig, truncation } from '@/adapters/storage/responsesStorageAdapter/threads/runs/shared'
+import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
+import {
+  defaultAssistant,
+  serializeTools,
+  textConfig,
+  truncation,
+} from '@/adapters/storage/responsesStorageAdapter/threads/runs/shared'
 
 type RunCreateResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Run>
@@ -84,7 +90,10 @@ export const post = ({
   if (!azureAgentId) {
     responseBody.model = model
     responseBody.metadata = metadata
-    Object.assign(responseBody, serializeTools({ tools }))
+    Object.assign(responseBody, serializeTools({
+      tools,
+      useOpenaiComputerTool: isOpenaiComputerUseModel({ model }),
+    }))
     responseBody.truncation = truncation({ truncation_strategy })
 
     const normalizedText = textConfig({ response_format })

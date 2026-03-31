@@ -40,8 +40,8 @@
     "@types/lodash": "^4.17.20",
     "groq-sdk": "^0.21.0",
     "humiris-ai": "^1.11.0",
+    "openai": "^6.27.0",
     "prisma": "^6.18.0",
-    "openai": "^6.6.0",
     "tsup": "^8.5.0",
     "undici": "^7.16.0"
   }

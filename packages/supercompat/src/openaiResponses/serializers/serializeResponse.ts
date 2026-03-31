@@ -1,5 +1,6 @@
 import type { Response as PrismaResponse, ResponseOutputItem } from '@prisma/client'
 import dayjs from 'dayjs'
+import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
 import { serializeOutputItem } from './serializeOutputItem'
 import { serializeTools } from './serializeTools'
 
@@ -18,7 +19,12 @@ export const serializeResponse = ({
   )
 
   const tools = response.tools
-    ? serializeTools({ tools: response.tools })
+    ? serializeTools({
+        tools: response.tools,
+        useOpenaiComputerTool: isOpenaiComputerUseModel({
+          model: response.model,
+        }),
+      })
     : []
 
   const truncation = (() => {

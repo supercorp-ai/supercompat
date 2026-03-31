@@ -18,3 +18,9 @@ export { azureResponsesStorageAdapter } from './adapters/storage/azureResponsesS
 export { azureAgentsStorageAdapter } from './adapters/storage/azureAgentsStorageAdapter'
 export { responsesRunAdapter } from './adapters/run/responsesRunAdapter'
 export { azureAgentsRunAdapter } from './adapters/run/azureAgentsRunAdapter'
+export {
+  getComputerCallActions,
+  isOpenaiComputerUseModel,
+  serializeCompatComputerCall,
+  serializeComputerUseTool,
+} from './lib/openaiComputerUse'

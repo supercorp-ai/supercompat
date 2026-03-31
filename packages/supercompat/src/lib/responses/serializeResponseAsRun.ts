@@ -1,6 +1,7 @@
 import type OpenAI from 'openai'
 // @ts-ignore-next-line
 import type { Run } from '@prisma/client'
+import { serializeCompatComputerCall } from '@/lib/openaiComputerUse'
 
 const serializeStatus = ({
   response,
@@ -26,24 +27,23 @@ const findPendingToolCalls = ({
   response,
 }: {
   response: OpenAI.Responses.Response
-}): OpenAI.Responses.ResponseFunctionToolCall[] => {
-  const toolCalls = (response.output ?? []).filter(
-    (item): item is OpenAI.Responses.ResponseFunctionToolCall => item.type === 'function_call',
-  )
+}): Array<OpenAI.Responses.ResponseFunctionToolCall | OpenAI.Responses.ResponseComputerToolCall> => {
+  const outputItems = (response.output ?? []) as any[]
+
+  const toolCalls = outputItems.filter(
+    (item) => item.type === 'function_call' || item.type === 'computer_call',
+  ) as Array<OpenAI.Responses.ResponseFunctionToolCall | OpenAI.Responses.ResponseComputerToolCall>
 
   if (toolCalls.length === 0) return []
 
   const completedCallIds = new Set(
-    (response.output ?? [])
+    outputItems
       .filter(
         (item) =>
-          // @ts-expect-error missing openai type
-          item.type === 'function_call_output',
+          item.type === 'function_call_output' ||
+          item.type === 'computer_call_output',
       )
-    .map((item) => (
-      // @ts-expect-error missing openai type
-      item.call_id
-    ))
+    .map((item) => item.call_id)
       .filter((id): id is string => Boolean(id)),
   )
 
@@ -53,16 +53,24 @@ const findPendingToolCalls = ({
 const serializeToolCalls = ({
   toolCalls,
 }: {
-  toolCalls: OpenAI.Responses.ResponseFunctionToolCall[]
+  toolCalls: Array<OpenAI.Responses.ResponseFunctionToolCall | OpenAI.Responses.ResponseComputerToolCall>
 }) =>
-  toolCalls.map((toolCall) => ({
-    id: toolCall.call_id,
-    type: 'function' as const,
-    function: {
-      name: toolCall.name,
-      arguments: toolCall.arguments,
-    },
-  }))
+  toolCalls.map((toolCall) => {
+    if (toolCall.type === 'computer_call') {
+      return serializeCompatComputerCall({
+        item: toolCall,
+      })
+    }
+
+    return {
+      id: toolCall.call_id,
+      type: 'function' as const,
+      function: {
+        name: toolCall.name,
+        arguments: toolCall.arguments,
+      },
+    }
+  })
 
 export const serializeResponseAsRun = ({
   response,
@@ -89,7 +97,7 @@ export const serializeResponseAsRun = ({
               tool_calls: serializeToolCalls({ toolCalls: pendingToolCalls }),
             },
           }
-        : null,
+        : null as any,
     last_error: response.error as OpenAI.Beta.Threads.Run['last_error'],
     expires_at: response.created_at,
     started_at: response.created_at,

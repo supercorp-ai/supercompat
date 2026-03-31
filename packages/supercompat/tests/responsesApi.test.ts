@@ -11,6 +11,16 @@ import {
   responsesStorageAdapter,
 } from '../src/index'
 
+// The responsesStorageAdapter SSE stream wraps events as:
+//   { event: null, data: { event: 'thread.run.created', data: {...} } }
+// This helper extracts the event name from either format.
+const getEventName = (event: any): string | null =>
+  event?.event ?? event?.data?.event ?? null
+
+// Extract the run/step data from an event regardless of nesting
+const getEventData = (event: any): any =>
+  event?.event ? event.data : event?.data?.data ?? event?.data
+
 // Skip slow tests if SKIP_SLOW_TESTS is set
 const shouldSkipSlowTests = process.env.SKIP_SLOW_TESTS === 'true'
 const testOrSkip = shouldSkipSlowTests ? test.skip : test
@@ -203,7 +213,7 @@ test('responsesRunAdapter streams tool calls via OpenAI', async () => {
     | OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
     | undefined
   for await (const event of run) {
-    if (event.event === 'thread.run.requires_action') {
+    if (getEventName(event) === 'thread.run.requires_action') {
       requiresActionEvent = event as OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
     }
   }
@@ -211,7 +221,7 @@ test('responsesRunAdapter streams tool calls via OpenAI', async () => {
   assert.ok(requiresActionEvent)
 
   const runSteps = await client.beta.threads.runs.steps.list(
-    requiresActionEvent!.data.id,
+    getEventData(requiresActionEvent!).id,
     { thread_id: thread.id },
   )
   const toolStep = runSteps.data.find(
@@ -220,11 +230,11 @@ test('responsesRunAdapter streams tool calls via OpenAI', async () => {
   assert.equal(toolStep?.step_details?.tool_calls[0]?.type, 'function')
 
   const toolCallId =
-    requiresActionEvent!.data.required_action?.submit_tool_outputs
+    getEventData(requiresActionEvent!).required_action?.submit_tool_outputs
       .tool_calls[0].id
 
   const submit = await client.beta.threads.runs.submitToolOutputs(
-    requiresActionEvent!.data.id,
+    getEventData(requiresActionEvent!).id,
     {
       thread_id: thread.id,
       stream: true,
@@ -327,7 +337,7 @@ testOrSkip('responsesRunAdapter handles multiple simultaneous tool calls', async
     | OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
     | undefined
   for await (const event of run) {
-    if (event.event === 'thread.run.requires_action') {
+    if (getEventName(event) === 'thread.run.requires_action') {
       requiresActionEvent = event as OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
       break
     }
@@ -336,7 +346,7 @@ testOrSkip('responsesRunAdapter handles multiple simultaneous tool calls', async
   assert.ok(requiresActionEvent, 'Run should require tool outputs')
 
   const toolCalls =
-    requiresActionEvent!.data.required_action?.submit_tool_outputs.tool_calls ??
+    getEventData(requiresActionEvent!).required_action?.submit_tool_outputs.tool_calls ??
     []
   assert.ok(toolCalls.length >= 2, 'Expected at least two tool calls')
 
@@ -353,7 +363,7 @@ testOrSkip('responsesRunAdapter handles multiple simultaneous tool calls', async
   })
 
   const submit = await client.beta.threads.runs.submitToolOutputs(
-    requiresActionEvent!.data.id,
+    getEventData(requiresActionEvent!).id,
     {
       thread_id: thread.id,
       stream: true,
@@ -472,7 +482,7 @@ test('responsesStorageAdapter streams without tool', async (t) => {
   // Drain the stream (should reach completed without requires_action)
   let sawCompleted = false
   for await (const event of run) {
-    if (event.event === 'thread.run.completed') {
+    if (getEventName(event) === 'thread.run.completed') {
       sawCompleted = true
     }
   }
@@ -577,7 +587,7 @@ test('responsesStorageAdapter streams with tool', async (t) => {
     | OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
     | undefined
   for await (const event of run) {
-    if (event.event === 'thread.run.requires_action') {
+    if (getEventName(event) === 'thread.run.requires_action') {
       requiresActionEvent = event as OpenAI.Beta.AssistantStreamEvent.ThreadRunRequiresAction
     }
   }
@@ -585,7 +595,7 @@ test('responsesStorageAdapter streams with tool', async (t) => {
   assert.ok(requiresActionEvent)
 
   const steps = await client.beta.threads.runs.steps.list(
-    requiresActionEvent!.data.id,
+    getEventData(requiresActionEvent!).id,
     { thread_id: thread.id },
   )
   const toolStep = steps.data.find(
@@ -594,12 +604,12 @@ test('responsesStorageAdapter streams with tool', async (t) => {
   assert.equal(toolStep?.step_details?.tool_calls[0]?.type, 'function')
 
   const toolCall =
-    requiresActionEvent!.data.required_action?.submit_tool_outputs.tool_calls[0]
+    getEventData(requiresActionEvent!).required_action?.submit_tool_outputs.tool_calls[0]
   assert.ok(toolCall)
   const toolCallId = toolCall?.id
 
   const submit = await client.beta.threads.runs.submitToolOutputs(
-    requiresActionEvent!.data.id,
+    getEventData(requiresActionEvent!).id,
     {
       thread_id: thread.id,
       tool_outputs: [
@@ -730,7 +740,7 @@ test('responsesStorageAdapter saves metadata during streaming', async (t) => {
 
   let sawCompleted = false
   for await (const event of run) {
-    if (event.event === 'thread.run.completed') {
+    if (getEventName(event) === 'thread.run.completed') {
       sawCompleted = true
     }
   }

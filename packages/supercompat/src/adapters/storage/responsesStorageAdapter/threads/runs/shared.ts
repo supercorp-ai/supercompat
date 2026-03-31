@@ -1,18 +1,32 @@
 import type OpenAI from 'openai'
+import { serializeComputerUseTool } from '@/lib/openaiComputerUse'
 
 export const serializeTools = ({
   tools,
+  useOpenaiComputerTool,
 }: {
   tools: OpenAI.Beta.Threads.Runs.RunCreateParams['tools']
+  useOpenaiComputerTool: boolean
 }) => {
   if (!tools?.length) return {}
 
   return {
-    tools: tools.map((tool) => ({
-      type: tool.type,
-      // @ts-ignore-next-line
-      ...(tool[tool.type] || {}),
-    }))
+    tools: tools.map((tool) => {
+      const toolType = (tool as any).type
+
+      if (toolType === 'computer' || toolType === 'computer_use_preview') {
+        return serializeComputerUseTool({
+          useOpenaiComputerTool,
+          tool: tool as unknown as Record<string, unknown>,
+        })
+      }
+
+      return {
+        type: tool.type,
+        // @ts-ignore-next-line
+        ...(tool[tool.type] || {}),
+      }
+    })
   }
 }
 

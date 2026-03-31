@@ -3,6 +3,60 @@ import type OpenAI from 'openai'
 
 type ItemType = OpenAI.Conversations.ConversationItem | OpenAI.Responses.ResponseItem | OpenAI.Responses.ResponseInputItem.Message
 
+const serializeAnnotations = ({
+  annotations,
+}: {
+  annotations: any[]
+}): OpenAI.Beta.Threads.Messages.Annotation[] =>
+  annotations
+    .map((ann: any) => {
+      if (ann.type === 'file_citation') {
+        return {
+          type: 'file_citation' as const,
+          text: ann.text ?? '',
+          start_index: ann.start_index ?? 0,
+          end_index: ann.end_index ?? 0,
+          file_citation: {
+            file_id:
+              ann.file_citation?.file_id ??
+              ann.file_id ??
+              '',
+          },
+        }
+      }
+
+      if (ann.type === 'file_path') {
+        return {
+          type: 'file_path' as const,
+          text: ann.text ?? '',
+          start_index: ann.start_index ?? 0,
+          end_index: ann.end_index ?? 0,
+          file_path: {
+            file_id:
+              ann.file_path?.file_id ??
+              ann.file_id ??
+              '',
+          },
+        }
+      }
+
+      // Responses API code interpreter annotations
+      if (ann.type === 'container_file_citation') {
+        return {
+          type: 'file_path' as const,
+          text: ann.text ?? '',
+          start_index: ann.start_index ?? 0,
+          end_index: ann.end_index ?? 0,
+          file_path: {
+            file_id: ann.file_id ?? '',
+          },
+        }
+      }
+
+      return null
+    })
+    .filter(Boolean) as OpenAI.Beta.Threads.Messages.Annotation[]
+
 const serializeContent = ({
   item,
 }: {
@@ -19,11 +73,13 @@ const serializeContent = ({
           },
         }
       } else if (contentBlock.type === 'output_text') {
+        const rawAnnotations = (contentBlock as any).annotations ?? []
+
         return {
           type: 'text' as const,
           text: {
             value: contentBlock.text,
-            annotations: [],
+            annotations: serializeAnnotations({ annotations: rawAnnotations }),
           },
         }
       } else if (contentBlock.type === 'input_image') {

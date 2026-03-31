@@ -1,6 +1,7 @@
 import dayjs from 'dayjs'
 import { uid } from 'radash'
 import type OpenAI from 'openai'
+import { getComputerCallActions } from '@/lib/openaiComputerUse'
 
 type RunStep = OpenAI.Beta.Threads.Runs.RunStep
 type FunctionToolCall = OpenAI.Beta.Threads.Runs.Steps.FunctionToolCall
@@ -48,13 +49,18 @@ export const serializeItemAsComputerCallRunStep = ({
     i.call_id === item.call_id
   )) as OpenAI.Responses.ResponseComputerToolCallOutputItem | undefined
 
+  const actions = getComputerCallActions({
+    item,
+  })
+
   const toolCall: FunctionToolCall = {
     id: item.call_id,
     type: 'function',
     function: {
       name: 'computer_call',
       arguments: JSON.stringify({
-        action: item.action,
+        ...(actions.length === 1 ? { action: actions[0] } : {}),
+        ...(actions.length > 0 ? { actions } : {}),
         pending_safety_checks: item.pending_safety_checks,
       }),
       output: computerCallOutput ? JSON.stringify(computerCallOutput.output) : null,

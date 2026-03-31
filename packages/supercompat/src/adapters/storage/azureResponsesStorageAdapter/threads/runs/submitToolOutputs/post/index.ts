@@ -3,6 +3,7 @@ import type { RunAdapterWithAssistant } from '@/types'
 import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
 import { serializeItemAsFunctionCallRunStep } from '@/lib/items/serializeItemAsFunctionCallRunStep'
 import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsComputerCallRunStep'
+import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
 import { getToolCallOutputItems, serializeTools, truncation } from '@/adapters/storage/responsesStorageAdapter/threads/runs/submitToolOutputs/shared'
 
 export const post = ({
@@ -61,7 +62,12 @@ export const post = ({
 
   if (!azureAgentId) {
     responseBody.model = openaiAssistant.model
-    Object.assign(responseBody, serializeTools({ tools: openaiAssistant.tools }))
+    Object.assign(responseBody, serializeTools({
+      tools: openaiAssistant.tools,
+      useOpenaiComputerTool: isOpenaiComputerUseModel({
+        model: openaiAssistant.model,
+      }),
+    }))
     responseBody.truncation = truncation({ openaiAssistant })
   }
 

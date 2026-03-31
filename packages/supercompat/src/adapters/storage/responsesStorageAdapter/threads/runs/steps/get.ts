@@ -36,8 +36,8 @@ export const get = ({
   const response = await client.responses.retrieve(runId)
 
   const latestToolCallItem = response.output.findLast((item) => (
-    item.type === 'function_call'
-    // item.type === 'computer_call'
+    item.type === 'function_call' ||
+    item.type === 'computer_call'
   ))
 
   let functionCallOutputItems: OpenAI.Responses.ResponseFunctionToolCallOutputItem[] = []

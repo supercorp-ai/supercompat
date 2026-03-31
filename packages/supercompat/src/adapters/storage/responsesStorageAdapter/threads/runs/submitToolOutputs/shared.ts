@@ -1,17 +1,22 @@
 import type { OpenAI } from 'openai'
+import { serializeComputerUseTool } from '@/lib/openaiComputerUse'
 
 const computerCallOutput = ({
   toolOutput,
 }: {
   toolOutput: OpenAI.Beta.Threads.RunSubmitToolOutputsParams['tool_outputs'][number]
 }) => {
-  if (typeof toolOutput.output !== 'string') return { isComputerCallOutput: false }
-
   let parsedOutput
 
-  try {
-    parsedOutput = JSON.parse(toolOutput.output)
-  } catch {
+  if (typeof toolOutput.output === 'string') {
+    try {
+      parsedOutput = JSON.parse(toolOutput.output)
+    } catch {
+      return { isComputerCallOutput: false }
+    }
+  } else if (typeof toolOutput.output === 'object' && toolOutput.output !== null) {
+    parsedOutput = toolOutput.output
+  } else {
     return { isComputerCallOutput: false }
   }
 
@@ -60,16 +65,25 @@ export const getToolCallOutputItems = ({
 
 export const serializeTools = ({
   tools,
+  useOpenaiComputerTool,
 }: {
   tools: OpenAI.Beta.Threads.Runs.RunCreateParams['tools']
+  useOpenaiComputerTool: boolean
 }) => {
   if (!tools?.length) return {}
 
   return {
     tools: tools.map((tool) => ({
-      type: tool.type,
-      // @ts-ignore-next-line
-      ...(tool[tool.type] || {}),
+      ...(((tool as any).type === 'computer' || (tool as any).type === 'computer_use_preview')
+        ? serializeComputerUseTool({
+            useOpenaiComputerTool,
+            tool: tool as unknown as Record<string, unknown>,
+          })
+        : {
+            type: tool.type,
+            // @ts-ignore-next-line
+            ...(tool[tool.type] || {}),
+          }),
     }))
   }
 }

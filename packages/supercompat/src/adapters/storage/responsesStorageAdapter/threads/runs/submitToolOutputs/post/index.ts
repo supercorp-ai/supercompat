@@ -3,6 +3,7 @@ import type { RunAdapterWithAssistant } from '@/types'
 import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
 import { serializeItemAsFunctionCallRunStep } from '@/lib/items/serializeItemAsFunctionCallRunStep'
 import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsComputerCallRunStep'
+import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
 import { getToolCallOutputItems, serializeTools, truncation } from '../shared'
 
 export const post = ({
@@ -33,19 +34,25 @@ export const post = ({
     openaiAssistant.instructions.trim().length > 0
 
   const responseBody: OpenAI.Responses.ResponseCreateParams = {
-    conversation: threadId,
+    previous_response_id: runId,
     stream,
     input,
   }
 
   responseBody.model = openaiAssistant.model
-  Object.assign(responseBody, serializeTools({ tools: openaiAssistant.tools }))
+  Object.assign(responseBody, serializeTools({
+    tools: openaiAssistant.tools,
+    useOpenaiComputerTool: isOpenaiComputerUseModel({
+      model: openaiAssistant.model,
+    }),
+  }))
   responseBody.truncation = truncation({ openaiAssistant })
 
   if (shouldSendInstructions && typeof openaiAssistant.instructions === 'string') {
     responseBody.instructions = openaiAssistant.instructions
   }
 
+  console.log(`[submitToolOutputs] Sending to OpenAI:`, JSON.stringify({ input: responseBody.input, tools: responseBody.tools }).slice(0, 500))
   const response = await client.responses.create(responseBody)
 
   const readableStream = new ReadableStream({

@@ -1,3 +1,5 @@
+import { serializeComputerUseTool } from '@/lib/openaiComputerUse'
+
 type ToolWithRelations = {
   id: string
   type: string
@@ -20,7 +22,13 @@ type ToolWithRelations = {
   } | null
 }
 
-const serializeTool = (tool: ToolWithRelations) => {
+const serializeTool = ({
+  tool,
+  useOpenaiComputerTool,
+}: {
+  tool: ToolWithRelations
+  useOpenaiComputerTool: boolean
+}) => {
   switch (tool.type) {
     case 'FUNCTION':
       return {
@@ -45,12 +53,14 @@ const serializeTool = (tool: ToolWithRelations) => {
         type: 'code_interpreter' as const,
       }
     case 'COMPUTER_USE':
-      return {
-        type: 'computer_use_preview' as const,
-        display_height: tool.computerUseTool?.displayHeight ?? 720,
-        display_width: tool.computerUseTool?.displayWidth ?? 1280,
-        environment: tool.computerUseTool?.environment ?? 'linux',
-      }
+      return serializeComputerUseTool({
+        useOpenaiComputerTool,
+        tool: {
+          display_height: tool.computerUseTool?.displayHeight ?? 720,
+          display_width: tool.computerUseTool?.displayWidth ?? 1280,
+          environment: tool.computerUseTool?.environment ?? 'linux',
+        },
+      })
     default:
       return { type: tool.type.toLowerCase() }
   }
@@ -58,6 +68,8 @@ const serializeTool = (tool: ToolWithRelations) => {
 
 export const serializeTools = ({
   tools,
+  useOpenaiComputerTool,
 }: {
   tools: ToolWithRelations[]
-}) => tools.map(serializeTool)
+  useOpenaiComputerTool: boolean
+}) => tools.map((tool) => serializeTool({ tool, useOpenaiComputerTool }))

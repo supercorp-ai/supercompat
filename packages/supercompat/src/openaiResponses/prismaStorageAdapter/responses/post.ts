@@ -21,6 +21,7 @@ const createTools = async ({
         case 'file_search': return 'FILE_SEARCH'
         case 'web_search_preview': return 'WEB_SEARCH'
         case 'code_interpreter': return 'CODE_INTERPRETER'
+        case 'computer': return 'COMPUTER_USE'
         case 'computer_use_preview': return 'COMPUTER_USE'
         default: return 'FUNCTION'
       }

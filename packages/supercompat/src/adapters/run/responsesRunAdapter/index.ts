@@ -12,6 +12,7 @@ import { serializeItemAsMcpCallRunStep } from '@/lib/items/serializeItemAsMcpCal
 import { serializeItemAsCodeInterpreterCallRunStep } from '@/lib/items/serializeItemAsCodeInterpreterCallRunStep'
 import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsComputerCallRunStep'
 import { serializeItemAsReasoningRunStep } from '@/lib/items/serializeItemAsReasoningRunStep'
+import { serializeCompatComputerCall } from '@/lib/openaiComputerUse'
 
 type Args = {
   select?: {
@@ -41,14 +42,9 @@ const serializeToolCalls = ({
         },
       }
     } else if (toolCall.type === 'computer_call') {
-      return {
-        id: toolCall.call_id,
-        type: 'computer_call' as const,
-        computer_call: {
-          action: toolCall.action,
-          pending_safety_checks: toolCall.pending_safety_checks,
-        },
-      }
+      return serializeCompatComputerCall({
+        item: toolCall,
+      })
     }
   }) as OpenAI.Beta.Threads.Runs.RequiredActionFunctionToolCall[]
 )
