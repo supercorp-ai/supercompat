@@ -33,10 +33,7 @@ export const post = ({
           threadId,
           tool_outputs,
           onThreadRunStepCompleted: async ({ runStep }) => {
-            controller.enqueue(`data: ${JSON.stringify({
-              event: 'thread.run.step.completed',
-              data: serializeRunStep({ runStep }),
-            })}\n\n`)
+            controller.enqueue(`event: thread.run.step.completed\ndata: ${JSON.stringify(serializeRunStep({ runStep }))}\n\n`)
           }
         })
 
@@ -45,8 +42,8 @@ export const post = ({
           onEvent: onEvent({
             controller: {
               ...controller,
-              enqueue: (data) => {
-                controller.enqueue(`data: ${JSON.stringify(data)}\n\n`)
+              enqueue: (data: any) => {
+                controller.enqueue(`event: ${data.event}\ndata: ${JSON.stringify(data.data)}\n\n`)
               },
             },
             prisma,
@@ -79,8 +76,8 @@ export const post = ({
             onEvent: onEvent({
               controller: {
                 ...controller,
-                enqueue: (data) => {
-                  controller.enqueue(`data: ${JSON.stringify(data)}\n\n`)
+                enqueue: (data: any) => {
+                  controller.enqueue(`event: ${data.event}\ndata: ${JSON.stringify(data.data)}\n\n`)
                 },
               },
               prisma,

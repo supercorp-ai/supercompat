@@ -87,9 +87,9 @@ test('code interpreter file annotations preserved through supercompat messages.l
   const conversation = await realOpenAI.conversations.create({})
 
   const response = await realOpenAI.responses.create({
-    model: 'gpt-4.1-mini',
-    instructions: 'Use code interpreter to create the file. Provide the download link after.',
-    input: 'Create /mnt/data/test.txt containing "hello world" with code interpreter, then give the download link.',
+    model: 'gpt-4.1',
+    instructions: 'Always execute code using code_interpreter. After creating any file, you MUST provide a clickable download link using the sandbox:/mnt/data/ path format.',
+    input: [{ role: 'user', content: 'Create /mnt/data/report.csv with headers name,age and one row Alice,30. Then give me the download link.' }],
     tools: [{ type: 'code_interpreter', container: { type: 'auto' } }],
     conversation: conversation.id,
     store: true,

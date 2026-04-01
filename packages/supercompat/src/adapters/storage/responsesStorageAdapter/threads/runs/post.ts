@@ -80,26 +80,21 @@ export const post = ({
         await runAdapter.handleRun({
           threadId,
           response,
-          onEvent: async (event) => (
-            controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
+          onEvent: async (event: any) => (
+            controller.enqueue(`event: ${event.event}\ndata: ${JSON.stringify(event.data)}\n\n`)
           ),
         })
       } catch (error: any) {
         console.error(error)
 
-        const event = {
-          event: 'thread.run.failed',
-          data: {
-            id: uid(24),
-            failed_at: dayjs().unix(),
-            last_error: {
-              code: 'server_error',
-              message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
-            },
+        controller.enqueue(`event: thread.run.failed\ndata: ${JSON.stringify({
+          id: uid(24),
+          failed_at: dayjs().unix(),
+          last_error: {
+            code: 'server_error',
+            message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
           },
-        }
-
-        controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
+        })}\n\n`)
       }
 
       controller.close()

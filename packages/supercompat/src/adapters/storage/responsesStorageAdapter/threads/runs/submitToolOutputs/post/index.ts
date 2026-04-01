@@ -34,7 +34,7 @@ export const post = ({
     openaiAssistant.instructions.trim().length > 0
 
   const responseBody: OpenAI.Responses.ResponseCreateParams = {
-    previous_response_id: runId,
+    conversation: threadId,
     stream,
     input,
   }
@@ -67,16 +67,13 @@ export const post = ({
           return
         }
 
-        controller.enqueue(`data: ${JSON.stringify({
-          event: 'thread.run.step.completed',
-          data: serializeItemAsFunctionCallRunStep({
+        controller.enqueue(`event: thread.run.step.completed\ndata: ${JSON.stringify(serializeItemAsFunctionCallRunStep({
             item: toolCallItem,
             items: toolCallOutputItems.functionCallOutputItems,
             threadId,
             openaiAssistant,
             runId,
-          })
-        })}\n\n`)
+          }))}\n\n`)
       })
 
       toolCallOutputItems.computerCallOutputItems.forEach((item) => {
@@ -89,23 +86,20 @@ export const post = ({
           return
         }
 
-        controller.enqueue(`data: ${JSON.stringify({
-          event: 'thread.run.step.completed',
-          data: serializeItemAsComputerCallRunStep({
+        controller.enqueue(`event: thread.run.step.completed\ndata: ${JSON.stringify(serializeItemAsComputerCallRunStep({
             item: toolCallItem,
             items: toolCallOutputItems.computerCallOutputItems,
             threadId,
             openaiAssistant,
             runId,
-          })
-        })}\n\n`)
+          }))}\n\n`)
       })
 
       await runAdapter.handleRun({
         threadId,
         response,
-        onEvent: async (event) => (
-          controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
+        onEvent: async (event: any) => (
+          controller.enqueue(`event: ${event.event}\ndata: ${JSON.stringify(event.data)}\n\n`)
         ),
       })
 

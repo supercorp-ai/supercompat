@@ -95,8 +95,8 @@ export const post = ({
           onEvent: onEvent({
             controller: {
               ...controller,
-              enqueue: (data) => {
-                controller.enqueue(`data: ${JSON.stringify(data)}\n\n`)
+              enqueue: (data: any) => {
+                controller.enqueue(`event: ${data.event}\ndata: ${JSON.stringify(data.data)}\n\n`)
               },
             },
             prisma,
@@ -112,8 +112,8 @@ export const post = ({
         onEvent({
           controller: {
             ...controller,
-            enqueue: (data) => {
-              controller.enqueue(`data: ${JSON.stringify(data)}\n\n`)
+            enqueue: (data: any) => {
+              controller.enqueue(`event: ${data.event}\ndata: ${JSON.stringify(data.data)}\n\n`)
             },
           },
           prisma,

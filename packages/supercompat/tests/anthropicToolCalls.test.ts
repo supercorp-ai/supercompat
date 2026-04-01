@@ -52,7 +52,7 @@ test('completions run adapter handles anthropic function tool calls with empty a
 
   try {
     const assistant = await client.beta.assistants.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-6',
       instructions:
         'Always call the ping function before responding to the user.',
       tools,
@@ -138,9 +138,9 @@ test('completions run adapter surfaces anthropic getComments tool call', async (
 
   try {
     const assistant = await client.beta.assistants.create({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-6',
       instructions:
-        'Call getComments to retrieve viewer comments before responding.',
+        'You MUST call the getComments tool before responding to any request about comments. NEVER respond without calling the tool first.',
       tools,
     })
 
@@ -151,14 +151,14 @@ test('completions run adapter surfaces anthropic getComments tool call', async (
     await client.beta.threads.messages.create(thread.id, {
       role: 'user',
       content:
-        'Fetch the latest comments for stream a1c19514-7623-400e-abeb-7b4defeebdbb, summarize key themes.',
+        'Use the getComments tool to fetch the latest comments for stream a1c19514-7623-400e-abeb-7b4defeebdbb, then summarize key themes.',
     })
 
     const run = await client.beta.threads.runs.createAndPoll(thread.id, {
       assistant_id: assistant.id,
       tools,
       instructions:
-        'Always invoke getComments first, then summarize what viewers are saying.',
+        'You MUST call the getComments tool first. Do not respond without calling the tool.',
     })
 
     assert.equal(run.status, 'requires_action')
@@ -234,9 +234,9 @@ test(
 
     try {
       const assistant = await client.beta.assistants.create({
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-4-6',
         instructions:
-          'Call getComments to retrieve viewer comments before responding.',
+          'You MUST call the getComments tool before responding to any request about comments. NEVER respond without calling the tool first.',
         tools,
       })
 
@@ -247,14 +247,14 @@ test(
       await client.beta.threads.messages.create(thread.id, {
         role: 'user',
         content:
-          'Check stream a1c19514-7623-400e-abeb-7b4defeebdbb for new comments and summarize them.',
+          'Use the getComments tool to check stream a1c19514-7623-400e-abeb-7b4defeebdbb for new comments, then summarize them.',
       })
 
       const run = await client.beta.threads.runs.create(thread.id, {
         assistant_id: assistant.id,
         tools,
         instructions:
-          'Call getComments first, then summarize what viewers are saying.',
+          'You MUST call the getComments tool first. Do not respond without calling the tool.',
         stream: true,
       })
 
@@ -378,8 +378,8 @@ test('completions run adapter surfaces anthropic tool calls', async () => {
   ]
 
   const assistant = await client.beta.assistants.create({
-    model: 'claude-sonnet-4-5',
-    instructions: 'Use the get_current_weather and then answer the message.',
+    model: 'claude-sonnet-4-6',
+    instructions: 'You MUST call the get_current_weather tool for ANY weather question. NEVER answer a weather question without calling the tool first. This is mandatory.',
     tools,
   })
 
@@ -389,13 +389,13 @@ test('completions run adapter surfaces anthropic tool calls', async () => {
 
   await client.beta.threads.messages.create(thread.id, {
     role: 'user',
-    content: 'What is the weather in San Francisco, CA?',
+    content: 'What is the weather in San Francisco, CA? Use the get_current_weather tool to find out.',
   })
 
   const run = await client.beta.threads.runs.create(thread.id, {
     assistant_id: assistant.id,
-    instructions: 'Use the get_current_weather and then answer the message.',
-    model: 'claude-sonnet-4-5',
+    instructions: 'You MUST call the get_current_weather tool before answering. Do not answer without calling the tool first.',
+    model: 'claude-sonnet-4-6',
     tools,
     stream: true,
     truncation_strategy: {
@@ -471,7 +471,7 @@ test('completions run adapter surfaces anthropic web search tool calls', async (
   ] as unknown as OpenAI.Beta.AssistantTool[]
 
   const assistant = await client.beta.assistants.create({
-    model: 'claude-sonnet-4-5',
+    model: 'claude-sonnet-4-6',
     instructions:
       'You are a helpful assistant that must call the web_search tool before responding.',
     tools,
@@ -557,7 +557,7 @@ test(
 
     try {
       const assistant = await client.beta.assistants.create({
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-4-6',
         instructions:
           'You are a helpful assistant. Use the code_execution tool to run Python when asked.',
         tools,
@@ -658,7 +658,7 @@ test(
 
     try {
       const assistant = await client.beta.assistants.create({
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-4-6',
         instructions:
           'You are a helpful agent. Use the computer tool to inspect a web page and reply with what you find.',
         tools,
