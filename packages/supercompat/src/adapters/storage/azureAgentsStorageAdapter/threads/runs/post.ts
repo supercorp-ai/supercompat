@@ -3,6 +3,7 @@ import type { AIProjectClient } from '@azure/ai-projects'
 import { uid } from 'radash'
 import dayjs from 'dayjs'
 import { runsRegexp } from '@/lib/runs/runsRegexp'
+import { enqueueSSE } from '@/lib/sse/enqueueSSE'
 import { RunAdapterWithAssistant } from '@/types'
 
 // Get azureAgentId from the run adapter
@@ -53,25 +54,20 @@ export const post =
               instructions,
               tools,
               onEvent: async (event: any) => {
-                controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
+                enqueueSSE(controller, event.event, event.data)
               },
             } as any)
           } catch (error: any) {
             console.error(error)
 
-            const event = {
-              event: 'thread.run.failed',
-              data: {
-                id: uid(24),
-                failed_at: dayjs().unix(),
-                last_error: {
-                  code: 'server_error',
-                  message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
-                },
+            enqueueSSE(controller, 'thread.run.failed', {
+              id: uid(24),
+              failed_at: dayjs().unix(),
+              last_error: {
+                code: 'server_error',
+                message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
               },
-            }
-
-            controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
+            })
           }
 
           controller.close()

@@ -9,7 +9,11 @@ import { threadMessageCreated } from './threadMessageCreated'
 import { threadMessageDelta } from './threadMessageDelta'
 import { threadMessageCompleted } from './threadMessageCompleted'
 
+// thread.run.created just passes through — run already exists in DB
+const threadRunCreated = ({ controller, event }: any) => { controller.enqueue(event) }
+
 export const handlers = {
+  'thread.run.created': threadRunCreated,
   'thread.run.in_progress': threadRunInProgress,
   'thread.run.failed': threadRunFailed,
   'thread.run.completed': threadRunCompleted,

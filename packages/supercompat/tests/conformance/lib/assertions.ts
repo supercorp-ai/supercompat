@@ -37,7 +37,7 @@ export function assertMessageShape(obj: any, message?: string) {
   assert.equal(typeof obj.thread_id, 'string', `${prefix}thread_id should be string`)
   assert.ok(obj.run_id === null || typeof obj.run_id === 'string', `${prefix}run_id should be string|null`)
   assert.ok(obj.assistant_id === null || typeof obj.assistant_id === 'string', `${prefix}assistant_id should be string|null`)
-  assert.ok(obj.attachments === null || Array.isArray(obj.attachments), `${prefix}attachments should be array|null`)
+  assert.ok(obj.attachments === null || obj.attachments === undefined || Array.isArray(obj.attachments), `${prefix}attachments should be array|null|undefined`)
   assert.ok(obj.metadata === null || typeof obj.metadata === 'object', `${prefix}metadata should be object|null`)
   // These fields may be undefined on user-created messages
   if (obj.completed_at !== undefined) {

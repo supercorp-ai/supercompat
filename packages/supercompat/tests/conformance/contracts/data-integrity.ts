@@ -1,5 +1,6 @@
 import type OpenAI from 'openai'
 import assert from 'node:assert/strict'
+import { config } from '../lib/config'
 import {
   assertMessageShape,
   assertRunShape,
@@ -18,7 +19,7 @@ export const metadataRoundTrip: Contract = async (client) => {
   const metadata = { key1: 'value1', key2: 'value2', special: 'with spaces & symbols!' }
 
   const assistant = await client.beta.assistants.create({
-    model: 'gpt-4.1-mini',
+    model: config.model,
     metadata,
   })
   assert.deepEqual(assistant.metadata, metadata)
@@ -51,7 +52,7 @@ export const messageContentPreserved: Contract = async (client) => {
 
 export const runIdOnMessage: Contract = async (client) => {
   const assistant = await client.beta.assistants.create({
-    model: 'gpt-4.1-mini',
+    model: config.model,
     instructions: 'Reply concisely.',
   })
   const thread = await client.beta.threads.create()
@@ -77,7 +78,7 @@ export const runIdOnMessage: Contract = async (client) => {
 
 export const threadIdConsistency: Contract = async (client) => {
   const assistant = await client.beta.assistants.create({
-    model: 'gpt-4.1-mini',
+    model: config.model,
     instructions: 'Reply concisely.',
   })
   const thread = await client.beta.threads.create()
@@ -106,7 +107,7 @@ export const threadIdConsistency: Contract = async (client) => {
 
 export const messageStepLinkage: Contract = async (client) => {
   const assistant = await client.beta.assistants.create({
-    model: 'gpt-4.1-mini',
+    model: config.model,
     instructions: 'Reply concisely.',
   })
   const thread = await client.beta.threads.create()
@@ -192,6 +193,33 @@ export const paginationWithCursor: Contract = async (client) => {
   await client.beta.threads.delete(thread.id)
 }
 
+// --- Pagination with before cursor (reverse) ---
+
+export const paginationWithBeforeCursor: Contract = async (client) => {
+  const thread = await client.beta.threads.create()
+
+  const m1 = await client.beta.threads.messages.create(thread.id, { role: 'user', content: 'One' })
+  const m2 = await client.beta.threads.messages.create(thread.id, { role: 'user', content: 'Two' })
+  const m3 = await client.beta.threads.messages.create(thread.id, { role: 'user', content: 'Three' })
+
+  // Default desc order: [m3, m2, m1]
+  // "before" returns items appearing before the cursor in the list (i.e. newer items)
+  // before: m2 → [m3] (one item before m2 in the desc list)
+  const page = await client.beta.threads.messages.list(thread.id, { limit: 1, before: m2.id })
+  assert.equal(page.data.length, 1)
+  assert.equal(page.data[0].id, m3.id, 'Before m2 should return m3')
+
+  // before: m1 → [m3, m2] (two items before m1)
+  const page2 = await client.beta.threads.messages.list(thread.id, { before: m1.id })
+  assert.equal(page2.data.length, 2, 'Before oldest should return 2 items')
+
+  // before: m3 → [] (nothing before the newest)
+  const page3 = await client.beta.threads.messages.list(thread.id, { before: m3.id })
+  assert.equal(page3.data.length, 0, 'Nothing before newest')
+
+  await client.beta.threads.delete(thread.id)
+}
+
 // --- Empty thread ---
 
 export const emptyThreadMessages: Contract = async (client) => {
@@ -209,7 +237,7 @@ export const emptyThreadMessages: Contract = async (client) => {
 
 export const runRetrieveAfterCompletion: Contract = async (client) => {
   const assistant = await client.beta.assistants.create({
-    model: 'gpt-4.1-mini',
+    model: config.model,
     instructions: 'Reply concisely.',
   })
   const thread = await client.beta.threads.create()
@@ -234,7 +262,7 @@ export const runRetrieveAfterCompletion: Contract = async (client) => {
 
 export const streamDeltaAccumulation: Contract = async (client) => {
   const assistant = await client.beta.assistants.create({
-    model: 'gpt-4.1-mini',
+    model: config.model,
     instructions: 'Reply with exactly: The quick brown fox jumps over the lazy dog.',
   })
   const thread = await client.beta.threads.create()
@@ -279,7 +307,7 @@ export const streamDeltaAccumulation: Contract = async (client) => {
 
 export const cancelRun: Contract = async (client) => {
   const assistant = await client.beta.assistants.create({
-    model: 'gpt-4.1-mini',
+    model: config.model,
     instructions: fixtures.instructions.forceWeatherTool,
     tools: [fixtures.weatherTool],
   })
@@ -319,7 +347,7 @@ export const cancelRun: Contract = async (client) => {
 
 export const specialCharsInToolOutput: Contract = async (client) => {
   const assistant = await client.beta.assistants.create({
-    model: 'gpt-4.1-mini',
+    model: config.model,
     instructions: fixtures.instructions.forceWeatherTool,
     tools: [fixtures.weatherTool],
   })
@@ -354,6 +382,104 @@ export const specialCharsInToolOutput: Contract = async (client) => {
   const toolStep = steps.data.find(s => s.type === 'tool_calls')
   const output = (toolStep!.step_details as any).tool_calls[0].function.output
   assert.equal(output, specialOutput, 'Special characters in tool output should be preserved exactly')
+
+  await cleanup(client, { assistantId: assistant.id, threadId: thread.id })
+}
+
+export const modelsList: Contract = async (client) => {
+  const list = await client.models.list()
+
+  const models = []
+  for await (const model of list) {
+    models.push(model)
+  }
+
+  assert.ok(models.length >= 1, `Should have at least 1 model, got ${models.length}`)
+
+  for (const model of models) {
+    assert.equal(typeof model.id, 'string', 'Model should have string id')
+    assert.equal(typeof model.object, 'string', 'Model should have string object field')
+  }
+}
+
+export const runStepRetrieve: Contract = async (client) => {
+  const assistant = await client.beta.assistants.create({
+    model: config.model,
+    instructions: fixtures.instructions.forceWeatherTool,
+    tools: [fixtures.weatherTool],
+  })
+  const thread = await client.beta.threads.create()
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: fixtures.prompts.weather,
+  })
+
+  // Create a run that triggers a tool call
+  const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+    assistant_id: assistant.id,
+    tools: [fixtures.weatherTool],
+  })
+  assert.equal(run.status, 'requires_action')
+
+  // Submit tool output to complete the run
+  const tc = run.required_action!.submit_tool_outputs.tool_calls[0]
+  const completed = await client.beta.threads.runs.submitToolOutputsAndPoll(
+    run.id,
+    {
+      thread_id: thread.id,
+      tool_outputs: [{ tool_call_id: tc.id, output: fixtures.weatherToolOutput }],
+    },
+  )
+  assert.equal(completed.status, 'completed')
+
+  // List steps and find one to retrieve individually
+  const steps = await client.beta.threads.runs.steps.list(run.id, { thread_id: thread.id })
+  assert.ok(steps.data.length >= 1, 'Should have at least 1 step')
+
+  const stepFromList = steps.data[0]
+  assertRunStepShape(stepFromList, 'step from list')
+
+  // Retrieve the same step individually by id
+  const retrieved = await client.beta.threads.runs.steps.retrieve(stepFromList.id, {
+    thread_id: thread.id,
+    run_id: run.id,
+  })
+
+  assertRunStepShape(retrieved, 'retrieved step')
+  assert.equal(retrieved.id, stepFromList.id, 'Retrieved step id should match')
+  assert.equal(retrieved.type, stepFromList.type, 'Retrieved step type should match')
+  assert.equal(retrieved.status, stepFromList.status, 'Retrieved step status should match')
+  assert.equal(retrieved.run_id, run.id, 'Retrieved step run_id should match')
+  assert.equal(retrieved.thread_id, thread.id, 'Retrieved step thread_id should match')
+
+  await cleanup(client, { assistantId: assistant.id, threadId: thread.id })
+}
+
+export const runUpdate: Contract = async (client) => {
+  const assistant = await client.beta.assistants.create({
+    model: config.model,
+    instructions: fixtures.instructions.noTools,
+  })
+  const thread = await client.beta.threads.create()
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: fixtures.prompts.simple,
+  })
+
+  const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+    assistant_id: assistant.id,
+  })
+  assert.equal(run.status, 'completed')
+
+  const updated = await client.beta.threads.runs.update(run.id, {
+    thread_id: thread.id,
+    metadata: { updated: 'true' },
+  })
+
+  assertRunShape(updated, 'updated run')
+  assert.equal(updated.id, run.id)
+  assert.equal(updated.thread_id, thread.id)
+  assert.deepEqual(updated.metadata, { updated: 'true' })
 
   await cleanup(client, { assistantId: assistant.id, threadId: thread.id })
 }

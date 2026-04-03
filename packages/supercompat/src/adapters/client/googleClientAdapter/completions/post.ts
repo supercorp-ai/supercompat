@@ -5,6 +5,8 @@ import { nonEmptyMessages } from '@/lib/messages/nonEmptyMessages'
 import { normalizeComputerToolCallPayload } from '../../anthropicClientAdapter/normalizeComputerToolCallPayload'
 import { normalizeGeminiAction, isGeminiAction } from '../normalizeGeminiAction'
 
+const encoder = new TextEncoder()
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -604,7 +606,7 @@ export const post = ({
                   delta: { content: part.text },
                 }],
               }
-              controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(messageDelta)}\n\n`))
             }
 
             if (part.functionCall) {
@@ -634,7 +636,7 @@ export const post = ({
                     },
                   }],
                 }
-                controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(messageDelta)}\n\n`))
               }
               chunkIndex += emitDeltas.length
               lastThoughtSignature = undefined
@@ -652,7 +654,7 @@ export const post = ({
                 finish_reason: 'stop',
               }],
             }
-            controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(messageDelta)}\n\n`))
           }
         }
 

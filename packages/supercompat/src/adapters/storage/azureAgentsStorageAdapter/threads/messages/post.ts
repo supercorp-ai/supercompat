@@ -41,10 +41,13 @@ export const post =
       }
     }
 
+    const metadata = body.metadata || undefined
+
     const message = await azureAiProject.agents.messages.create(
       threadId,
       role,
       textContent,
+      ...(metadata ? [{ metadata }] : []),
     )
 
     // Use assistantId and runId from the Azure message response

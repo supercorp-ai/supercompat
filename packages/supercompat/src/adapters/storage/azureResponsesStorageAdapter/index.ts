@@ -6,10 +6,19 @@ import { runsRegexp } from '@/lib/runs/runsRegexp'
 import { runRegexp } from '@/lib/runs/runRegexp'
 import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
 import { stepsRegexp } from '@/lib/steps/stepsRegexp'
+import { threadRegexp } from '@/lib/threads/threadRegexp'
+import { cancelRunRegexp } from '@/lib/runs/cancelRunRegexp'
+import { fileRegexp } from '@/lib/files/fileRegexp'
 import { responseRegexp } from '@/lib/responses/responseRegexp'
 // Reuse handlers from responsesStorageAdapter - they're already generic!
 import { threads } from '../responsesStorageAdapter/threads'
+import { thread } from '../responsesStorageAdapter/threads/thread'
+import { cancelRun as cancel } from '../responsesStorageAdapter/threads/run/cancel'
 import { messages } from '../responsesStorageAdapter/threads/messages'
+// File and vector store handlers from Azure Agents adapter
+import { post as fileUploadPost, del as fileDeleteHandler } from '../azureAgentsStorageAdapter/files/upload'
+import { file as fileGet } from '../azureAgentsStorageAdapter/files/get'
+import { createVectorStore, getVectorStore, deleteVectorStore } from '../azureAgentsStorageAdapter/vectorStores'
 import { runs } from './threads/runs'
 import { run } from '../responsesStorageAdapter/threads/run'
 import { steps } from '../responsesStorageAdapter/threads/runs/steps'
@@ -140,16 +149,51 @@ export const azureResponsesStorageAdapter = (): ((
       return wrapped
     }
 
+    // Lazy v1 client for file/vectorStore operations (v2 SDK lacks agents.files)
+    let cachedFileClient: any = null
+    const getFileClient = async () => {
+      if (cachedFileClient) return cachedFileClient
+      const aiProject = getAIProjectClient()
+      if (aiProject?.agents?.files) {
+        cachedFileClient = aiProject
+        return aiProject
+      }
+      const { AIProjectClient: V1 } = await import('@azure/ai-projects')
+      cachedFileClient = new V1(aiProject._endpoint, aiProject._credential)
+      return cachedFileClient
+    }
+
+    const createLazyFileHandler = (op: string): RequestHandler => async (url: string, options: any) => {
+      const fc = await getFileClient()
+      const handlers: Record<string, any> = {
+        upload: fileUploadPost({ azureAiProject: fc }),
+        get: fileGet({ azureAiProject: fc }).get,
+        delete: fileDeleteHandler({ azureAiProject: fc }),
+        vsCreate: createVectorStore({ azureAiProject: fc }),
+        vsGet: getVectorStore({ azureAiProject: fc }),
+        vsDelete: deleteVectorStore({ azureAiProject: fc }),
+      }
+      return handlers[op](url, options)
+    }
+
     return {
       requestHandlers: {
         '^/(?:v1|/?openai)/assistants$': assistants({ runAdapter: wrappedRunAdapter }),
         '^/(?:v1|/?openai)/threads$': createWrappedHandlers(threads, ['post'], { addAnnotations: true }),
+        [threadRegexp]: createWrappedHandlers(thread, ['get', 'post', 'delete']),
         [messagesRegexp]: createWrappedHandlers(messages, ['get', 'post']),
-        [runsRegexp]: createWrappedHandlers(runs, ['get', 'post']),  // Added GET for runs.list()
+        [runsRegexp]: createWrappedHandlers(runs, ['get', 'post']),
         [runRegexp]: createWrappedHandlers(run, ['get']),
         [stepsRegexp]: createWrappedHandlers(steps, ['get']),
         [submitToolOutputsRegexp]: createWrappedHandlers(submitToolOutputs, ['post']),
+        [cancelRunRegexp]: createWrappedHandlers(cancel, ['post']),
         [responseRegexp]: createWrappedHandlers(responses, ['get']),
+        // File and vector store handlers need v1 AIProjectClient (has agents.files/vectorStores).
+        // Handlers lazily create a v1 client from the v2 client's endpoint/credentials.
+        '^/(?:v1|/?openai)/files$': { post: createLazyFileHandler('upload') },
+        [fileRegexp]: { get: createLazyFileHandler('get'), delete: createLazyFileHandler('delete') },
+        '^/(?:v1|/?openai)/vector_stores$': { post: createLazyFileHandler('vsCreate') },
+        '^/(?:v1|/?openai)/vector_stores/[^/]+$': { get: createLazyFileHandler('vsGet'), delete: createLazyFileHandler('vsDelete') },
       },
     }
   }

@@ -60,10 +60,10 @@ export const get =
       started_at: dayjs(azureRun.createdAt).unix(),
       cancelled_at: null,
       failed_at: azureRun.status === 'failed' ? dayjs().unix() : null,
-      completed_at: azureRun.status === 'completed' ? dayjs().unix() : null,
+      completed_at: azureRun.completedAt ? dayjs(azureRun.completedAt).unix() : null,
       incomplete_details: null,
-      model: '',
-      instructions: '',
+      model: azureRun.model || '',
+      instructions: azureRun.instructions || '',
       tools: [],
       metadata: azureRun.metadata || {},
       temperature: null,
@@ -77,7 +77,11 @@ export const get =
       response_format: 'auto',
       tool_choice: 'auto',
       parallel_tool_calls: true,
-      usage: null,
+      usage: azureRun.usage ? {
+        prompt_tokens: (azureRun.usage as any).promptTokens ?? 0,
+        completion_tokens: (azureRun.usage as any).completionTokens ?? 0,
+        total_tokens: (azureRun.usage as any).totalTokens ?? 0,
+      } : null,
     }
 
     return new Response(JSON.stringify(openaiRun), {

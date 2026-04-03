@@ -1,5 +1,7 @@
 import type OpenAI from 'openai'
 
+const encoder = new TextEncoder()
+
 export const post = ({
   ollama,
 }: {
@@ -14,7 +16,7 @@ export const post = ({
       async start(controller) {
         // @ts-ignore-next-line
         for await (const chunk of response) {
-          controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`)
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`))
         }
 
         controller.close()

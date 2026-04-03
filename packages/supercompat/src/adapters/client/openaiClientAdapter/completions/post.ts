@@ -3,6 +3,8 @@ import { omit } from 'radash'
 import { systemDeveloperMessages } from '@/lib/messages/systemDeveloperMessages'
 import { isOModel } from '@/lib/models/isOModel'
 
+const encoder = new TextEncoder()
+
 const omitKeys = ({
   model,
 }: {
@@ -38,7 +40,7 @@ export const post = ({
       async start(controller) {
         // @ts-ignore-next-line
         for await (const chunk of response) {
-          controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`)
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`))
         }
 
         controller.close()

@@ -2,6 +2,8 @@ import type { OpenRouter } from '@openrouter/sdk'
 import { transformTools } from './computerUseTool'
 import { denormalizeComputerCallArguments, getQuirks } from './normalizeComputerCall'
 
+const encoder = new TextEncoder()
+
 const ARTIFACT_TAGS = /<\|begin_of_box\|>|<\|end_of_box\|>/g
 
 const sanitizeContent = (content: string | null | undefined): string | null | undefined => {
@@ -157,7 +159,7 @@ export const post = ({
             if (d?.content && typeof d.content === 'string') {
               d.content = sanitizeContent(d.content)
             }
-            controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`)
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`))
           }
           controller.close()
         },
@@ -184,7 +186,7 @@ export const post = ({
           const toolCalls = delta?.tool_calls as Record<string, unknown>[] | undefined
 
           if (!toolCalls) {
-            controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`)
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`))
             continue
           }
 
@@ -264,7 +266,7 @@ export const post = ({
                 },
               }],
             }
-            controller.enqueue(`data: ${JSON.stringify(modifiedChunk)}\n\n`)
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(modifiedChunk)}\n\n`))
           }
         }
 
@@ -289,7 +291,7 @@ export const post = ({
                 },
               }],
             }
-            controller.enqueue(`data: ${JSON.stringify(flushChunk)}\n\n`)
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(flushChunk)}\n\n`))
           }
         }
 

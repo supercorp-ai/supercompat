@@ -22,21 +22,30 @@ export const get = ({
     limit,
     order,
     after,
+    before,
   } = assign({
     limit: '20',
     order: 'desc',
     // after: null,
+    // before: null,
   }, Object.fromEntries(url.searchParams))
 
   const pageSize = parseInt(limit)
 
+  // "before" returns items appearing before the cursor in the current sort order.
+  // In desc order, "before: X" means items newer than X (higher in the list).
+  // Prisma: use negative `take` to go backwards from cursor.
   const messagesPlusOne = await prisma.message.findMany({
     where: { threadId },
-    take: pageSize + 1,
+    take: before ? -(pageSize + 1) : pageSize + 1,
     orderBy: { createdAt: order === 'asc' ? 'asc' : 'desc' },
     ...(after && {
       skip: 1,
       cursor: { id: after },
+    }),
+    ...(before && {
+      skip: 1,
+      cursor: { id: before },
     }),
   }) as Message[]
 

@@ -1,5 +1,7 @@
 import type OpenAI from 'openai'
 
+const encoder = new TextEncoder()
+
 export const post = ({
   humiris,
 }: {
@@ -33,7 +35,7 @@ export const post = ({
           ]
         }
 
-        controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`)
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`))
         controller.close()
       },
     })

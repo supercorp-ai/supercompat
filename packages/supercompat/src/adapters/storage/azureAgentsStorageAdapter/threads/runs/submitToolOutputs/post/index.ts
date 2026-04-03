@@ -4,6 +4,7 @@ import type { PrismaClient } from '@prisma/client'
 import { uid } from 'radash'
 import dayjs from 'dayjs'
 import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
+import { enqueueSSE } from '@/lib/sse/enqueueSSE'
 import { RunAdapterWithAssistant } from '@/types'
 
 // Complete conversion function from run adapter
@@ -469,8 +470,8 @@ export const post =
 
     const readableStream = new ReadableStream({
       async start(controller) {
-        await streamRun(async (event) => {
-          controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
+        await streamRun(async (event: any) => {
+          enqueueSSE(controller, event.event, event.data)
         })
         controller.close()
       },

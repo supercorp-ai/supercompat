@@ -3,6 +3,7 @@ import type { PrismaClient } from '@prisma/client'
 import dayjs from 'dayjs'
 import { assign } from 'radash'
 import { runsRegexp } from '@/lib/runs/runsRegexp'
+import { enqueueSSE } from '@/lib/sse/enqueueSSE'
 import { serializeRun } from './serializeRun'
 import { RunAdapterPartobClient } from '@/types'
 import { onEvent } from './onEvent'
@@ -96,7 +97,7 @@ export const post = ({
             controller: {
               ...controller,
               enqueue: (data: any) => {
-                controller.enqueue(`event: ${data.event}\ndata: ${JSON.stringify(data.data)}\n\n`)
+                enqueueSSE(controller, data.event, data.data)
               },
             },
             prisma,
@@ -113,7 +114,7 @@ export const post = ({
           controller: {
             ...controller,
             enqueue: (data: any) => {
-              controller.enqueue(`event: ${data.event}\ndata: ${JSON.stringify(data.data)}\n\n`)
+              enqueueSSE(controller, data.event, data.data)
             },
           },
           prisma,

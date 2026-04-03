@@ -4,6 +4,9 @@ import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
 import { serializeItemAsFunctionCallRunStep } from '@/lib/items/serializeItemAsFunctionCallRunStep'
 import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsComputerCallRunStep'
 import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
+import { enqueueSSE } from '@/lib/sse/enqueueSSE'
+import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
+import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveResponseItemsToConversationMetadata'
 import { getToolCallOutputItems, serializeTools, truncation } from '../shared'
 
 export const post = ({
@@ -52,9 +55,40 @@ export const post = ({
     responseBody.instructions = openaiAssistant.instructions
   }
 
-  console.log(`[submitToolOutputs] Sending to OpenAI:`, JSON.stringify({ input: responseBody.input, tools: responseBody.tools }).slice(0, 500))
   const response = await client.responses.create(responseBody)
 
+  // Non-streaming: return the Run as JSON (used by submitToolOutputsAndPoll)
+  if (!stream) {
+    const completedResponse = response as OpenAI.Responses.Response
+
+    // Save response items to conversation metadata so messages.list can resolve run_id
+    const itemIds = (completedResponse.output ?? [])
+      .filter((o: any) => o.id)
+      .map((o: any) => o.id!)
+    if (itemIds.length > 0) {
+      // Use the original runId so messages.list resolves run_id to the original run
+      await saveResponseItemsToConversationMetadata({
+        client,
+        threadId,
+        responseId: runId,
+        itemIds,
+      })
+    }
+
+    const run = serializeResponseAsRun({
+      response: completedResponse,
+      assistantId: openaiAssistant.id,
+    })
+
+    // Preserve the original run ID — in the Assistants API, the run ID is stable
+    // across the tool call cycle. submitToolOutputs continues the same run.
+    return new Response(JSON.stringify({ ...run, id: runId }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  // Streaming: return SSE events
   const readableStream = new ReadableStream({
     async start(controller) {
       toolCallOutputItems.functionCallOutputItems.forEach((item) => {
@@ -67,13 +101,13 @@ export const post = ({
           return
         }
 
-        controller.enqueue(`event: thread.run.step.completed\ndata: ${JSON.stringify(serializeItemAsFunctionCallRunStep({
+        enqueueSSE(controller, 'thread.run.step.completed', serializeItemAsFunctionCallRunStep({
             item: toolCallItem,
             items: toolCallOutputItems.functionCallOutputItems,
             threadId,
             openaiAssistant,
             runId,
-          }))}\n\n`)
+          }))
       })
 
       toolCallOutputItems.computerCallOutputItems.forEach((item) => {
@@ -86,20 +120,20 @@ export const post = ({
           return
         }
 
-        controller.enqueue(`event: thread.run.step.completed\ndata: ${JSON.stringify(serializeItemAsComputerCallRunStep({
-            item: toolCallItem,
-            items: toolCallOutputItems.computerCallOutputItems,
-            threadId,
-            openaiAssistant,
-            runId,
-          }))}\n\n`)
+        enqueueSSE(controller, 'thread.run.step.completed', serializeItemAsComputerCallRunStep({
+          item: toolCallItem,
+          items: toolCallOutputItems.computerCallOutputItems,
+          threadId,
+          openaiAssistant,
+          runId,
+        }))
       })
 
       await runAdapter.handleRun({
         threadId,
         response,
         onEvent: async (event: any) => (
-          controller.enqueue(`event: ${event.event}\ndata: ${JSON.stringify(event.data)}\n\n`)
+          enqueueSSE(controller, event.event, event.data)
         ),
       })
 

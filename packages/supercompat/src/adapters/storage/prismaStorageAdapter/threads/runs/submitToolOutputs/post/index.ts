@@ -3,6 +3,7 @@ import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
 import { RunAdapterPartobClient } from '@/types'
 import { serializeRun } from '../../serializeRun'
 import { onEvent } from '../../onEvent'
+import { enqueueSSE } from '@/lib/sse/enqueueSSE'
 import { getMessages } from '../../getMessages'
 import { serializeRunStep } from '../../steps/serializeRunStep'
 import { updateRun } from './updateRun'
@@ -33,7 +34,7 @@ export const post = ({
           threadId,
           tool_outputs,
           onThreadRunStepCompleted: async ({ runStep }) => {
-            controller.enqueue(`event: thread.run.step.completed\ndata: ${JSON.stringify(serializeRunStep({ runStep }))}\n\n`)
+            enqueueSSE(controller, 'thread.run.step.completed', serializeRunStep({ runStep }))
           }
         })
 
@@ -43,7 +44,7 @@ export const post = ({
             controller: {
               ...controller,
               enqueue: (data: any) => {
-                controller.enqueue(`event: ${data.event}\ndata: ${JSON.stringify(data.data)}\n\n`)
+                enqueueSSE(controller, data.event, data.data)
               },
             },
             prisma,
@@ -77,7 +78,7 @@ export const post = ({
               controller: {
                 ...controller,
                 enqueue: (data: any) => {
-                  controller.enqueue(`event: ${data.event}\ndata: ${JSON.stringify(data.data)}\n\n`)
+                  enqueueSSE(controller, data.event, data.data)
                 },
               },
               prisma,

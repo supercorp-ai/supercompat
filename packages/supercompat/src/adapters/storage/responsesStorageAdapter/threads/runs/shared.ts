@@ -4,9 +4,11 @@ import { serializeComputerUseTool } from '@/lib/openaiComputerUse'
 export const serializeTools = ({
   tools,
   useOpenaiComputerTool,
+  toolResources,
 }: {
   tools: OpenAI.Beta.Threads.Runs.RunCreateParams['tools']
   useOpenaiComputerTool: boolean
+  toolResources?: any
 }) => {
   if (!tools?.length) return {}
 
@@ -19,6 +21,23 @@ export const serializeTools = ({
           useOpenaiComputerTool,
           tool: tool as unknown as Record<string, unknown>,
         })
+      }
+
+      // Responses API code_interpreter requires container config
+      if (toolType === 'code_interpreter') {
+        return {
+          type: 'code_interpreter',
+          container: (tool as any).code_interpreter?.container ?? { type: 'auto' },
+        }
+      }
+
+      // Responses API file_search needs vector_store_ids from tool_resources
+      if (toolType === 'file_search') {
+        const vectorStoreIds = toolResources?.file_search?.vector_store_ids ?? []
+        return {
+          type: 'file_search',
+          ...(vectorStoreIds.length > 0 ? { vector_store_ids: vectorStoreIds } : {}),
+        }
       }
 
       return {

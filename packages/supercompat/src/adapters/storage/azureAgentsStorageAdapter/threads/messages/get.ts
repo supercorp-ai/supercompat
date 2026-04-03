@@ -21,9 +21,15 @@ export const get =
     const [, threadId] = url.pathname.match(new RegExp(messagesRegexp))!
 
     const order = url.searchParams.get('order') || 'desc'
+    const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : undefined
+    const after = url.searchParams.get('after') || undefined
+    const before = url.searchParams.get('before') || undefined
 
     const messages = await azureAiProject.agents.messages.list(threadId, {
       order: order as 'asc' | 'desc',
+      ...(limit ? { limit: limit + 1 } : {}),
+      ...(after ? { after } : {}),
+      ...(before ? { before } : {}),
     })
 
     const messagesList: OpenAI.Beta.Threads.Message[] = []
@@ -98,11 +104,14 @@ export const get =
       })
     }
 
+    const hasMore = limit ? messagesList.length > limit : false
+    const data = limit ? messagesList.slice(0, limit) : messagesList
+
     const response = {
-      data: messagesList,
-      first_id: messagesList[0]?.id || null,
-      last_id: messagesList[messagesList.length - 1]?.id || null,
-      has_more: false,
+      data,
+      first_id: data[0]?.id || null,
+      last_id: data[data.length - 1]?.id || null,
+      has_more: hasMore,
     }
 
     return new Response(JSON.stringify(response), {

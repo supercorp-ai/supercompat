@@ -2,6 +2,8 @@ import type { Mistral } from '@mistralai/mistralai'
 import { serializeChunk } from './serializeChunk'
 import { serializeBody } from './serializeBody'
 
+const encoder = new TextEncoder()
+
 export const post = ({
   mistral,
 }: {
@@ -22,7 +24,7 @@ export const post = ({
             chunk,
           })
 
-          controller.enqueue(`data: ${JSON.stringify(serializedChunk)}\n\n`)
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(serializedChunk)}\n\n`))
         }
 
         controller.close()

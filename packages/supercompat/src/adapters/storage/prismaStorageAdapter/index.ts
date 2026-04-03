@@ -38,8 +38,10 @@ export const prismaStorageAdapter = ({
     // Assistants
     [assistantRegexp]: assistant({ prisma }),
     '^/(?:v1/|openai/)?assistants$': assistants({ prisma }),
-    // Threads
+    // Threads (createThreadAndRun must come before threadRegexp — threadRegexp
+    // would match /threads/runs capturing "runs" as a thread ID)
     '^/(?:v1|/?openai)/threads$': threads({ prisma }),
+    [createThreadAndRunRegexp]: createAndRun({ prisma, runAdapter }),
     [threadRegexp]: thread({ prisma }),
     // Messages
     [messageRegexp]: message({ prisma }),
@@ -47,7 +49,6 @@ export const prismaStorageAdapter = ({
     // Runs
     [cancelRunRegexp]: cancelRun({ prisma }),
     [submitToolOutputsRegexp]: submitToolOutputs({ prisma, runAdapter }),
-    [createThreadAndRunRegexp]: createAndRun({ prisma, runAdapter }),
     [runRegexp]: run({ prisma, runAdapter }),
     [runsRegexp]: runs({ prisma, runAdapter }),
     // Steps

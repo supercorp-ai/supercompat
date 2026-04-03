@@ -68,6 +68,14 @@ export const completionsRunAdapter = () => {
       if (run.status !== 'queued') return
 
       onEvent({
+        event: 'thread.run.created',
+        data: {
+          ...run,
+          status: 'queued',
+        },
+      })
+
+      onEvent({
         event: 'thread.run.in_progress',
         data: {
           ...run,

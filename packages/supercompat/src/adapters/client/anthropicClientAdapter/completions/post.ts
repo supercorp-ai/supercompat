@@ -9,6 +9,8 @@ import { serializeMessages } from './serializeMessages'
 import { serializeBetas } from './serializeBetas'
 import { normalizeComputerToolCallPayload } from '../normalizeComputerToolCallPayload'
 
+const encoder = new TextEncoder()
+
 export const post = ({
   anthropic,
 }: {
@@ -141,7 +143,7 @@ export const post = ({
             ],
           }
 
-          controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(messageDelta)}\n\n`))
         }
 
         const getOrCreateIndexForBlock = (blockIndex?: number) => {
@@ -205,7 +207,7 @@ export const post = ({
                   ],
                 }
 
-                controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(messageDelta)}\n\n`))
               }
             }
 
@@ -296,7 +298,7 @@ export const post = ({
               ],
             }
 
-            controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(messageDelta)}\n\n`))
           } else if (chunk.type === 'content_block_start') {
             let delta: { content: string | null; tool_calls?: any }
 
@@ -439,7 +441,7 @@ export const post = ({
               ],
             }
 
-            controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(messageDelta)}\n\n`))
           } else if (chunk.type === 'message_start') {
             const messageDelta = {
               id: `chatcmpl-${uid(29)}`,
@@ -454,7 +456,7 @@ export const post = ({
               ],
             }
 
-            controller.enqueue(`data: ${JSON.stringify(messageDelta)}\n\n`)
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(messageDelta)}\n\n`))
           }
         }
 

@@ -6,6 +6,7 @@ import { runsRegexp } from '@/lib/runs/runsRegexp'
 import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
 import { RunAdapterWithAssistant } from '@/types'
 import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveResponseItemsToConversationMetadata'
+import { enqueueSSE } from '@/lib/sse/enqueueSSE'
 import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
 import {
   defaultAssistant,
@@ -77,8 +78,11 @@ export const post = ({
   } = {
     conversation: threadId,
     stream,
-    input: createResponseItems,
+    input: [...createResponseItems],
   }
+
+  // Clear deferred items so subsequent runs in this thread don't re-send them
+  createResponseItems.length = 0
 
   if (azureAgentId) {
     responseBody.agent = {
@@ -89,10 +93,13 @@ export const post = ({
 
   if (!azureAgentId) {
     responseBody.model = model
-    responseBody.metadata = metadata
+    if (metadata && typeof metadata === 'object') {
+      responseBody.metadata = metadata
+    }
     Object.assign(responseBody, serializeTools({
       tools,
       useOpenaiComputerTool: isOpenaiComputerUseModel({ model }),
+      toolResources: openaiAssistant.tool_resources,
     }))
     responseBody.truncation = truncation({ truncation_strategy })
 
@@ -116,26 +123,21 @@ export const post = ({
         await runAdapter.handleRun({
           threadId,
           response,
-          onEvent: async (event) => (
-            controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
+          onEvent: async (event: any) => (
+            enqueueSSE(controller, event.event, event.data)
           ),
         })
       } catch (error: any) {
         console.error(error)
 
-        const event = {
-          event: 'thread.run.failed',
-          data: {
-            id: uid(24),
-            failed_at: dayjs().unix(),
-            last_error: {
-              code: 'server_error',
-              message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
-            },
+        enqueueSSE(controller, 'thread.run.failed', {
+          id: uid(24),
+          failed_at: dayjs().unix(),
+          last_error: {
+            code: 'server_error',
+            message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
           },
-        }
-
-        controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
+        })
       }
 
       controller.close()

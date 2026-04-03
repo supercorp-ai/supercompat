@@ -10,6 +10,6 @@ export const runs = ({
   azureAiProject: AIProjectClient
   runAdapter: RunAdapterWithAssistant
 }): { get: RequestHandler; post: RequestHandler } => ({
-  get: get(),
+  get: get({ azureAiProject }),
   post: post({ azureAiProject, runAdapter }),
 })

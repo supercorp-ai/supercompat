@@ -1,5 +1,18 @@
 import type OpenAI from 'openai'
 
+const encoder = new TextEncoder()
+
+// Together models (e.g. gpt-oss) sometimes leak control tokens into content
+const controlTokenPattern = /<\|[a-z_]+\|>/g
+
+const stripControlTokens = (chunk: any) => {
+  const delta = chunk?.choices?.[0]?.delta
+  if (delta?.content && typeof delta.content === 'string') {
+    delta.content = delta.content.replace(controlTokenPattern, '')
+  }
+  return chunk
+}
+
 export const post = ({
   together,
 }: {
@@ -14,7 +27,7 @@ export const post = ({
       async start(controller) {
         // @ts-ignore-next-line
         for await (const chunk of response) {
-          controller.enqueue(`data: ${JSON.stringify(chunk)}\n\n`)
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(stripControlTokens(chunk))}\n\n`))
         }
 
         controller.close()

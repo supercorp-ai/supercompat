@@ -117,9 +117,9 @@ export const instructions = {
   forceComplexArgsTool:
     'You MUST call the create_report tool with the data the user provides. Include all fields they mention.',
   forceCodeInterpreter:
-    'You MUST use the code interpreter to execute the code the user provides. Do NOT answer without running code first.',
+    'You MUST use the code_interpreter tool to execute code. NEVER compute answers yourself. NEVER explain what the code does. Just run it and show the exact output. If the user gives you code, execute it immediately.',
   forceParallelTools:
-    'You MUST call get_weather AND calculate tools simultaneously in a single response. Call both tools at the same time before replying.',
+    'CRITICAL RULES: 1) When the user asks about BOTH weather AND math, you MUST call BOTH get_weather AND calculate tools in your VERY FIRST response. 2) You MUST call both tools at the SAME TIME in a single response — never one at a time. 3) After receiving both tool outputs, respond with the combined results immediately. 4) Do NOT call any more tools after the first round. 5) NEVER answer a weather or math question without using the appropriate tool.',
 }
 
 // Prompts designed to trigger specific tool usage
@@ -130,6 +130,6 @@ export const prompts = {
   simple: 'Reply with exactly: Hello there!',
   noArgs: 'What time is it? Use the get_timestamp tool.',
   complexArgs: 'Create a report titled "Q1 Summary" with two sections: heading "Revenue" content "Up 20%" and heading "Users" content "10k new". Author is "Alice" with tags ["finance", "quarterly"].',
-  codeInterpreter: 'Use code interpreter to run: print(sum(range(1, 101)))',
-  parallelTools: 'What is the weather in London AND what is 15 * 23? Call both tools at the same time.',
+  codeInterpreter: 'Execute this code using the code_interpreter tool and tell me the exact printed output:\n\nprint(sum(range(1, 101)))',
+  parallelTools: 'I need TWO things right now: 1) get_weather for London 2) calculate 15 * 23. Call BOTH tools simultaneously in your response.',
 }

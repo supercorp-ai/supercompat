@@ -6,11 +6,19 @@ export const serializeThread = ({
   thread,
 }: {
   thread: Thread
-}) => ({
+}) => {
+  // Strip internal assistantId from metadata before returning
+  let metadata = thread.metadata
+  if (metadata && typeof metadata === 'object' && !Array.isArray(metadata) && 'assistantId' in metadata) {
+    const { assistantId, ...rest } = metadata as Record<string, unknown>
+    metadata = Object.keys(rest).length > 0 ? rest : null
+  }
+
+  return {
   id: thread.id,
   object: 'thread' as 'thread',
   created_at: dayjs(thread.createdAt).unix(),
-  metadata: thread.metadata,
+  metadata,
   tool_resources: {
     code_interpreter: {
       file_ids: [],
@@ -19,4 +27,5 @@ export const serializeThread = ({
       vector_store_ids: [],
     },
   },
-})
+}
+}

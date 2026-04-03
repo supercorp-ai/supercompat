@@ -4,6 +4,8 @@ import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
 import { serializeItemAsFunctionCallRunStep } from '@/lib/items/serializeItemAsFunctionCallRunStep'
 import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsComputerCallRunStep'
 import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
+import { enqueueSSE } from '@/lib/sse/enqueueSSE'
+import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
 import { getToolCallOutputItems, serializeTools, truncation } from '@/adapters/storage/responsesStorageAdapter/threads/runs/submitToolOutputs/shared'
 
 export const post = ({
@@ -77,6 +79,22 @@ export const post = ({
 
   const response = await client.responses.create(responseBody)
 
+  // Non-streaming: return the Run as JSON (used by submitToolOutputsAndPoll)
+  if (!stream) {
+    const completedResponse = response as OpenAI.Responses.Response
+
+    const run = serializeResponseAsRun({
+      response: completedResponse,
+      assistantId: openaiAssistant.id,
+    })
+
+    return new Response(JSON.stringify({ ...run, id: runId }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  // Streaming: return SSE events
   const readableStream = new ReadableStream({
     async start(controller) {
       toolCallOutputItems.functionCallOutputItems.forEach((item) => {
@@ -89,16 +107,13 @@ export const post = ({
           return
         }
 
-        controller.enqueue(`data: ${JSON.stringify({
-          event: 'thread.run.step.completed',
-          data: serializeItemAsFunctionCallRunStep({
+        enqueueSSE(controller, 'thread.run.step.completed', serializeItemAsFunctionCallRunStep({
             item: toolCallItem,
             items: toolCallOutputItems.functionCallOutputItems,
             threadId,
             openaiAssistant,
             runId,
-          })
-        })}\n\n`)
+          }))
       })
 
       toolCallOutputItems.computerCallOutputItems.forEach((item) => {
@@ -111,23 +126,20 @@ export const post = ({
           return
         }
 
-        controller.enqueue(`data: ${JSON.stringify({
-          event: 'thread.run.step.completed',
-          data: serializeItemAsComputerCallRunStep({
+        enqueueSSE(controller, 'thread.run.step.completed', serializeItemAsComputerCallRunStep({
             item: toolCallItem,
             items: toolCallOutputItems.computerCallOutputItems,
             threadId,
             openaiAssistant,
             runId,
-          })
-        })}\n\n`)
+          }))
       })
 
       await runAdapter.handleRun({
         threadId,
         response,
-        onEvent: async (event) => (
-          controller.enqueue(`data: ${JSON.stringify(event)}\n\n`)
+        onEvent: async (event: any) => (
+          enqueueSSE(controller, event.event, event.data)
         ),
       })
 

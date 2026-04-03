@@ -6,6 +6,8 @@ import { runsRegexp } from '@/lib/runs/runsRegexp'
 import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
 import { RunAdapterWithAssistant } from '@/types'
 import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveResponseItemsToConversationMetadata'
+import { enqueueSSE } from '@/lib/sse/enqueueSSE'
+import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
 import { defaultAssistant, serializeTools, textConfig, truncation } from './shared'
 
 type RunCreateResponse = Response & {
@@ -55,12 +57,19 @@ export const post = ({
   const responseBody: OpenAI.Responses.ResponseCreateParams = {
     conversation: threadId,
     stream,
-    input: createResponseItems,
+    input: [...createResponseItems],
   }
+
+  // Clear deferred items so subsequent runs in this thread don't re-send them
+  createResponseItems.length = 0
 
   responseBody.model = model
   responseBody.metadata = metadata
-  Object.assign(responseBody, serializeTools({ tools }))
+  Object.assign(responseBody, serializeTools({
+    tools,
+    useOpenaiComputerTool: isOpenaiComputerUseModel({ model }),
+    toolResources: openaiAssistant.tool_resources,
+  }))
   responseBody.truncation = truncation({ truncation_strategy })
 
   const normalizedText = textConfig({ response_format })
@@ -81,20 +90,20 @@ export const post = ({
           threadId,
           response,
           onEvent: async (event: any) => (
-            controller.enqueue(`event: ${event.event}\ndata: ${JSON.stringify(event.data)}\n\n`)
+            enqueueSSE(controller, event.event, event.data)
           ),
         })
       } catch (error: any) {
         console.error(error)
 
-        controller.enqueue(`event: thread.run.failed\ndata: ${JSON.stringify({
+        enqueueSSE(controller, 'thread.run.failed', {
           id: uid(24),
           failed_at: dayjs().unix(),
           last_error: {
             code: 'server_error',
             message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
           },
-        })}\n\n`)
+        })
       }
 
       controller.close()

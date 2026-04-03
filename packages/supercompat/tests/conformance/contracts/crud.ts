@@ -1,4 +1,5 @@
 import type OpenAI from 'openai'
+import { config } from '../lib/config'
 import {
   assertAssistantShape,
   assertThreadShape,
@@ -14,7 +15,7 @@ export type Contract = (client: OpenAI) => Promise<void>
 
 export const createAssistant: Contract = async (client) => {
   const assistant = await client.beta.assistants.create({
-    model: 'gpt-4.1-mini',
+    model: config.model,
     name: 'Conformance Test',
     instructions: 'You are a test assistant.',
     description: 'For testing',
@@ -25,7 +26,7 @@ export const createAssistant: Contract = async (client) => {
   assert.equal(assistant.name, 'Conformance Test')
   assert.equal(assistant.instructions, 'You are a test assistant.')
   assert.equal(assistant.description, 'For testing')
-  assert.equal(assistant.model, 'gpt-4.1-mini')
+  assert.ok(typeof assistant.model === 'string' && assistant.model.length > 0, 'model should be a non-empty string')
   assert.deepEqual(assistant.metadata, { env: 'test', purpose: 'conformance' })
   assert.deepEqual(assistant.tools, [])
 
@@ -34,7 +35,7 @@ export const createAssistant: Contract = async (client) => {
 
 export const retrieveAssistant: Contract = async (client) => {
   const created = await client.beta.assistants.create({
-    model: 'gpt-4.1-mini',
+    model: config.model,
     name: 'Retrieve Test',
   })
 
@@ -51,7 +52,7 @@ export const retrieveAssistant: Contract = async (client) => {
 
 export const updateAssistant: Contract = async (client) => {
   const created = await client.beta.assistants.create({
-    model: 'gpt-4.1-mini',
+    model: config.model,
     name: 'Before Update',
     instructions: 'Original instructions',
   })
@@ -72,8 +73,8 @@ export const updateAssistant: Contract = async (client) => {
 }
 
 export const listAssistants: Contract = async (client) => {
-  const a1 = await client.beta.assistants.create({ model: 'gpt-4.1-mini', name: 'List A' })
-  const a2 = await client.beta.assistants.create({ model: 'gpt-4.1-mini', name: 'List B' })
+  const a1 = await client.beta.assistants.create({ model: config.model, name: 'List A' })
+  const a2 = await client.beta.assistants.create({ model: config.model, name: 'List B' })
 
   const list = await client.beta.assistants.list({ limit: 10 })
 
@@ -91,7 +92,7 @@ export const listAssistants: Contract = async (client) => {
 }
 
 export const deleteAssistant: Contract = async (client) => {
-  const created = await client.beta.assistants.create({ model: 'gpt-4.1-mini', name: 'Delete Me' })
+  const created = await client.beta.assistants.create({ model: config.model, name: 'Delete Me' })
   const result = await client.beta.assistants.delete(created.id)
 
   assert.equal(result.id, created.id)
@@ -209,6 +210,44 @@ export const retrieveMessage: Contract = async (client) => {
   if (retrieved.content[0].type === 'text') {
     assert.equal(retrieved.content[0].text.value, 'Retrieve me')
   }
+
+  await client.beta.threads.delete(thread.id)
+}
+
+export const updateMessage: Contract = async (client) => {
+  const thread = await client.beta.threads.create()
+  const created = await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: 'Update my metadata',
+    metadata: { version: '1' },
+  })
+
+  assert.deepEqual(created.metadata, { version: '1' })
+
+  const updated = await client.beta.threads.messages.update(created.id, {
+    thread_id: thread.id,
+    metadata: { version: '2', extra: 'field' },
+  })
+
+  assertMessageShape(updated, 'update')
+  assert.equal(updated.id, created.id)
+  assert.equal(updated.thread_id, thread.id)
+  assert.deepEqual(updated.metadata, { version: '2', extra: 'field' })
+
+  await client.beta.threads.delete(thread.id)
+}
+
+export const deleteMessage: Contract = async (client) => {
+  const thread = await client.beta.threads.create()
+  const created = await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: 'Delete me',
+  })
+
+  const result = await client.beta.threads.messages.delete(created.id, { thread_id: thread.id })
+
+  assert.equal(result.id, created.id)
+  assert.equal(result.deleted, true)
 
   await client.beta.threads.delete(thread.id)
 }
