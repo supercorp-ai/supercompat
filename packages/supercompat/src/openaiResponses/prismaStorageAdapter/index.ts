@@ -6,6 +6,16 @@ import { get as responseGet } from './responses/response/get'
 import { del as responseDel } from './responses/response/del'
 import { post as cancelPost } from './responses/response/cancel/post'
 import { get as inputItemsGet } from './responses/response/inputItems/get'
+import {
+  createConversation,
+  getConversation,
+  updateConversation,
+  deleteConversation,
+  listConversationItems,
+  createConversationItems,
+  getConversationItem,
+  deleteConversationItem,
+} from './conversations'
 
 type MethodHandlers = { get?: RequestHandler; post?: RequestHandler; delete?: RequestHandler }
 
@@ -16,6 +26,24 @@ export const prismaStorageAdapter = ({
 }): ((args: StorageAdapterArgs) => { requestHandlers: Record<string, MethodHandlers> }) =>
 ({ runAdapter }: StorageAdapterArgs) => ({
   requestHandlers: {
+    // Conversations — must come before responses patterns
+    // Individual item routes must come before items list
+    '^/(?:v1/|openai/)?conversations/[^/]+/items/[^/]+$': {
+      get: getConversationItem({ prisma }),
+      delete: deleteConversationItem({ prisma }),
+    },
+    '^/(?:v1/|openai/)?conversations/[^/]+/items$': {
+      get: listConversationItems({ prisma }),
+      post: createConversationItems({ prisma }),
+    },
+    '^/(?:v1/|openai/)?conversations/[^/]+$': {
+      get: getConversation({ prisma }),
+      post: updateConversation({ prisma }),
+      delete: deleteConversation({ prisma }),
+    },
+    '^/(?:v1/|openai/)?conversations$': {
+      post: createConversation({ prisma }),
+    },
     // POST /responses — create response
     '^/(?:v1/|openai/)?responses$': {
       post: responsesPost({ prisma, runAdapter }),

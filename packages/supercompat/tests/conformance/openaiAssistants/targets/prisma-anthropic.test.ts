@@ -1,15 +1,15 @@
 /**
- * Conformance: prismaStorageAdapter + completionsRunAdapter + Google Gemini
+ * Conformance: prismaStorageAdapter + completionsRunAdapter + Anthropic
  */
 import { test, describe } from 'node:test'
-import { GoogleGenAI } from '@google/genai'
+import Anthropic from '@anthropic-ai/sdk'
 import { completionsContracts } from '../contracts'
 import { createPrismaTestClient } from '../lib/prismaTestHelper'
-import { googleClientAdapter } from '../../../src/index'
+import { anthropicClientAdapter } from '../../../../src/index'
 
-const apiKey = process.env.GOOGLE_API_KEY
+const apiKey = process.env.ANTHROPIC_API_KEY
 if (!apiKey) {
-  console.log('Skipping: GOOGLE_API_KEY required')
+  console.log('Skipping: ANTHROPIC_API_KEY required')
   process.exit(0)
 }
 if (!process.env.DATABASE_URL) {
@@ -17,11 +17,11 @@ if (!process.env.DATABASE_URL) {
   process.exit(0)
 }
 
-describe('prismaStorageAdapter + Google', { timeout: 600_000 }, () => {
+describe('prismaStorageAdapter + Anthropic', { timeout: 600_000 }, () => {
   for (const [name, contract] of Object.entries(completionsContracts)) {
     test(name, { timeout: 120_000 }, async () => contract(await createPrismaTestClient({
-      clientAdapter: googleClientAdapter({ google: new GoogleGenAI({ apiKey }) }),
-      model: 'gemini-2.5-flash',
+      clientAdapter: anthropicClientAdapter({ anthropic: new Anthropic({ apiKey }) }),
+      model: 'claude-sonnet-4-20250514',
     })))
   }
 })

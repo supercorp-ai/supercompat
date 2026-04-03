@@ -12,7 +12,7 @@ import {
   supercompat,
   completionsRunAdapter,
   prismaStorageAdapter,
-} from '../../../src/index'
+} from '../../../../src/index'
 import { config } from './config'
 
 export async function createPrismaTestClient({

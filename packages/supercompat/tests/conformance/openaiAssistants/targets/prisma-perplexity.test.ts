@@ -5,7 +5,7 @@ import { test, describe } from 'node:test'
 import OpenAI from 'openai'
 import { noToolsContracts } from '../contracts'
 import { createPrismaTestClient } from '../lib/prismaTestHelper'
-import { perplexityClientAdapter } from '../../../src/index'
+import { perplexityClientAdapter } from '../../../../src/index'
 
 const apiKey = process.env.PERPLEXITY_API_KEY
 if (!apiKey) {

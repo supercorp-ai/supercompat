@@ -5,7 +5,7 @@ import { test, describe } from 'node:test'
 import { AzureOpenAI } from 'openai'
 import { completionsContracts } from '../contracts'
 import { createPrismaTestClient } from '../lib/prismaTestHelper'
-import { azureOpenaiClientAdapter } from '../../../src/index'
+import { azureOpenaiClientAdapter } from '../../../../src/index'
 
 const apiKey = process.env.TEST_AZURE_OPENAI_API_KEY
 const endpoint = process.env.TEST_AZURE_OPENAI_ENDPOINT

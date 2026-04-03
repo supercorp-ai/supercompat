@@ -5,7 +5,7 @@ import { test, describe } from 'node:test'
 import OpenAI from 'openai'
 import { completionsContracts } from '../contracts'
 import { createPrismaTestClient } from '../lib/prismaTestHelper'
-import { togetherClientAdapter } from '../../../src/index'
+import { togetherClientAdapter } from '../../../../src/index'
 
 const apiKey = process.env.TOGETHER_API_KEY
 if (!apiKey) {

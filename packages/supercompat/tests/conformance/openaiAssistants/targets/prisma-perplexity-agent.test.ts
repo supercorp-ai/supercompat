@@ -14,7 +14,7 @@ import { createPrismaTestClient } from '../lib/prismaTestHelper'
 import {
   perplexityClientAdapter,
   perplexityAgentRunAdapter,
-} from '../../../src/index'
+} from '../../../../src/index'
 
 const apiKey = process.env.PERPLEXITY_API_KEY
 if (!apiKey) {

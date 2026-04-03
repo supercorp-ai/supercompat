@@ -5,7 +5,7 @@ import { test, describe } from 'node:test'
 import OpenAI from 'openai'
 import { completionsContracts } from '../contracts'
 import { createPrismaTestClient } from '../lib/prismaTestHelper'
-import { humirisClientAdapter } from '../../../src/index'
+import { humirisClientAdapter } from '../../../../src/index'
 
 const apiKey = process.env.HUMIRIS_API_KEY
 if (!apiKey) {

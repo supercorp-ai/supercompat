@@ -39,7 +39,7 @@ import {
   openaiClientAdapter,
   responsesRunAdapter,
   responsesStorageAdapter,
-} from '../../../src/index'
+} from '../../../../src/index'
 
 const apiKey = process.env.TEST_OPENAI_API_KEY
 if (!apiKey) {

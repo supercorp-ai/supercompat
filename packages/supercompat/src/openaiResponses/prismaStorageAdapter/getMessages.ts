@@ -257,12 +257,102 @@ export const getMessages = ({
     }
   }
 
-  // Add current input items (skip function_call_output — already handled above as tool outputs)
+  // Add current input items
   if (input) {
     const inputItems = normalizeInput(input)
-    for (const item of inputItems) {
-      if (item.type === 'function_call_output') continue
-      messages.push(inputItemToMessage(item))
+
+    // Collect function_call + function_call_output pairs from current input
+    const functionCalls = inputItems.filter((it: any) => it.type === 'function_call')
+    const functionOutputs = inputItems.filter((it: any) => it.type === 'function_call_output')
+
+    // If we have function_call items in input, build an assistant message with tool_calls
+    if (functionCalls.length > 0) {
+      const toolCallsMeta = functionCalls.map((fc: any) => ({
+        id: fc.call_id,
+        type: 'function',
+        function: {
+          name: fc.name,
+          arguments: fc.arguments ?? '',
+        },
+      }))
+
+      const runSteps = functionOutputs.length > 0
+        ? [{
+            id: 'virtual-step',
+            object: 'thread.run.step',
+            run_id: '',
+            assistant_id: '',
+            thread_id: '',
+            type: 'tool_calls',
+            status: 'completed',
+            created_at: dayjs().unix(),
+            expired_at: null,
+            cancelled_at: null,
+            failed_at: null,
+            completed_at: dayjs().unix(),
+            last_error: null,
+            metadata: {},
+            usage: null,
+            step_details: {
+              type: 'tool_calls',
+              tool_calls: functionCalls.map((fc: any) => {
+                const output = functionOutputs.find((to: any) => to.call_id === fc.call_id)
+                return {
+                  id: fc.call_id,
+                  type: 'function',
+                  function: {
+                    name: fc.name,
+                    arguments: fc.arguments ?? '',
+                    output: output?.output ?? null,
+                  },
+                }
+              }),
+            },
+          }]
+        : []
+
+      messages.push(makeMessage({
+        role: 'assistant',
+        content: [{ type: 'text', text: { value: '', annotations: [] } }],
+        metadata: { toolCalls: toolCallsMeta },
+        run: {
+          id: 'virtual-run',
+          object: 'thread.run',
+          thread_id: '',
+          assistant_id: '',
+          status: 'completed',
+          created_at: dayjs().unix(),
+          expires_at: 0,
+          started_at: null,
+          cancelled_at: null,
+          failed_at: null,
+          completed_at: null,
+          model: '',
+          instructions: '',
+          tools: [],
+          metadata: {},
+          usage: null,
+          truncation_strategy: { type: 'auto', last_messages: null },
+          response_format: 'auto',
+          incomplete_details: null,
+          max_completion_tokens: null,
+          max_prompt_tokens: null,
+          temperature: null,
+          top_p: null,
+          tool_choice: 'auto',
+          parallel_tool_calls: true,
+          last_error: null,
+          required_action: null,
+          runSteps,
+        } as any,
+      }))
+    } else {
+      // Regular input items (messages)
+      for (const item of inputItems) {
+        if (item.type === 'function_call_output') continue
+        if (item.type === 'function_call') continue
+        messages.push(inputItemToMessage(item))
+      }
     }
   }
 

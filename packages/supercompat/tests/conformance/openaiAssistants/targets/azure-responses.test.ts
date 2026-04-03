@@ -1,28 +1,42 @@
 /**
- * Conformance: azureAgentsStorageAdapter + azureAgentsRunAdapter + Azure AI Project
+ * Conformance: azureResponsesStorageAdapter + responsesRunAdapter + Azure AI Project
  *
- * Creates real Azure agents for each test. Uses coreContracts since
- * the Azure Agents adapter doesn't implement full assistant CRUD (retrieve/update/delete/list).
+ * Uses v2 SDK for conversations + responses, v1 for the run adapter.
+ * Assistant CRUD is in-memory (Azure Responses doesn't have native assistants).
  */
 import { test, describe } from 'node:test'
 import OpenAI from 'openai'
 import dayjs from 'dayjs'
 import { uid } from 'radash'
-import { PrismaClient } from '@prisma/client'
-import { AIProjectClient } from '@azure/ai-projects'
+import { AIProjectClient } from '@azure/ai-projects-v2'
 import { ClientSecretCredential } from '@azure/identity'
 import { contracts as _allContracts } from '../contracts'
 
-// createAndRunStream: Azure createThreadAndRun creates a non-streaming run,
-// can't retroactively stream it through the run adapter
-const { 'run: create and run stream': _, ...contracts } = _allContracts
-import { config } from '../lib/config'
+// Same exclusions as OpenAI responses adapter (deferred messages, immutable responses)
+// plus file_search/code_interpreter (files.create not routed through Azure)
+const exclude = new Set([
+  // Deferred message storage
+  'crud: create message', 'crud: retrieve message', 'crud: list messages',
+  'crud: update message', 'crud: delete message',
+  'data: message content preserved', 'data: list order desc', 'data: list order asc',
+  'data: pagination with cursor',
+  // submitToolOutputsAndPoll (immutable responses)
+  'tools: round-trip poll', 'tools: parallel tool calls', 'tools: no-argument tool',
+  'tools: complex arguments', 'tools: multiple rounds', 'data: special chars in tool output',
+  // Missing handlers in responses adapter
+  'run: runs list', 'run: create thread and run', 'run: create and run stream',
+  'data: run step retrieve', 'data: run update',
+  'data: pagination with before cursor',
+])
+const coreContracts = Object.fromEntries(
+  Object.entries(_allContracts).filter(([name]) => !exclude.has(name))
+)
 import {
   supercompat,
   azureAiProjectClientAdapter,
-  azureAgentsRunAdapter,
-  azureAgentsStorageAdapter,
-} from '../../../src/index'
+  responsesRunAdapter,
+  azureResponsesStorageAdapter,
+} from '../../../../src/index'
 
 const endpoint = process.env.AZURE_PROJECT_ENDPOINT
 const tenantId = process.env.AZURE_TENANT_ID
@@ -33,22 +47,16 @@ if (!endpoint || !tenantId || !clientId || !clientSecret) {
   console.log('Skipping: AZURE_PROJECT_ENDPOINT, AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET required')
   process.exit(0)
 }
-if (!process.env.DATABASE_URL) {
-  console.log('Skipping: DATABASE_URL required')
-  process.exit(0)
-}
 
 function createClient(): OpenAI {
-  config.model = 'gpt-4.1-mini'
   const credential = new ClientSecretCredential(tenantId!, clientId!, clientSecret!)
   const azureAiProject = new AIProjectClient(endpoint!, credential)
-  const prisma = new PrismaClient()
 
   const assistants = new Map<string, any>()
   let currentAssistant: any = {
     id: `asst_${uid(24)}`,
     object: 'assistant',
-    model: config.model,
+    model: 'gpt-4.1-mini',
     instructions: '',
     description: null,
     name: null,
@@ -59,40 +67,28 @@ function createClient(): OpenAI {
 
   const client = supercompat({
     client: azureAiProjectClientAdapter({ azureAiProject }),
-    runAdapter: azureAgentsRunAdapter({ azureAiProject }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    runAdapter: responsesRunAdapter({
+      getOpenaiAssistant: () => currentAssistant,
+    }),
+    storage: azureResponsesStorageAdapter(),
   })
 
   const beta = client.beta as any
 
   beta.assistants.create = async (body: any) => {
-    const agent = await azureAiProject.agents.createAgent(config.model, {
-      name: body.name ?? 'test_' + uid(8),
-      instructions: body.instructions ?? '',
-      tools: body.tools ?? [],
-      ...(body.tool_resources ? {
-        toolResources: {
-          ...(body.tool_resources.file_search ? {
-            fileSearch: {
-              vectorStoreIds: body.tool_resources.file_search.vector_store_ids || [],
-            },
-          } : {}),
-          ...(body.tool_resources.code_interpreter ? {
-            codeInterpreter: body.tool_resources.code_interpreter,
-          } : {}),
-        },
-      } : {}),
-    })
     const assistant = {
-      id: agent.id,
+      id: `asst_${uid(24)}`,
       object: 'assistant',
       created_at: dayjs().unix(),
-      model: config.model,
-      name: agent.name ?? null,
+      model: body.model,
+      name: body.name ?? null,
       description: body.description ?? null,
       instructions: body.instructions ?? null,
       tools: body.tools ?? [],
       metadata: body.metadata ?? null,
+      temperature: body.temperature ?? null,
+      top_p: body.top_p ?? null,
+      response_format: body.response_format ?? null,
       tool_resources: body.tool_resources ?? null,
     }
     assistants.set(assistant.id, assistant)
@@ -122,7 +118,6 @@ function createClient(): OpenAI {
   }
 
   beta.assistants.delete = async (id: string) => {
-    try { await azureAiProject.agents.deleteAgent(id) } catch {}
     assistants.delete(id)
     return { id, deleted: true, object: 'assistant.deleted' }
   }
@@ -138,8 +133,8 @@ function createClient(): OpenAI {
   return client
 }
 
-describe('azureAgentsStorageAdapter', { timeout: 600_000 }, () => {
-  for (const [name, contract] of Object.entries(contracts)) {
+describe('azureResponsesStorageAdapter', { timeout: 300_000 }, () => {
+  for (const [name, contract] of Object.entries(coreContracts)) {
     test(name, { timeout: 120_000 }, () => contract(createClient()))
   }
 })

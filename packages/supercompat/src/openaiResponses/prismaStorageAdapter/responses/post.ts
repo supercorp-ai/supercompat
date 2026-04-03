@@ -54,12 +54,14 @@ const buildVirtualRun = ({
   instructions,
   tools,
   threadId,
+  responseFormat,
 }: {
   responseId: string
   model: string
   instructions: string | null
   tools: any[]
   threadId: string
+  responseFormat?: any
 }) => ({
   id: responseId,
   object: 'thread.run' as 'thread.run',
@@ -93,7 +95,7 @@ const buildVirtualRun = ({
   metadata: {},
   usage: null,
   truncation_strategy: { type: 'auto' as const, last_messages: null },
-  response_format: 'auto' as 'auto',
+  response_format: responseFormat ?? ('auto' as 'auto'),
   incomplete_details: null,
   max_completion_tokens: null,
   max_prompt_tokens: null,
@@ -122,6 +124,7 @@ export const post = ({
     tools = [],
     stream = false,
     conversation,
+    previous_response_id,
     metadata,
     temperature,
     top_p,
@@ -132,7 +135,31 @@ export const post = ({
 
   // Resolve or create conversation
   let conversationId: string | null = null
-  if (conversation) {
+
+  // previous_response_id: chain onto the same conversation as the previous response
+  if (previous_response_id) {
+    const prevResponse = await prisma.response.findUnique({
+      where: { id: previous_response_id },
+    })
+    if (prevResponse?.conversationId) {
+      conversationId = prevResponse.conversationId
+    } else {
+      // Previous response had no conversation — create one and link both
+      const conv = await prisma.conversation.create({
+        data: { metadata: metadata ?? undefined },
+      })
+      conversationId = conv.id
+      // Link previous response to this conversation
+      if (prevResponse) {
+        await prisma.response.update({
+          where: { id: previous_response_id },
+          data: { conversationId: conv.id },
+        })
+      }
+    }
+  }
+
+  if (!conversationId && conversation) {
     if (typeof conversation === 'string') {
       conversationId = conversation
     } else if (conversation.id) {
@@ -140,7 +167,7 @@ export const post = ({
     }
   }
 
-  if (conversation !== undefined && !conversationId) {
+  if (!conversationId && conversation !== undefined) {
     const conv = await prisma.conversation.create({
       data: { metadata: metadata ?? undefined },
     })
@@ -203,63 +230,152 @@ export const post = ({
   const threadId = conversationId ?? response.id
 
   // Build virtual run for completionsRunAdapter
+  // Map Responses API text.format to Assistants API response_format
+  const responseFormat = text?.format?.type === 'json_schema'
+    ? { type: 'json_schema' as const, json_schema: { name: text.format.name, schema: text.format.schema, strict: text.format.strict } }
+    : text?.format?.type === 'json_object'
+      ? { type: 'json_object' as const }
+      : undefined
+
   const virtualRun = buildVirtualRun({
     responseId: response.id,
     model,
     instructions,
     tools,
     threadId,
+    ...(responseFormat ? { responseFormat } : {}),
   })
+
+  // Check if run adapter supports direct Responses API passthrough
+  const isPassthrough = typeof (runAdapter as any).handleResponsesRun === 'function'
 
   const readableStream = new ReadableStream({
     async start(controller) {
+      const enqueueEvent = (data: any) => {
+        try {
+          controller.enqueue(`event: ${data.type}\ndata: ${JSON.stringify(data)}\n\n`)
+        } catch {}
+      }
+
       try {
-        await runAdapter.handleRun({
-          run: virtualRun,
-          onEvent: onEvent({
-            prisma,
-            controller: {
-              ...controller,
-              enqueue: (data: any) => {
-                try {
-                  controller.enqueue(`event: ${data.type}\ndata: ${JSON.stringify(data)}\n\n`)
-                } catch {}
-              },
+        if (isPassthrough) {
+          // Direct passthrough: call responses.create() natively
+          // Build the Responses API request body
+          const requestBody: any = { model, input }
+          if (instructions) requestBody.instructions = instructions
+          if (tools.length > 0) requestBody.tools = tools
+          if (metadata) requestBody.metadata = metadata
+          if (conversationId) requestBody.conversation = conversationId
+          if (temperature != null) requestBody.temperature = temperature
+          if (top_p != null) requestBody.top_p = top_p
+          if (max_output_tokens != null) requestBody.max_output_tokens = max_output_tokens
+          if (truncation) requestBody.truncation = truncation === 'DISABLED' ? 'disabled' : 'auto'
+          if (text) requestBody.text = text
+          if (body.tool_choice) requestBody.tool_choice = body.tool_choice
+          if (body.parallel_tool_calls != null) requestBody.parallel_tool_calls = body.parallel_tool_calls
+
+          let completedResponse: any = null
+
+          await (runAdapter as any).handleResponsesRun({
+            requestBody,
+            onEvent: async (event: any) => {
+              enqueueEvent(event)
+
+              // Track completed response for DB update
+              if (event.type === 'response.completed') {
+                completedResponse = event.response
+              }
             },
-            responseId: response.id,
-          }),
-          getMessages: getMessages({
-            prisma,
-            conversationId,
-            input,
-            truncationLastMessagesCount,
-          }),
-        })
+          })
+
+          // Update DB with final state
+          if (completedResponse) {
+            await prisma.response.update({
+              where: { id: response.id },
+              data: {
+                status: 'COMPLETED',
+                usage: completedResponse.usage ?? undefined,
+              },
+            })
+
+            // Store output items
+            for (const item of completedResponse.output ?? []) {
+              if (item.type === 'message') {
+                await prisma.responseOutputItem.create({
+                  data: {
+                    responseId: response.id,
+                    type: 'MESSAGE',
+                    status: 'COMPLETED',
+                    role: item.role || 'assistant',
+                    content: item.content as any,
+                  },
+                })
+              } else if (item.type === 'function_call') {
+                await prisma.responseOutputItem.create({
+                  data: {
+                    responseId: response.id,
+                    type: 'FUNCTION_CALL',
+                    status: 'COMPLETED',
+                    callId: item.call_id,
+                    name: item.name,
+                    arguments: item.arguments,
+                  },
+                })
+              }
+            }
+          }
+        } else {
+          // Standard path: use completionsRunAdapter with Assistants event translation
+          await runAdapter.handleRun({
+            run: virtualRun,
+            onEvent: onEvent({
+              prisma,
+              controller: {
+                ...controller,
+                enqueue: enqueueEvent,
+              },
+              responseId: response.id,
+            }),
+            getMessages: getMessages({
+              prisma,
+              conversationId,
+              input,
+              truncationLastMessagesCount,
+            }),
+          })
+        }
       } catch (error: any) {
         console.error(error)
 
-        await onEvent({
-          prisma,
-          controller: {
-            ...controller,
-            enqueue: (data: any) => {
-              try {
-                controller.enqueue(`event: ${data.type}\ndata: ${JSON.stringify(data)}\n\n`)
-              } catch {}
+        if (isPassthrough) {
+          enqueueEvent({
+            type: 'response.failed',
+            response: {
+              id: response.id,
+              status: 'failed',
+              error: { code: 'server_error', message: error?.message ?? '' },
             },
-          },
-          responseId: response.id,
-        })({
-          event: 'thread.run.failed',
-          data: {
-            id: response.id,
-            failed_at: dayjs().unix(),
-            last_error: {
-              code: 'server_error',
-              message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
+          })
+        } else {
+          await onEvent({
+            prisma,
+            controller: {
+              ...controller,
+              enqueue: enqueueEvent,
             },
-          },
-        } as any)
+            responseId: response.id,
+          })({
+            event: 'thread.run.failed',
+            data: {
+              id: response.id,
+              failed_at: dayjs().unix(),
+              last_error: {
+                code: 'server_error',
+                message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
+              },
+            },
+          } as any)
+        }
       }
 
       controller.close()
