@@ -1,6 +1,8 @@
 import { test, before, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { execSync, spawn, type ChildProcess } from 'node:child_process'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { GoogleGenAI } from '@google/genai'
 import { PrismaClient } from '@prisma/client'
 import {
@@ -23,7 +25,8 @@ const CONTAINER_NAME = 'computer-use-mcp-google-test'
 const DOCKER_IMAGE = 'computer-use-mcp-dev'
 const MCP_PORT = 3102
 const MCP_SERVER_URL = `http://localhost:${MCP_PORT}`
-const DOCKER_CONTEXT_DIR = process.env.COMPUTER_USE_MCP_DIR ?? '../computer-use-mcp'
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const DOCKER_CONTEXT_DIR = process.env.COMPUTER_USE_MCP_DIR ?? path.resolve(__dirname, '../../../../computer-use-mcp')
 const DEFAULT_URL = 'https://supercorp.ai'
 const HEALTH_TIMEOUT_MS = 60_000
 const HEALTH_POLL_MS = 1_000

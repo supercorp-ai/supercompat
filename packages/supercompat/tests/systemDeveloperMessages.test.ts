@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import type OpenAI from 'openai'
-import { systemDeveloperMessages } from '../src/lib/messages/systemDeveloperMessages.ts'
+import { systemDeveloperMessages } from '../src/openaiAssistants/lib/messages/systemDeveloperMessages.ts'
 
 test('converts system role to user for o-models', () => {
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [

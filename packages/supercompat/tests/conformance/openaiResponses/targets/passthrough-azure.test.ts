@@ -1,5 +1,5 @@
 /**
- * Responses API: responsesPassthroughRunAdapter + Azure Responses
+ * Responses API: azureResponsesRunAdapter + Azure
  * Uses Azure's native Responses API — built-in tools work natively.
  */
 import { test, describe } from 'node:test'
@@ -8,7 +8,7 @@ import { config } from '../lib/config'
 import {
   supercompat,
   azureAiProjectClientAdapter,
-  responsesPassthroughRunAdapter,
+  azureResponsesRunAdapter,
   prismaStorageAdapter,
 } from '../../../../src/openaiResponses/index'
 import { AIProjectClient } from '@azure/ai-projects-v2'
@@ -25,7 +25,7 @@ if (!endpoint || !tenantId || !clientId || !clientSecret) {
 }
 if (!process.env.DATABASE_URL) { console.log('Skipping: DATABASE_URL required'); process.exit(0) }
 
-// Same exclusions as OpenAI passthrough + file_search (needs vector stores on Azure)
+// Exclusions: dual storage mismatch + file_search (needs vector stores) + computer_use
 const exclude = new Set([
   'streaming: previous_response_id chaining',
   'conversations: multi-turn',
@@ -44,16 +44,12 @@ function createClient() {
 
   return supercompat({
     client: azureAiProjectClientAdapter({ azureAiProject }),
-    runAdapter: responsesPassthroughRunAdapter({
-      getClient: async () => {
-        return await azureAiProject.getOpenAIClient()
-      },
-    }),
+    runAdapter: azureResponsesRunAdapter({ azureAiProject }),
     storage: prismaStorageAdapter({ prisma: new PrismaClient() }),
   })
 }
 
-describe('Responses API: passthrough + Azure', { timeout: 600_000 }, () => {
+describe('Responses API: azureResponsesRunAdapter + Azure', { timeout: 600_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
     test(name, { timeout: 120_000 }, () => contract(createClient()))
   }

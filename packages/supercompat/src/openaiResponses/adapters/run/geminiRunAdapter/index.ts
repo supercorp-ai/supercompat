@@ -20,6 +20,72 @@ type HandleArgs = {
   onEvent: (event: ResponsesRunEvent) => Promise<void>
 }
 
+// Gemini computer use function names
+const GEMINI_COMPUTER_CALL_NAMES = new Set([
+  'computer_call',
+  'computer_use',
+  'computerCall',
+])
+
+// Map Gemini computer action args → OpenAI Responses computer action
+const translateGeminiAction = (args: any): any => {
+  if (!args || typeof args !== 'object') return { type: 'screenshot' }
+
+  // Gemini may return the action directly or nested
+  const action = args.action || args
+  const actionType = action.type || action.action_type
+
+  switch (actionType) {
+    case 'screenshot':
+      return { type: 'screenshot' }
+    case 'click':
+      return {
+        type: 'click',
+        button: action.button || 'left',
+        x: action.x ?? action.coordinate?.[0] ?? 0,
+        y: action.y ?? action.coordinate?.[1] ?? 0,
+      }
+    case 'double_click':
+      return {
+        type: 'double_click',
+        x: action.x ?? action.coordinate?.[0] ?? 0,
+        y: action.y ?? action.coordinate?.[1] ?? 0,
+      }
+    case 'type':
+      return { type: 'type', text: action.text || '' }
+    case 'key':
+    case 'keypress':
+      return { type: 'keypress', keys: Array.isArray(action.keys) ? action.keys : [action.key || action.keys || ''] }
+    case 'scroll':
+      return {
+        type: 'scroll',
+        x: action.x ?? action.coordinate?.[0] ?? 0,
+        y: action.y ?? action.coordinate?.[1] ?? 0,
+        scroll_x: action.scroll_x ?? 0,
+        scroll_y: action.scroll_y ?? (action.direction === 'up' ? -300 : 300),
+      }
+    case 'move':
+    case 'mouse_move':
+      return {
+        type: 'move',
+        x: action.x ?? action.coordinate?.[0] ?? 0,
+        y: action.y ?? action.coordinate?.[1] ?? 0,
+      }
+    case 'drag':
+      return {
+        type: 'drag',
+        path: action.path || [
+          { x: action.start_x ?? 0, y: action.start_y ?? 0 },
+          { x: action.end_x ?? 0, y: action.end_y ?? 0 },
+        ],
+      }
+    case 'wait':
+      return { type: 'wait' }
+    default:
+      return { type: actionType || 'screenshot', ...action }
+  }
+}
+
 export const geminiRunAdapter = ({
   google,
 }: {
@@ -72,6 +138,21 @@ export const geminiRunAdapter = ({
             : Array.isArray(item.content) ? item.content.map((c: any) => c.text || '').join('')
             : String(item.content)
           contents.push({ role: item.role === 'assistant' ? 'model' : 'user', parts: [{ text }] })
+        } else if (item.type === 'computer_call_output') {
+          // Translate computer_call_output → Gemini functionResponse
+          const screenshotUrl = item.output?.image_url || ''
+          contents.push({
+            role: 'user',
+            parts: [{
+              functionResponse: {
+                name: 'computer_call',
+                response: {
+                  current_url: item.current_url || '',
+                  screenshot: screenshotUrl,
+                },
+              },
+            }],
+          })
         }
       }
     }
@@ -126,33 +207,63 @@ export const geminiRunAdapter = ({
 
         if (part.functionCall) {
           const fc = part.functionCall
-          const functionCallItem = {
-            id: `fc_${uid(24)}`,
-            type: 'function_call',
-            call_id: `call_${uid(12)}`,
-            name: fc.name || '',
-            arguments: JSON.stringify(fc.args || {}),
-            status: 'completed',
-          }
-          output.push(functionCallItem)
+          const isComputerCall = hasComputerUse && GEMINI_COMPUTER_CALL_NAMES.has(fc.name || '')
 
-          await onEvent({
-            type: 'response.output_item.added',
-            output_index: output.length - 1,
-            item: functionCallItem,
-          })
-          await onEvent({
-            type: 'response.function_call_arguments.done',
-            output_index: output.length - 1,
-            call_id: functionCallItem.call_id,
-            name: functionCallItem.name,
-            arguments: functionCallItem.arguments,
-          })
-          await onEvent({
-            type: 'response.output_item.done',
-            output_index: output.length - 1,
-            item: functionCallItem,
-          })
+          if (isComputerCall) {
+            // Emit as computer_call
+            const action = translateGeminiAction(fc.args)
+            const callId = `call_${uid(12)}`
+
+            const computerCallItem = {
+              id: `cc_${uid(24)}`,
+              call_id: callId,
+              type: 'computer_call',
+              status: 'completed',
+              actions: [action],
+              pending_safety_checks: [],
+            }
+            output.push(computerCallItem)
+
+            await onEvent({
+              type: 'response.output_item.added',
+              output_index: output.length - 1,
+              item: computerCallItem,
+            })
+            await onEvent({
+              type: 'response.output_item.done',
+              output_index: output.length - 1,
+              item: computerCallItem,
+            })
+          } else {
+            // Regular function call
+            const functionCallItem = {
+              id: `fc_${uid(24)}`,
+              type: 'function_call',
+              call_id: `call_${uid(12)}`,
+              name: fc.name || '',
+              arguments: JSON.stringify(fc.args || {}),
+              status: 'completed',
+            }
+            output.push(functionCallItem)
+
+            await onEvent({
+              type: 'response.output_item.added',
+              output_index: output.length - 1,
+              item: functionCallItem,
+            })
+            await onEvent({
+              type: 'response.function_call_arguments.done',
+              output_index: output.length - 1,
+              call_id: functionCallItem.call_id,
+              name: functionCallItem.name,
+              arguments: functionCallItem.arguments,
+            })
+            await onEvent({
+              type: 'response.output_item.done',
+              output_index: output.length - 1,
+              item: functionCallItem,
+            })
+          }
         }
       }
     }

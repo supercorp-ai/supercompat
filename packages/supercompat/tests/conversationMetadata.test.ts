@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert'
 import {
   appendItemIdsToConversationMetadata,
   saveResponseItemsToConversationMetadata,
-} from '../src/lib/responses/saveResponseItemsToConversationMetadata'
+} from '../src/openaiAssistants/lib/responses/saveResponseItemsToConversationMetadata'
 
 type Meta = Record<string, string>
 

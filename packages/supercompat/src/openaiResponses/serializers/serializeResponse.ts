@@ -1,6 +1,6 @@
 import type { Response as PrismaResponse, ResponseOutputItem } from '@prisma/client'
 import dayjs from 'dayjs'
-import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
+import { isOpenaiComputerUseModel } from '../../openaiAssistants/lib/openaiComputerUse'
 import { serializeOutputItem } from './serializeOutputItem'
 import { serializeTools } from './serializeTools'
 

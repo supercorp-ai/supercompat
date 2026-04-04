@@ -1,9 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import type OpenAI from 'openai'
-import { alternatingMessages } from '../src/lib/messages/alternatingMessages.ts'
-import { firstUserMessages } from '../src/lib/messages/firstUserMessages.ts'
-import { nonEmptyMessages } from '../src/lib/messages/nonEmptyMessages.ts'
+import { alternatingMessages } from '../src/openaiAssistants/lib/messages/alternatingMessages.ts'
+import { firstUserMessages } from '../src/openaiAssistants/lib/messages/firstUserMessages.ts'
+import { nonEmptyMessages } from '../src/openaiAssistants/lib/messages/nonEmptyMessages.ts'
 
 const pipeline = (messages: OpenAI.Chat.ChatCompletionMessageParam[]) =>
   nonEmptyMessages({

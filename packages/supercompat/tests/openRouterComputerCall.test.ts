@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { denormalizeComputerCallArguments } from '../src/adapters/client/openRouterClientAdapter/completions/normalizeComputerCall.ts'
+import { denormalizeComputerCallArguments } from '../src/openaiAssistants/adapters/client/openRouterClientAdapter/completions/normalizeComputerCall.ts'
 
 const DISPLAY_WIDTH = 1280
 const DISPLAY_HEIGHT = 720

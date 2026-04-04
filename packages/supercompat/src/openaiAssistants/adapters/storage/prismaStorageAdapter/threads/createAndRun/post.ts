@@ -118,8 +118,8 @@ export const post = ({
         onEvent({
           controller: {
             ...controller,
-            enqueue: (data) => {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+            enqueue: (data: any) => {
+              enqueueSSE(controller, data.event, data.data)
             },
           },
           prisma,

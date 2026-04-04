@@ -3,7 +3,7 @@ import dayjs from 'dayjs'
 import { onEvent } from '../onEvent'
 import { getMessages } from '../getMessages'
 import { serializeResponse } from '../../serializers/serializeResponse'
-import { RunAdapterPartobClient } from '@/types'
+import { RunAdapterPartobClient } from '../../../openaiAssistants/types'
 
 const createTools = async ({
   prisma,
@@ -319,6 +319,17 @@ export const post = ({
                     callId: item.call_id,
                     name: item.name,
                     arguments: item.arguments,
+                  },
+                })
+              } else if (item.type === 'computer_call') {
+                await prisma.responseOutputItem.create({
+                  data: {
+                    responseId: response.id,
+                    type: 'COMPUTER_CALL',
+                    status: 'COMPLETED',
+                    callId: item.call_id,
+                    actions: item.actions as any,
+                    pendingSafetyChecks: item.pending_safety_checks as any,
                   },
                 })
               }

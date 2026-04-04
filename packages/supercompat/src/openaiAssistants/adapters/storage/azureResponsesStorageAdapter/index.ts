@@ -26,7 +26,7 @@ import { submitToolOutputs } from './threads/runs/submitToolOutputs'
 import { assistants } from '../responsesStorageAdapter/assistants'
 import { responses } from './responses'
 
-type MethodHandlers = { get?: RequestHandler; post?: RequestHandler }
+type MethodHandlers = { get?: RequestHandler; post?: RequestHandler; delete?: RequestHandler }
 
 
 type AzureResponsesStorageAdapterArgs = StorageAdapterArgs & {
@@ -129,7 +129,7 @@ export const azureResponsesStorageAdapter = (): ((
     // Use the REAL Azure client so all API calls have proper authentication
     const createWrappedHandlers = (
       handlerFactory: (args: any) => any,
-      methods: Array<'get' | 'post'>,
+      methods: Array<'get' | 'post' | 'delete'>,
       additionalArgs: any = {},
     ): MethodHandlers => {
       const wrapped: MethodHandlers = {}

@@ -145,7 +145,7 @@ export const perplexityAgentRunAdapter = ({
       })
 
       // Transform to Agent API format
-      const { instructions, input } = serializeInput(completionsMessages)
+      const { instructions, input } = serializeInput(completionsMessages as OpenAI.ChatCompletionMessageParam[])
       const tools = isEmpty(run.tools)
         ? undefined
         : run.tools.map(serializeTool)

@@ -21,10 +21,87 @@ type HandleArgs = {
   onEvent: (event: ResponsesRunEvent) => Promise<void>
 }
 
+// Track which tool names correspond to computer use
+const COMPUTER_TOOL_NAME = 'computer'
+
+// Map Anthropic computer action → OpenAI Responses computer action
+const translateAnthropicAction = (input: any): any => {
+  if (!input || typeof input !== 'object') return { type: 'screenshot' }
+
+  const action = input.action || input.type
+  switch (action) {
+    case 'screenshot':
+      return { type: 'screenshot' }
+    case 'click':
+    case 'left_click':
+      return {
+        type: 'click',
+        button: 'left',
+        x: input.coordinate?.[0] ?? 0,
+        y: input.coordinate?.[1] ?? 0,
+      }
+    case 'right_click':
+      return {
+        type: 'click',
+        button: 'right',
+        x: input.coordinate?.[0] ?? 0,
+        y: input.coordinate?.[1] ?? 0,
+      }
+    case 'middle_click':
+      return {
+        type: 'click',
+        button: 'wheel',
+        x: input.coordinate?.[0] ?? 0,
+        y: input.coordinate?.[1] ?? 0,
+      }
+    case 'double_click':
+      return {
+        type: 'double_click',
+        x: input.coordinate?.[0] ?? 0,
+        y: input.coordinate?.[1] ?? 0,
+      }
+    case 'type':
+      return { type: 'type', text: input.text || '' }
+    case 'key':
+      return { type: 'keypress', keys: [input.key || ''] }
+    case 'scroll':
+      return {
+        type: 'scroll',
+        x: input.coordinate?.[0] ?? 0,
+        y: input.coordinate?.[1] ?? 0,
+        scroll_x: 0,
+        scroll_y: input.direction === 'up' ? -(input.amount || 3) * 100
+          : input.direction === 'down' ? (input.amount || 3) * 100
+          : input.direction === 'left' ? -(input.amount || 3) * 100
+          : (input.amount || 3) * 100,
+      }
+    case 'mouse_move':
+      return {
+        type: 'move',
+        x: input.coordinate?.[0] ?? 0,
+        y: input.coordinate?.[1] ?? 0,
+      }
+    case 'drag':
+      return {
+        type: 'drag',
+        path: [
+          { x: input.start_coordinate?.[0] ?? 0, y: input.start_coordinate?.[1] ?? 0 },
+          { x: input.end_coordinate?.[0] ?? 0, y: input.end_coordinate?.[1] ?? 0 },
+        ],
+      }
+    case 'wait':
+      return { type: 'wait' }
+    default:
+      // Pass through unknown actions as-is with type
+      return { type: action || 'screenshot', ...input }
+  }
+}
+
 // Map Responses API tool format → Anthropic tool format
-const serializeTools = (tools: any[]): { tools: any[]; betas: string[] } => {
+const serializeTools = (tools: any[]): { tools: any[]; betas: string[]; computerToolNames: Set<string> } => {
   const anthropicTools: any[] = []
   const betas = new Set<string>()
+  const computerToolNames = new Set<string>()
 
   for (const tool of tools) {
     if (tool.type === 'function') {
@@ -46,10 +123,11 @@ const serializeTools = (tools: any[]): { tools: any[]; betas: string[] } => {
         display_height_px: tool.display_height || 720,
       })
       betas.add('computer-use-2025-01-24')
+      computerToolNames.add(COMPUTER_TOOL_NAME)
     }
   }
 
-  return { tools: anthropicTools, betas: [...betas] }
+  return { tools: anthropicTools, betas: Array.from(betas), computerToolNames }
 }
 
 // Convert Responses input → Anthropic messages
@@ -92,6 +170,27 @@ const serializeInput = (input: any, instructions?: string): { system?: string; m
             content: item.output,
           }],
         })
+      } else if (item.type === 'computer_call_output') {
+        // Translate computer_call_output → Anthropic tool_result with screenshot
+        const resultContent: any[] = []
+        if (item.output?.type === 'computer_screenshot' && item.output?.image_url) {
+          // Extract base64 from data URL
+          const match = item.output.image_url.match(/^data:([^;]+);base64,(.+)$/)
+          if (match) {
+            resultContent.push({
+              type: 'image',
+              source: { type: 'base64', media_type: match[1], data: match[2] },
+            })
+          }
+        }
+        messages.push({
+          role: 'user',
+          content: [{
+            type: 'tool_result',
+            tool_use_id: item.call_id,
+            content: resultContent.length > 0 ? resultContent : 'Action executed',
+          }],
+        })
       }
     }
   }
@@ -110,7 +209,7 @@ export const anthropicRunAdapter = ({
     requestBody,
     onEvent,
   }: HandleArgs) => {
-    const { tools: anthropicTools, betas } = serializeTools(requestBody.tools || [])
+    const { tools: anthropicTools, betas, computerToolNames } = serializeTools(requestBody.tools || [])
     const { system, messages } = serializeInput(requestBody.input, requestBody.instructions)
 
     const responseId = `resp_${uid(24)}`
@@ -154,7 +253,6 @@ export const anthropicRunAdapter = ({
       : anthropic.messages.stream(createParams)
 
     const output: any[] = []
-    let currentTextIndex = 0
     let currentText = ''
     let currentMessageId = ''
     const toolUseBlocks: Map<number, { id: string; name: string; arguments: string }> = new Map()
@@ -183,8 +281,6 @@ export const anthropicRunAdapter = ({
           })
         } else if (block.type === 'tool_use') {
           toolUseBlocks.set(index, { id: block.id, name: block.name, arguments: '' })
-        } else if (block.type === 'web_search_tool_result' || block.type === 'code_execution_tool_result') {
-          // Built-in tool results — these are included in the output as-is
         }
       }
 
@@ -213,36 +309,67 @@ export const anthropicRunAdapter = ({
         const toolBlock = toolUseBlocks.get(index)
 
         if (toolBlock) {
-          // Function call completed
-          const functionCallItem = {
-            id: `fc_${uid(24)}`,
-            type: 'function_call',
-            call_id: toolBlock.id,
-            name: toolBlock.name,
-            arguments: toolBlock.arguments,
-            status: 'completed',
+          const isComputerUse = computerToolNames.has(toolBlock.name)
+
+          if (isComputerUse) {
+            // Emit as computer_call output item
+            const input = JSON.parse(toolBlock.arguments || '{}')
+            const action = translateAnthropicAction(input)
+            const callId = `call_${uid(12)}`
+
+            const computerCallItem = {
+              id: `cc_${uid(24)}`,
+              call_id: callId,
+              type: 'computer_call',
+              status: 'completed',
+              actions: [action],
+              pending_safety_checks: [],
+            }
+            output.push(computerCallItem)
+
+            await onEvent({
+              type: 'response.output_item.added',
+              output_index: output.length - 1,
+              item: computerCallItem,
+            })
+
+            await onEvent({
+              type: 'response.output_item.done',
+              output_index: output.length - 1,
+              item: computerCallItem,
+            })
+          } else {
+            // Regular function call
+            const functionCallItem = {
+              id: `fc_${uid(24)}`,
+              type: 'function_call',
+              call_id: toolBlock.id,
+              name: toolBlock.name,
+              arguments: toolBlock.arguments,
+              status: 'completed',
+            }
+            output.push(functionCallItem)
+
+            await onEvent({
+              type: 'response.output_item.added',
+              output_index: output.length - 1,
+              item: functionCallItem,
+            })
+
+            await onEvent({
+              type: 'response.function_call_arguments.done',
+              output_index: output.length - 1,
+              call_id: toolBlock.id,
+              name: toolBlock.name,
+              arguments: toolBlock.arguments,
+            })
+
+            await onEvent({
+              type: 'response.output_item.done',
+              output_index: output.length - 1,
+              item: functionCallItem,
+            })
           }
-          output.push(functionCallItem)
-
-          await onEvent({
-            type: 'response.output_item.added',
-            output_index: output.length - 1,
-            item: functionCallItem,
-          })
-
-          await onEvent({
-            type: 'response.function_call_arguments.done',
-            output_index: output.length - 1,
-            call_id: toolBlock.id,
-            name: toolBlock.name,
-            arguments: toolBlock.arguments,
-          })
-
-          await onEvent({
-            type: 'response.output_item.done',
-            output_index: output.length - 1,
-            item: functionCallItem,
-          })
 
           toolUseBlocks.delete(index)
         }

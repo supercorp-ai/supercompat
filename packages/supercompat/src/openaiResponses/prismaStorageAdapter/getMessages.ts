@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client'
-import type { MessageWithRun } from '@/types'
+import type { MessageWithRun } from '../../openaiAssistants/types'
 import dayjs from 'dayjs'
 
 const makeMessage = (overrides: Partial<MessageWithRun> & { role: string; content: any }): MessageWithRun => ({
@@ -54,9 +54,10 @@ export const getMessages = ({
       const response = previousResponses[i]
       const responseInput = normalizeInput(response.input)
 
-      // Add user messages from input (skip function_call_output — handled separately)
+      // Add user messages from input (skip function_call_output/computer_call_output — handled separately)
       for (const item of responseInput) {
         if (item.type === 'function_call_output') continue
+        if (item.type === 'computer_call_output') continue
         messages.push(inputItemToMessage(item))
       }
 
@@ -351,6 +352,7 @@ export const getMessages = ({
       for (const item of inputItems) {
         if (item.type === 'function_call_output') continue
         if (item.type === 'function_call') continue
+        if (item.type === 'computer_call_output') continue
         messages.push(inputItemToMessage(item))
       }
     }

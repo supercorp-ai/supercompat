@@ -1,6 +1,8 @@
 import { test, before, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { execSync, spawn, type ChildProcess } from 'node:child_process'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { OpenRouter, HTTPClient } from '@openrouter/sdk'
 import { PrismaClient } from '@prisma/client'
 import {
@@ -26,7 +28,8 @@ const MCP_PORT = 3104
 const MCP_PORT_SMALL = 3105
 const MCP_SERVER_URL = `http://localhost:${MCP_PORT}`
 const MCP_SERVER_URL_SMALL = `http://localhost:${MCP_PORT_SMALL}`
-const DOCKER_CONTEXT_DIR = process.env.COMPUTER_USE_MCP_DIR ?? '../computer-use-mcp'
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const DOCKER_CONTEXT_DIR = process.env.COMPUTER_USE_MCP_DIR ?? path.resolve(__dirname, '../../../../computer-use-mcp')
 const DEFAULT_URL = 'https://supercorp.ai'
 const HEALTH_TIMEOUT_MS = 60_000
 const HEALTH_POLL_MS = 1_000

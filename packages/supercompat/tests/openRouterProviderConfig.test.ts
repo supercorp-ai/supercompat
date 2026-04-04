@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { post } from '../src/adapters/client/openRouterClientAdapter/completions/post.ts'
+import { post } from '../src/openaiAssistants/adapters/client/openRouterClientAdapter/completions/post.ts'
 
 const completionResponse = {
   id: 'chatcmpl-123',

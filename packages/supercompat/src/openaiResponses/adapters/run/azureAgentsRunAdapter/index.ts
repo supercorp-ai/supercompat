@@ -132,7 +132,7 @@ export const azureAgentsResponsesRunAdapter = ({
     if (current.status === 'completed') {
       // Get messages
       const messages: any[] = []
-      for await (const m of azureAiProject.agents.messages.list(thread.id)) {
+      for await (const m of azureAiProject.agents.messages.list(threadId!)) {
         messages.push(m)
       }
 
@@ -183,7 +183,7 @@ export const azureAgentsResponsesRunAdapter = ({
       }
     } else if (current.status === 'requires_action') {
       // Tool calls
-      const toolCalls = current.requiredAction?.submitToolOutputs?.toolCalls || []
+      const toolCalls = (current.requiredAction as any)?.submitToolOutputs?.toolCalls || []
       for (let i = 0; i < toolCalls.length; i++) {
         const tc = toolCalls[i] as any
         const functionCallItem = {

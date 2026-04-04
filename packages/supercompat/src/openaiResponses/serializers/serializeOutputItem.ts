@@ -1,5 +1,4 @@
 import type { ResponseOutputItem } from '@prisma/client'
-import dayjs from 'dayjs'
 
 export const serializeOutputItem = ({
   outputItem,
@@ -14,6 +13,18 @@ export const serializeOutputItem = ({
       status: outputItem.status.toLowerCase(),
       role: outputItem.role ?? 'assistant',
       content: outputItem.content ?? [],
+    }
+  }
+
+  if (outputItem.type === 'COMPUTER_CALL') {
+    return {
+      id: outputItem.id,
+      object: 'realtime.item' as const,
+      type: 'computer_call' as const,
+      call_id: outputItem.callId ?? '',
+      status: outputItem.status.toLowerCase(),
+      actions: (outputItem as any).actions ?? [],
+      pending_safety_checks: (outputItem as any).pendingSafetyChecks ?? [],
     }
   }
 

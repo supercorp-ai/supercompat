@@ -31,7 +31,10 @@ const HEALTH_POLL_MS = 1_000
 const DISPLAY_WIDTH = 1280
 const DISPLAY_HEIGHT = 720
 const MAX_AGENT_ITERATIONS = 10
-const DOCKER_CONTEXT_DIR = process.env.COMPUTER_USE_MCP_DIR ?? '../computer-use-mcp'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const DOCKER_CONTEXT_DIR = process.env.COMPUTER_USE_MCP_DIR ?? path.resolve(__dirname, '../../../../computer-use-mcp')
 const DEFAULT_URL = 'https://supercorp.ai'
 
 const TASK_PROMPT =
@@ -332,7 +335,7 @@ after(async () => {
 // ===========================================================================
 // Test 1: OpenAI direct (Responses API)
 // ===========================================================================
-testOrSkip('OpenAI direct: computer-use-preview finds subscribe form fields', { timeout: 180_000 }, async () => {
+testOrSkip('OpenAI direct: computer use finds subscribe form fields', { timeout: 180_000 }, async () => {
   assert.ok(openaiApiKey, 'TEST_OPENAI_API_KEY must be set')
   const totalBench = bench('OpenAI direct total')
 
@@ -350,16 +353,13 @@ testOrSkip('OpenAI direct: computer-use-preview finds subscribe form fields', { 
   await resetBrowser(sessionId)
   b.end()
 
-  // Text-only input — model takes screenshots via computer_use_preview tool
+  // Text-only input — model takes screenshots via computer tool
   b = bench('OpenAI first API call')
   let response = await (openai.responses as any).create({
-    model: 'computer-use-preview',
+    model: 'gpt-5.4-mini',
     tools: [
       {
-        type: 'computer_use_preview',
-        display_width: DISPLAY_WIDTH,
-        display_height: DISPLAY_HEIGHT,
-        environment: 'browser',
+        type: 'computer',
       },
     ],
     input: [
@@ -388,13 +388,18 @@ testOrSkip('OpenAI direct: computer-use-preview finds subscribe form fields', { 
 
     for (const call of computerCalls) {
       computerCallCount++
-      console.log(`[openai-direct] computer_call #${computerCallCount}: ${call.action?.type}`)
+      // GA format uses actions[] (batched), legacy uses action (single)
+      const actions = call.actions ?? (call.action ? [call.action] : [])
+      console.log(`[openai-direct] computer_call #${computerCallCount}: ${actions.map((a: any) => a.type).join(', ')}`)
 
       assert.ok(call.call_id, 'computer_call should have call_id')
-      assert.ok(call.action?.type, 'computer_call should have action.type')
+      assert.ok(actions.length > 0, 'computer_call should have at least one action')
 
-      b = bench(`MCP action #${computerCallCount} (${call.action?.type})`)
-      const screenshotUri = await executeComputerAction(sessionId, call.action)
+      b = bench(`MCP action #${computerCallCount} (${actions.map((a: any) => a.type).join(', ')})`)
+      let screenshotUri: string = ''
+      for (const action of actions) {
+        screenshotUri = await executeComputerAction(sessionId, action)
+      }
       b.end()
 
       const pendingSafetyChecks = (response.output ?? [])
@@ -412,13 +417,10 @@ testOrSkip('OpenAI direct: computer-use-preview finds subscribe form fields', { 
 
       b = bench(`OpenAI API call #${computerCallCount + 1}`)
       response = await (openai.responses as any).create({
-        model: 'computer-use-preview',
+        model: 'gpt-5.4-mini',
         tools: [
           {
-            type: 'computer_use_preview',
-            display_width: DISPLAY_WIDTH,
-            display_height: DISPLAY_HEIGHT,
-            environment: 'browser',
+            type: 'computer',
           },
         ],
         previous_response_id: response.id,
@@ -452,7 +454,7 @@ testOrSkip('OpenAI direct: computer-use-preview finds subscribe form fields', { 
 // NOTE: conversation + input_image is rejected by OpenAI API for computer-use-preview.
 // The workaround (matching superinterface's approach) is to send text-only messages
 // and let the model take screenshots via the computer_use_preview tool.
-testOrSkip('OpenAI supercompat: computer-use-preview via thread/run finds subscribe form fields', { timeout: 180_000 }, async () => {
+testOrSkip('OpenAI supercompat: computer use via thread/run finds subscribe form fields', { timeout: 180_000 }, async () => {
   assert.ok(openaiApiKey, 'TEST_OPENAI_API_KEY must be set')
   const totalBench = bench('OpenAI supercompat total')
 
@@ -465,19 +467,14 @@ testOrSkip('OpenAI supercompat: computer-use-preview via thread/run finds subscr
 
   const tools = [
     {
-      type: 'computer_use_preview',
-      computer_use_preview: {
-        display_width: DISPLAY_WIDTH,
-        display_height: DISPLAY_HEIGHT,
-        environment: 'browser',
-      },
+      type: 'computer',
     },
   ] as any[]
 
   const openaiAssistant = {
     id: 'computer-use-assistant',
     object: 'assistant' as const,
-    model: 'computer-use-preview',
+    model: 'gpt-5.4-mini',
     instructions: 'You are a browser automation agent. You can see the screen and interact with it.',
     description: null,
     name: 'Computer Use Assistant',

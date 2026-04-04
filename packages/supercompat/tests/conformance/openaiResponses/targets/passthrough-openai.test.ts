@@ -1,5 +1,5 @@
 /**
- * Responses API: responsesPassthroughRunAdapter + OpenAI
+ * Responses API: openaiResponsesRunAdapter + OpenAI
  * Uses OpenAI's native Responses API — built-in tools work natively.
  */
 import { test, describe } from 'node:test'
@@ -7,7 +7,7 @@ import OpenAI from 'openai'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import { responsesContracts as _all } from '../contracts'
 
-// Passthrough uses real OpenAI API for responses but local prisma for conversations.
+// OpenAI run adapter uses real OpenAI API for responses but local prisma for conversations.
 // Conversation-dependent tests fail because of this dual storage mismatch.
 const exclude = new Set([
   'streaming: previous_response_id chaining',
@@ -21,7 +21,7 @@ import { config } from '../lib/config'
 import {
   supercompat,
   openaiClientAdapter,
-  responsesPassthroughRunAdapter,
+  openaiResponsesRunAdapter,
   prismaStorageAdapter,
 } from '../../../../src/openaiResponses/index'
 import { PrismaClient } from '@prisma/client'
@@ -46,12 +46,12 @@ function createClient() {
 
   return supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesPassthroughRunAdapter({ openai: realOpenAI }),
+    runAdapter: openaiResponsesRunAdapter({ openai: realOpenAI }),
     storage: prismaStorageAdapter({ prisma: new PrismaClient() }),
   })
 }
 
-describe('Responses API: passthrough + OpenAI', { timeout: 300_000 }, () => {
+describe('Responses API: openaiResponsesRunAdapter + OpenAI', { timeout: 300_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
     test(name, { timeout: 120_000 }, () => contract(createClient()))
   }
