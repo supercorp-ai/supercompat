@@ -9,7 +9,7 @@ import {
   openaiClientAdapter,
   completionsRunAdapter,
   prismaStorageAdapter,
-} from '../src/index'
+} from '../src/openaiAssistants/index'
 import { PrismaClient } from '@prisma/client'
 
 // Regression test: validates tool-call flows retain messages in storage

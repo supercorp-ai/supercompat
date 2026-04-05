@@ -9,7 +9,7 @@ import {
   openaiClientAdapter,
   supercompat,
   responsesStorageAdapter,
-} from '../src/index'
+} from '../src/openaiAssistants/index'
 import { serializeItemAsMessage } from '../src/openaiAssistants/lib/items/serializeItemAsMessage'
 
 const apiKey = process.env.TEST_OPENAI_API_KEY

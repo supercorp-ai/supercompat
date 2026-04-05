@@ -9,7 +9,7 @@ import {
   responsesRunAdapter,
   azureResponsesStorageAdapter,
   azureAiProjectClientAdapter,
-} from '../src/index'
+} from '../src/openaiAssistants/index'
 
 // Skip slow tests if SKIP_SLOW_TESTS is set
 const shouldSkipSlowTests = process.env.SKIP_SLOW_TESTS === 'true'

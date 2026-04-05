@@ -9,7 +9,7 @@ import {
   azureAiProjectClientAdapter,
   supercompat,
   azureAgentsStorageAdapter,
-} from '../src/index'
+} from '../src/openaiAssistants/index'
 
 const azureEndpoint = process.env.AZURE_PROJECT_ENDPOINT
 const azureTenantId = process.env.AZURE_TENANT_ID

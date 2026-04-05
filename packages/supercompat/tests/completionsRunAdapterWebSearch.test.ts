@@ -4,7 +4,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import { ProxyAgent, setGlobalDispatcher } from 'undici'
 import dns from 'node:dns'
-import { anthropicClientAdapter, completionsRunAdapter, supercompat } from '../src/index'
+import { anthropicClientAdapter, completionsRunAdapter, supercompat } from '../src/openaiAssistants/index'
 
 dns.setDefaultResultOrder('ipv4first')
 

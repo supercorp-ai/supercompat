@@ -11,7 +11,7 @@ import {
   groqClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
-} from '../src/index'
+} from '../src/openaiAssistants/index'
 
 const groqKey = process.env.GROQ_API_KEY!
 

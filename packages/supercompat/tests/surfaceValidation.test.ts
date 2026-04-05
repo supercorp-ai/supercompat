@@ -18,7 +18,7 @@ import {
   openaiClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
-} from '../src/index'
+} from '../src/openaiAssistants/index'
 
 dns.setDefaultResultOrder('ipv4first')
 

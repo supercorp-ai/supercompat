@@ -17,7 +17,7 @@ import {
   supercompat,
   responsesStorageAdapter,
   prismaStorageAdapter,
-} from '../src/index.js'
+} from '../src/openaiAssistants/index'
 
 // ---------------------------------------------------------------------------
 // Configuration

@@ -10,7 +10,7 @@ import {
   mistralClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
-} from '../src/index'
+} from '../src/openaiAssistants/index'
 
 const mistralKey = process.env.MISTRAL_API_KEY!
 

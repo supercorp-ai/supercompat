@@ -778,6 +778,48 @@ npx prisma db push
 npx prisma generate
 ```
 
+## Migrating from v3 to v4
+
+### Import paths
+
+All imports now require an explicit output path. The root `supercompat` import no longer exports adapters.
+
+```typescript
+// v3
+import { supercompat, openaiClientAdapter, prismaStorageAdapter } from 'supercompat'
+
+// v4 — Assistants output
+import { supercompat, openaiClientAdapter, prismaStorageAdapter } from 'supercompat/openaiAssistants'
+
+// v4 — Responses output
+import { createClient, openaiClientAdapter, prismaStorageAdapter } from 'supercompat/openaiResponses'
+```
+
+### New Responses API output
+
+v4 adds `supercompat/openaiResponses` — a full Responses API implementation with its own storage adapter, run adapters, and Prisma schema. See [Responses API](#responses-api) and [Database Setup](#database-setup) for details.
+
+### New run adapters
+
+v4 adds native run adapters for the Responses API output that call provider APIs directly, enabling built-in tools:
+
+| Adapter | Import | What it does |
+|---|---|---|
+| `openaiResponsesRunAdapter` | `supercompat/openaiResponses` | Calls OpenAI's native Responses API |
+| `azureResponsesRunAdapter` | `supercompat/openaiResponses` | Calls Azure's native Responses API |
+| `anthropicRunAdapter` | `supercompat/openaiResponses` | Calls Anthropic with native web search, code execution, computer use |
+| `geminiRunAdapter` | `supercompat/openaiResponses` | Calls Gemini with native computer use |
+| `azureAgentsResponsesRunAdapter` | `supercompat/openaiResponses` | Calls Azure Agents with file search, code interpreter |
+| `perplexityAgentRunAdapter` | `supercompat/openaiAssistants` | Calls Perplexity's `/v1/agent` endpoint |
+
+The `completionsRunAdapter` still works for all providers on both outputs.
+
+### Prisma schema changes
+
+If you use `prismaStorageAdapter` for the Assistants API output, no schema changes are required.
+
+If you're adding the new Responses API output, you'll need the Responses Prisma models (see [Responses API schema](#responses-api)).
+
 ## Conformance Testing
 
 Supercompat ships with conformance tests that verify adapter behavior against the real OpenAI APIs.

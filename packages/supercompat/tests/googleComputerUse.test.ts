@@ -10,7 +10,7 @@ import {
   googleClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
-} from '../src/index.ts'
+} from '../src/openaiAssistants/index'
 
 const googleApiKey = process.env.GOOGLE_API_KEY
 

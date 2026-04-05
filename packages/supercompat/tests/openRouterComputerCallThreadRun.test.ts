@@ -10,7 +10,7 @@ import {
   openRouterClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
-} from '../src/index.ts'
+} from '../src/openaiAssistants/index'
 
 const openrouterApiKey = process.env.OPENROUTER_API_KEY
 

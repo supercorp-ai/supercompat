@@ -11,7 +11,7 @@ import {
   anthropicClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
-} from '../src/index'
+} from '../src/openaiAssistants/index'
 
 const anthropicKey = process.env.ANTHROPIC_API_KEY!
 
