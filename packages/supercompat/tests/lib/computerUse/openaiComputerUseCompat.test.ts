@@ -28,7 +28,7 @@ test('isOpenaiComputerUseModel rejects non-GPT-5.4 models', () => {
 
 // -- serializeComputerUseTool --
 
-test('GA computer type (gpt-5.4): sends only { type: "computer" }', () => {
+test('GA computer type (gpt-5.4): sends { type: "computer", computer: { ... } }', () => {
   const tool = serializeComputerUseTool({
     useOpenaiComputerTool: true,
     tool: {
@@ -40,10 +40,17 @@ test('GA computer type (gpt-5.4): sends only { type: "computer" }', () => {
     },
   })
 
-  assert.deepEqual(tool, { type: 'computer' })
+  assert.deepEqual(tool, {
+    type: 'computer',
+    computer: {
+      environment: 'mac',
+      display_width: 1440,
+      display_height: 900,
+    },
+  })
 })
 
-test('GA computer type: no environment, display_width, or display_height', () => {
+test('GA computer type: config nested under computer key', () => {
   const tool = serializeComputerUseTool({
     useOpenaiComputerTool: true,
     tool: {
@@ -54,9 +61,11 @@ test('GA computer type: no environment, display_width, or display_height', () =>
   })
 
   assert.equal(tool.type, 'computer')
-  assert.equal('environment' in tool, false)
-  assert.equal('display_width' in tool, false)
-  assert.equal('display_height' in tool, false)
+  assert.deepEqual((tool as any).computer, {
+    environment: 'linux',
+    display_width: 1280,
+    display_height: 720,
+  })
 })
 
 test('Preview type: sends environment, display_width, display_height', () => {
@@ -73,9 +82,11 @@ test('Preview type: sends environment, display_width, display_height', () => {
 
   assert.deepEqual(tool, {
     type: 'computer_use_preview',
-    environment: 'linux',
-    display_width: 1280,
-    display_height: 720,
+    computer_use_preview: {
+      environment: 'linux',
+      display_width: 1280,
+      display_height: 720,
+    },
   })
 })
 
@@ -90,7 +101,7 @@ test('Preview type: normalizes MACOS to mac', () => {
   })
 
   assert.equal(tool.type, 'computer_use_preview')
-  assert.equal((tool as any).environment, 'mac')
+  assert.equal((tool as any).computer_use_preview.environment, 'mac')
 })
 
 test('Preview type: reads config from nested computer key', () => {
@@ -107,9 +118,11 @@ test('Preview type: reads config from nested computer key', () => {
 
   assert.deepEqual(tool, {
     type: 'computer_use_preview',
-    environment: 'windows',
-    display_width: 1920,
-    display_height: 1080,
+    computer_use_preview: {
+      environment: 'windows',
+      display_width: 1920,
+      display_height: 1080,
+    },
   })
 })
 

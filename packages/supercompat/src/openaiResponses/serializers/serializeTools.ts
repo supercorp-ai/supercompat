@@ -52,8 +52,8 @@ const serializeTool = ({
       return {
         type: 'code_interpreter' as const,
       }
-    case 'COMPUTER_USE':
-      return serializeComputerUseTool({
+    case 'COMPUTER_USE': {
+      const serialized = serializeComputerUseTool({
         useOpenaiComputerTool,
         tool: {
           display_height: tool.computerUseTool?.displayHeight ?? 720,
@@ -61,6 +61,13 @@ const serializeTool = ({
           environment: tool.computerUseTool?.environment ?? 'linux',
         },
       })
+      // Flatten to Responses API format
+      if (serialized.type === 'computer') {
+        return { type: 'computer' as const }
+      }
+      const config = (serialized as any).computer_use_preview ?? {}
+      return { type: 'computer_use_preview' as const, ...config }
+    }
     default:
       return { type: tool.type.toLowerCase() }
   }

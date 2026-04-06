@@ -73,18 +73,26 @@ export const serializeTools = ({
   if (!tools?.length) return {}
 
   return {
-    tools: tools.map((tool) => ({
-      ...(((tool as any).type === 'computer' || (tool as any).type === 'computer_use_preview')
-        ? serializeComputerUseTool({
-            useOpenaiComputerTool,
-            tool: tool as unknown as Record<string, unknown>,
-          })
-        : {
-            type: tool.type,
-            // @ts-ignore-next-line
-            ...(tool[tool.type] || {}),
-          }),
-    }))
+    tools: tools.map((tool) => {
+      const toolType = (tool as any).type
+      if (toolType === 'computer' || toolType === 'computer_use_preview') {
+        const serialized = serializeComputerUseTool({
+          useOpenaiComputerTool,
+          tool: tool as unknown as Record<string, unknown>,
+        })
+        // Flatten nested Assistants format → flat Responses API format
+        if (serialized.type === 'computer') {
+          return { type: 'computer' as const }
+        }
+        const config = (serialized as any).computer_use_preview ?? {}
+        return { type: 'computer_use_preview' as const, ...config }
+      }
+      return {
+        type: tool.type,
+        // @ts-ignore-next-line
+        ...(tool[tool.type] || {}),
+      }
+    })
   }
 }
 

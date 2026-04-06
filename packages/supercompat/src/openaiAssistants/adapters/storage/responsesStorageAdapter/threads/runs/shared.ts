@@ -17,10 +17,18 @@ export const serializeTools = ({
       const toolType = (tool as any).type
 
       if (toolType === 'computer' || toolType === 'computer_use_preview') {
-        return serializeComputerUseTool({
+        const serialized = serializeComputerUseTool({
           useOpenaiComputerTool,
           tool: tool as unknown as Record<string, unknown>,
         })
+        // Flatten nested Assistants format → flat Responses API format
+        // { type: 'computer', computer: { ... } } → { type: 'computer' }
+        // { type: 'computer_use_preview', computer_use_preview: { ... } } → { type: 'computer_use_preview', display_width, ... }
+        if (serialized.type === 'computer') {
+          return { type: 'computer' as const }
+        }
+        const config = (serialized as any).computer_use_preview ?? {}
+        return { type: 'computer_use_preview' as const, ...config }
       }
 
       // Responses API code_interpreter requires container config

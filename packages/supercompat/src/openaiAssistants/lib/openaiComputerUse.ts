@@ -69,12 +69,13 @@ export const serializeComputerUseTool = ({
   if (useOpenaiComputerTool) {
     return {
       type: 'computer' as const,
+      computer: serializedConfig,
     }
   }
 
   return {
     type: 'computer_use_preview' as const,
-    ...serializedConfig,
+    computer_use_preview: serializedConfig,
   }
 }
 
