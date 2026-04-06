@@ -123,20 +123,23 @@ export const post = ({
     }),
   }
 
+  let createdItem: any = null
+
   if (deferItemCreationUntilRun) {
     // Buffer items — they'll be sent when runs.create() is called
     createResponseItems.push(item)
   } else {
     // Create immediately via Conversations API — no need to buffer,
     // the conversation already has the item when runs.create() is called
-    await client.conversations.items.create(threadId, { items: [item] })
+    const result = await client.conversations.items.create(threadId, { items: [item] })
+    createdItem = result.data?.[0] ?? null
   }
 
   const openaiAssistant = await runAdapter.getOpenaiAssistant({ select: { id: true } })
 
   return new Response(JSON.stringify(
     serializeItemAsMessage({
-      item,
+      item: createdItem ?? item,
       threadId,
       openaiAssistant,
       createdAt: dayjs().unix(),

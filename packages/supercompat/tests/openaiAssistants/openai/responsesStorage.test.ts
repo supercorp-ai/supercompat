@@ -138,8 +138,38 @@ function createClient(): OpenAI {
   return client
 }
 
-describe('responsesStorageAdapter', { timeout: 300_000 }, () => {
+describe('responsesStorageAdapter (deferItemCreationUntilRun: true)', { timeout: 300_000 }, () => {
   for (const [name, contract] of Object.entries(coreContracts)) {
     test(name, { timeout: 120_000 }, () => contract(createClient()))
   }
+})
+
+// Test message CRUD with deferItemCreationUntilRun: false
+// Messages are created immediately, so retrieve/list should work
+import { retrieveMessage } from '../contracts/crud'
+
+function createImmediateClient(): OpenAI {
+  const realOpenAI = new OpenAI({ apiKey, ...proxyOpts })
+  const assistantId = `asst_${uid(24)}`
+  const currentAssistant: any = {
+    id: assistantId,
+    object: 'assistant',
+    model: 'gpt-4.1-mini',
+    instructions: '',
+    tools: [],
+    metadata: {},
+    created_at: dayjs().unix(),
+  }
+
+  return supercompat({
+    client: openaiClientAdapter({ openai: realOpenAI }),
+    runAdapter: responsesRunAdapter({
+      getOpenaiAssistant: () => currentAssistant,
+    }),
+    storage: responsesStorageAdapter({ deferItemCreationUntilRun: false }),
+  })
+}
+
+describe('responsesStorageAdapter (deferItemCreationUntilRun: false)', { timeout: 120_000 }, () => {
+  test('crud: retrieve message', { timeout: 60_000 }, () => retrieveMessage(createImmediateClient()))
 })

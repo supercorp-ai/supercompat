@@ -32,7 +32,7 @@ export const serializeItemAsWebSearchRunStep = ({
     function: {
       name: 'web_search',
       arguments: JSON.stringify({
-        // @ts-expect-error bad openai types
+        // @ts-ignore bad openai types
         action: item.action,
       }),
       output: JSON.stringify({

@@ -11,7 +11,7 @@ export const serializeThread = ({
   let metadata = thread.metadata
   if (metadata && typeof metadata === 'object' && !Array.isArray(metadata) && 'assistantId' in metadata) {
     const { assistantId, ...rest } = metadata as Record<string, unknown>
-    metadata = Object.keys(rest).length > 0 ? rest : null
+    metadata = Object.keys(rest).length > 0 ? rest as typeof metadata : null
   }
 
   return {

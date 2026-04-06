@@ -46,7 +46,7 @@ export const threadRunStepCreated = async ({
   controller.enqueue({
     ...event,
     data: serializedRunStep,
-  } as OpenAI.Beta.AssistantStreamEvent.ThreadRunStepCreated)
+  } as unknown as OpenAI.Beta.AssistantStreamEvent.ThreadRunStepCreated)
 
-  return serializedRunStep as OpenAI.Beta.Threads.Runs.RunStep
+  return serializedRunStep as unknown as OpenAI.Beta.Threads.Runs.RunStep
 }

@@ -38,7 +38,7 @@ export const post = ({
   const initialCreatedAt = dayjs().subtract(messages.length, 'seconds')
 
   const messageData = messages.map((message, index) => ({
-    role: message.role === 'user' ? 'USER' : 'ASSISTANT',
+    role: (message.role === 'user' ? 'USER' : 'ASSISTANT') as 'USER' | 'ASSISTANT',
     content: [
       {
         type: 'text',

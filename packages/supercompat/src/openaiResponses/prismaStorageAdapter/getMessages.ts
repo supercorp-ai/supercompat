@@ -133,7 +133,7 @@ export const getMessages = ({
           role: 'assistant',
           content: [{ type: 'text', text: { value: text, annotations: [] } }],
           created_at: dayjs(msgItem.createdAt).unix(),
-          metadata: toolCallsMeta ? { toolCalls: toolCallsMeta } : {},
+          metadata: (toolCallsMeta ? { toolCalls: toolCallsMeta } : {}) as any,
           run: toolCallsMeta ? {
             id: 'virtual-run',
             object: 'thread.run',
@@ -222,7 +222,7 @@ export const getMessages = ({
         messages.push(makeMessage({
           role: 'assistant',
           content: [{ type: 'text', text: { value: '', annotations: [] } }],
-          metadata: { toolCalls: toolCallsMeta },
+          metadata: { toolCalls: toolCallsMeta } as any,
           run: {
             id: 'virtual-run',
             object: 'thread.run',
@@ -315,7 +315,7 @@ export const getMessages = ({
       messages.push(makeMessage({
         role: 'assistant',
         content: [{ type: 'text', text: { value: '', annotations: [] } }],
-        metadata: { toolCalls: toolCallsMeta },
+        metadata: { toolCalls: toolCallsMeta } as any,
         run: {
           id: 'virtual-run',
           object: 'thread.run',

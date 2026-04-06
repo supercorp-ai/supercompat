@@ -16,7 +16,7 @@ export const message = ({
     const [, threadId, messageId] = url.pathname.match(new RegExp(messageRegexp))!
 
     const conversation = await client.conversations.retrieve(threadId)
-    const item = await client.conversations.items.retrieve(threadId, messageId)
+    const item = await client.conversations.items.retrieve(messageId, { conversation_id: threadId })
     const openaiAssistant = await runAdapter.getOpenaiAssistant({ select: { id: true } })
 
     const runId = responseId({ conversation, itemId: messageId })

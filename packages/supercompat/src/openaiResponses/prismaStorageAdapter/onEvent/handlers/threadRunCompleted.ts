@@ -17,7 +17,7 @@ export const threadRunCompleted = async ({
     where: { id: responseId },
     data: {
       status: 'COMPLETED',
-      usage: event.data.usage ?? undefined,
+      usage: (event.data.usage ?? undefined) as any,
     },
     include: { outputItems: true, tools: { include: { functionTool: true, fileSearchTool: true, webSearchTool: true, codeInterpreterTool: true, computerUseTool: true } } },
   })

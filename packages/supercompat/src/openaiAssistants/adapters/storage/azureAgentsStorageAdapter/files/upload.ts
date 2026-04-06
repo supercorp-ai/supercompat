@@ -39,7 +39,7 @@ export const post = ({
 
   const stream = Readable.from(buffer)
 
-  const azureFile = await azureAiProject.agents.files.upload(stream, purpose, {
+  const azureFile = await azureAiProject.agents.files.upload(stream, purpose as any, {
     fileName,
   })
 
