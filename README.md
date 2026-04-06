@@ -358,6 +358,20 @@ import { azureResponsesRunAdapter } from 'supercompat/openaiResponses'
 | `azureAgentsStorageAdapter` | `openaiAssistants` | Azure AI Agents | Manages agents, threads, messages, files, vector stores |
 | `azureResponsesStorageAdapter` | `openaiAssistants` | Azure AI + Responses API | Hybrid: Azure for threads/files, Responses for runs |
 
+#### `responsesStorageAdapter` options
+
+```typescript
+import { responsesStorageAdapter } from 'supercompat/openaiAssistants'
+
+responsesStorageAdapter({
+  deferItemCreationUntilRun: true,  // default: false
+})
+```
+
+When `deferItemCreationUntilRun` is `false` (default), `messages.create()` immediately persists messages to the Responses API via `conversations.items.create()`. Messages are visible via `messages.list()` before a run starts.
+
+When `deferItemCreationUntilRun` is `true`, messages are buffered in memory and only sent when `runs.create()` is called. This reduces API calls but means messages are not visible until a run starts.
+
 ## Responses API Reference
 
 The Responses API output supports these operations:

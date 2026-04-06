@@ -90,12 +90,16 @@ const messageContentBlocks = ({
   ...contentBlocksFromAttachments({ attachments }),
 ])
 export const post = ({
+  client,
   runAdapter,
   createResponseItems,
+  deferItemCreationUntilRun = false,
   addAnnotations = false,
 }: {
+  client: OpenAI
   runAdapter: RunAdapterWithAssistant
   createResponseItems: OpenAI.Responses.ResponseInputItem[]
+  deferItemCreationUntilRun?: boolean
   addAnnotations?: boolean
 }) => async (urlString: string, options: RequestInit & { body?: string }): Promise<MessageCreateResponse> => {
   const url = new URL(urlString)
@@ -119,16 +123,14 @@ export const post = ({
     }),
   }
 
-  createResponseItems.push(item)
-
-  // const items = await openai.conversations.items.create(
-  //   threadId,
-  //   {
-  //     items: [
-  //     ],
-  //   }
-  // );
-  //
+  if (deferItemCreationUntilRun) {
+    // Buffer items — they'll be sent when runs.create() is called
+    createResponseItems.push(item)
+  } else {
+    // Create immediately via Conversations API — no need to buffer,
+    // the conversation already has the item when runs.create() is called
+    await client.conversations.items.create(threadId, { items: [item] })
+  }
 
   const openaiAssistant = await runAdapter.getOpenaiAssistant({ select: { id: true } })
 

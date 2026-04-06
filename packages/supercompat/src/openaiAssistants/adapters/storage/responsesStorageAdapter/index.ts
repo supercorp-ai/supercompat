@@ -26,7 +26,11 @@ type ResponsesStorageAdapterArgs = StorageAdapterArgs & {
   runAdapter: RunAdapterWithAssistant
 }
 
-export const responsesStorageAdapter = (): ((args: ResponsesStorageAdapterArgs) => { requestHandlers: Record<string, MethodHandlers> }) => {
+export const responsesStorageAdapter = ({
+  deferItemCreationUntilRun = false,
+}: {
+  deferItemCreationUntilRun?: boolean
+} = {}): ((args: ResponsesStorageAdapterArgs) => { requestHandlers: Record<string, MethodHandlers> }) => {
   const createResponseItems: OpenAI.Responses.ResponseInputItem[] = []
 
   return ({ runAdapter, client }: ResponsesStorageAdapterArgs) => ({
@@ -35,7 +39,7 @@ export const responsesStorageAdapter = (): ((args: ResponsesStorageAdapterArgs) 
       '^/(?:v1|/?openai)/threads$': threads({ client }),
       [threadRegexp]: thread({ client }),
       [messageRegexp]: message({ client, runAdapter }),
-      [messagesRegexp]: messages({ client, runAdapter, createResponseItems }),
+      [messagesRegexp]: messages({ client, runAdapter, createResponseItems, deferItemCreationUntilRun }),
       [runsRegexp]: runs({ client, runAdapter, createResponseItems }),
       [runRegexp]: run({ client, runAdapter }),
       [cancelRunRegexp]: cancelRun({ client, runAdapter }),
