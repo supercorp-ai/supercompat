@@ -1,18 +1,8 @@
 # Supercompat
 
-**Use any AI provider with the OpenAI Assistants API**
+**Use any AI provider with the OpenAI Assistants API or Responses API**
 
-Supercompat is a universal adapter that lets you use OpenAI's Assistants API with any AI provider (Anthropic, Groq, Mistral, Azure, Google, and more). It provides a consistent interface for building AI assistants while allowing you to switch providers seamlessly.
-
-## Features
-
-- 🔄 **Universal AI Provider Support** - Works with OpenAI, Anthropic, Groq, Mistral, Azure, Google, OpenRouter, Perplexity, Together AI, Ollama, and more
-- 📦 **Flexible Storage** - Use Prisma with your own database, OpenAI's Responses API, or Azure AI Agents
-- 🔌 **Plug-and-Play Architecture** - Mix and match client adapters, storage adapters, and run adapters
-- 🌊 **Streaming Support** - Real-time streaming responses for all providers
-- 🛠️ **Tool Calling** - Function calling and code interpreter support across providers
-- 📊 **Run Steps** - Detailed execution steps for debugging and monitoring
-- 🔐 **Type-Safe** - Full TypeScript support with OpenAI's types
+Supercompat is a universal adapter that lets you use OpenAI's Assistants API or Responses API with any AI provider — Anthropic, Google, Groq, Mistral, Azure, OpenRouter, and more. Switch between API outputs by changing a single import path.
 
 ## Installation
 
@@ -20,61 +10,75 @@ Supercompat is a universal adapter that lets you use OpenAI's Assistants API wit
 npm install supercompat openai
 ```
 
-Depending on which providers you want to use, install the corresponding SDK:
+Then install the SDK for whichever providers you need:
 
 ```bash
-# For OpenAI (already installed above)
-# Uses the 'openai' package
-
-# For Azure OpenAI (already installed above)
-# Uses the 'openai' package
-
-# For Anthropic
-npm install @anthropic-ai/sdk
-
-# For Groq
-npm install groq-sdk
-
-# For Mistral
-npm install @mistralai/mistralai
-
-# For Azure AI Agents
-npm install @azure/ai-projects @azure/identity
-
-# For Google Gemini
-npm install @google/genai
-
-# For OpenRouter (access 200+ models via one API)
-npm install @openrouter/sdk
-
-# For Perplexity, Together AI, Ollama, etc.
-# (These use OpenAI-compatible APIs, no additional SDK needed)
-
-# For Prisma storage
-npm install @prisma/client
+npm install @anthropic-ai/sdk       # Anthropic (Claude)
+npm install @google/genai            # Google Gemini
+npm install groq-sdk                 # Groq
+npm install @mistralai/mistralai     # Mistral
+npm install @openrouter/sdk          # OpenRouter (200+ models)
+npm install @azure/ai-projects       # Azure AI Agents
+npm install @prisma/client           # Prisma storage
 ```
+
+Providers with OpenAI-compatible APIs (Together AI, Perplexity, Ollama) need only the `openai` package pointed at their base URL.
 
 ## Quick Start
 
-### Basic Setup with Groq and Prisma
+### Responses API
 
 ```typescript
-import { supercompat, groqClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
+import {
+  createClient,
+  anthropicClientAdapter,
+  prismaStorageAdapter,
+  completionsRunAdapter,
+} from 'supercompat/openaiResponses'
 import { PrismaClient } from '@prisma/client'
-import Groq from 'groq-sdk'
+import Anthropic from '@anthropic-ai/sdk'
 
-const prisma = new PrismaClient()
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
-
-const client = supercompat({
-  client: groqClientAdapter({ groq }),
-  storage: prismaStorageAdapter({ prisma }),
+const client = createClient({
+  client: anthropicClientAdapter({ anthropic: new Anthropic() }),
+  storage: prismaStorageAdapter({ prisma: new PrismaClient() }),
   runAdapter: completionsRunAdapter(),
 })
 
-// Use it like OpenAI's Assistants API
+// Standard OpenAI Responses API — backed by Claude
+const response = await client.responses.create({
+  model: 'claude-sonnet-4-20250514',
+  input: 'What is the capital of France?',
+  stream: true,
+})
+
+for await (const event of response) {
+  if (event.type === 'response.output_text.delta') {
+    process.stdout.write(event.delta)
+  }
+}
+```
+
+### Assistants API
+
+```typescript
+import {
+  createClient,
+  groqClientAdapter,
+  prismaStorageAdapter,
+  completionsRunAdapter,
+} from 'supercompat/openaiAssistants'
+import { PrismaClient } from '@prisma/client'
+import Groq from 'groq-sdk'
+
+const client = createClient({
+  client: groqClientAdapter({ groq: new Groq() }),
+  storage: prismaStorageAdapter({ prisma: new PrismaClient() }),
+  runAdapter: completionsRunAdapter(),
+})
+
+// Standard OpenAI Assistants API — backed by Groq
 const thread = await client.beta.threads.create()
-const message = await client.beta.threads.messages.create(thread.id, {
+await client.beta.threads.messages.create(thread.id, {
   role: 'user',
   content: 'What is the capital of France?',
 })
@@ -86,368 +90,554 @@ const run = await client.beta.threads.runs.createAndPoll(thread.id, {
 
 ## Architecture
 
-Supercompat uses a modular architecture with three types of adapters that plug into the core:
+Every supercompat client is assembled from three adapters:
 
 ```
-┌──────────────────────────┐
-│  Client Adapter          │────┐
-│  • Anthropic             │    │
-│  • Groq                  │    │
-│  • OpenAI                │    │
-│  • OpenRouter            │    │
-│  • Mistral, etc.         │    │
-└──────────────────────────┘    │
-                                │
-┌──────────────────────────┐    │     ┌─────────────────┐      ┌──────────────────────┐
-│  Storage Adapter         │────┼────▶│                 │      │  OpenAI Assistants   │
-│  • Prisma (Database)     │    │     │   Supercompat   │─────▶│  API Compatible      │
-│  • Responses API         │    │     │                 │      │  Interface           │
-│  • Azure AI Agents       │────┘     └─────────────────┘      └──────────────────────┘
-└──────────────────────────┘    │
-                                │
-┌──────────────────────────┐    │
-│  Run Adapter             │────┘
-│  • completions           │
-│  • responses             │
-│  • azureAgents           │
-└──────────────────────────┘
+Client Adapter          Storage Adapter         Run Adapter
+(talks to the LLM)      (persists state)        (executes runs)
+       │                       │                       │
+       └───────────┬───────────┘───────────────────────┘
+                   │
+            ┌──────┴──────┐
+            │  supercompat │──▶  OpenAI Responses API
+            │             │──▶  OpenAI Assistants API
+            └─────────────┘
 ```
 
-**How it works:**
+**Client adapters** translate between provider SDKs and the OpenAI format. **Storage adapters** persist threads, messages, runs, and responses. **Run adapters** control how model calls are executed — via Chat Completions or native provider APIs.
 
-1. **Client Adapters** - Interface with any AI provider (Anthropic, Groq, OpenAI, Mistral, etc.)
-2. **Storage Adapters** - Persist data using your preferred backend (Prisma/Database, OpenAI Responses API, Azure AI Agents)
-3. **Run Adapters** - Execute runs using different strategies (completions, responses, azureAgents)
-
-You plug all three adapter types into Supercompat, and it exposes an OpenAI Assistants API compatible interface.
-
-*Note: In the future, Supercompat will support translating to other API formats beyond OpenAI Assistants API (e.g., Responses API, etc.)*
-
-## Client Adapters
-
-Client adapters interface with AI provider APIs. Each adapter translates requests to the provider's format.
-
-### Available Client Adapters
-
-#### OpenAI
+The import path determines the output format:
 
 ```typescript
-import { openaiClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
-import { PrismaClient } from '@prisma/client'
-import OpenAI from 'openai'
+// Responses API output
+import { createClient, prismaStorageAdapter } from 'supercompat/openaiResponses'
 
-const prisma = new PrismaClient()
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
-const client = supercompat({
-  client: openaiClientAdapter({ openai }),
-  storage: prismaStorageAdapter({ prisma }),
-  runAdapter: completionsRunAdapter(),
-})
+// Assistants API output
+import { createClient, prismaStorageAdapter } from 'supercompat/openaiAssistants'
 ```
 
-#### Anthropic (Claude)
+## Providers
+
+| Provider | Client Adapter | SDK | Function Tools | Notes |
+|---|---|---|---|---|
+| OpenAI | `openaiClientAdapter` | `openai` | Yes | |
+| Anthropic | `anthropicClientAdapter` | `@anthropic-ai/sdk` | Yes | |
+| Google Gemini | `googleClientAdapter` | `@google/genai` | Yes | |
+| Azure OpenAI | `azureOpenaiClientAdapter` | `openai` | Yes | |
+| Azure AI Agents | `azureAiProjectClientAdapter` | `@azure/ai-projects` | Yes | Use with `azureAgents` run/storage adapters |
+| Groq | `groqClientAdapter` | `groq-sdk` | Yes | |
+| Mistral | `mistralClientAdapter` | `@mistralai/mistralai` | Yes | |
+| OpenRouter | `openRouterClientAdapter` | `@openrouter/sdk` | Yes | 200+ models |
+| Together AI | `togetherClientAdapter` | `openai` | Yes | OpenAI-compatible API |
+| Perplexity | `perplexityClientAdapter` | `openai` | Via agent adapter | No tool support on `/chat/completions` |
+| Humiris | `humirisClientAdapter` | `humiris-ai` | Yes | |
+| Ollama | `ollamaClientAdapter` | `openai` | Yes | Local models |
+
+<details>
+<summary>Provider setup examples</summary>
+
+### Anthropic
 
 ```typescript
-import { anthropicClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
-import { PrismaClient } from '@prisma/client'
+import { createClient, anthropicClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat/openaiResponses'
 import Anthropic from '@anthropic-ai/sdk'
 
-const prisma = new PrismaClient()
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-const client = supercompat({
-  client: anthropicClientAdapter({ anthropic }),
+const client = createClient({
+  client: anthropicClientAdapter({ anthropic: new Anthropic() }),
   storage: prismaStorageAdapter({ prisma }),
   runAdapter: completionsRunAdapter(),
 })
 ```
 
-Supports native Anthropic tool calling including:
-- Web search (`web_search_20241111`)
-- Code execution (`code_execution_20241022`)
-- Computer use (`computer_20241022`)
-
-#### Groq
+### Google Gemini
 
 ```typescript
-import { groqClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
-import { PrismaClient } from '@prisma/client'
+import { createClient, googleClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat/openaiResponses'
+import { GoogleGenAI } from '@google/genai'
+
+const client = createClient({
+  client: googleClientAdapter({ google: new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY }) }),
+  storage: prismaStorageAdapter({ prisma }),
+  runAdapter: completionsRunAdapter(),
+})
+```
+
+### Groq
+
+```typescript
+import { createClient, groqClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat/openaiResponses'
 import Groq from 'groq-sdk'
 
-const prisma = new PrismaClient()
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
-
-const client = supercompat({
-  client: groqClientAdapter({ groq }),
+const client = createClient({
+  client: groqClientAdapter({ groq: new Groq() }),
   storage: prismaStorageAdapter({ prisma }),
   runAdapter: completionsRunAdapter(),
 })
 ```
 
-#### Mistral
+### Mistral
 
 ```typescript
-import { mistralClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
-import { PrismaClient } from '@prisma/client'
+import { createClient, mistralClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat/openaiResponses'
 import { Mistral } from '@mistralai/mistralai'
 
-const prisma = new PrismaClient()
-const mistral = new Mistral({ apiKey: process.env.MISTRAL_API_KEY })
-
-const client = supercompat({
-  client: mistralClientAdapter({ mistral }),
+const client = createClient({
+  client: mistralClientAdapter({ mistral: new Mistral({ apiKey: process.env.MISTRAL_API_KEY }) }),
   storage: prismaStorageAdapter({ prisma }),
   runAdapter: completionsRunAdapter(),
 })
 ```
 
-#### Azure OpenAI
+### OpenAI
 
 ```typescript
-import { azureOpenaiClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
-import { PrismaClient } from '@prisma/client'
+import { createClient, openaiClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat/openaiResponses'
+import OpenAI from 'openai'
+
+const client = createClient({
+  client: openaiClientAdapter({ openai: new OpenAI() }),
+  storage: prismaStorageAdapter({ prisma }),
+  runAdapter: completionsRunAdapter(),
+})
+```
+
+### Azure OpenAI
+
+```typescript
+import { createClient, azureOpenaiClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat/openaiResponses'
 import { AzureOpenAI } from 'openai'
 
-const prisma = new PrismaClient()
-const azureOpenai = new AzureOpenAI({
-  apiKey: process.env.AZURE_OPENAI_API_KEY,
-  endpoint: process.env.AZURE_OPENAI_ENDPOINT,
-  apiVersion: '2024-02-15-preview',
-})
-
-const client = supercompat({
-  client: azureOpenaiClientAdapter({ azureOpenai }),
+const client = createClient({
+  client: azureOpenaiClientAdapter({
+    azureOpenai: new AzureOpenAI({
+      apiKey: process.env.AZURE_OPENAI_API_KEY,
+      endpoint: process.env.AZURE_OPENAI_ENDPOINT,
+      apiVersion: '2024-02-15-preview',
+    }),
+  }),
   storage: prismaStorageAdapter({ prisma }),
   runAdapter: completionsRunAdapter(),
 })
 ```
 
-#### Azure AI Agents
-
-Use Azure AI Foundry's native Agents API:
+### Azure AI Agents
 
 ```typescript
-import { azureAiProjectClientAdapter, azureAgentsStorageAdapter, azureAgentsRunAdapter, supercompat } from 'supercompat'
+import { supercompat, azureAiProjectClientAdapter, azureAgentsStorageAdapter, azureAgentsRunAdapter } from 'supercompat/openaiAssistants'
 import { AIProjectClient } from '@azure/ai-projects'
 import { ClientSecretCredential } from '@azure/identity'
-import { PrismaClient } from '@prisma/client'
 
-const credential = new ClientSecretCredential(
-  process.env.AZURE_TENANT_ID!,
-  process.env.AZURE_CLIENT_ID!,
-  process.env.AZURE_CLIENT_SECRET!
-)
-
-const azureAiProject = new AIProjectClient(
-  process.env.AZURE_PROJECT_ENDPOINT!,
-  credential
-)
-
-const prisma = new PrismaClient()
-const runAdapter = azureAgentsRunAdapter({ azureAiProject })
+const credential = new ClientSecretCredential(tenantId, clientId, clientSecret)
+const azureAiProject = new AIProjectClient(endpoint, credential)
 
 const client = supercompat({
   client: azureAiProjectClientAdapter({ azureAiProject }),
   storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
-  runAdapter,
+  runAdapter: azureAgentsRunAdapter({ azureAiProject }),
 })
 ```
 
-**Azure Setup:**
-
-To use Azure AI Agents, you need to:
-
-1. **Create an Azure AI Foundry Project** in the Azure Portal
-2. **Create a Service Principal** (App Registration):
-   ```bash
-   az ad sp create-for-rbac --name "supercompat-app" --role Contributor \
-     --scopes /subscriptions/{subscription-id}/resourceGroups/{resource-group}/providers/Microsoft.CognitiveServices/accounts/{ai-project}
-   ```
-3. **Assign the "Cognitive Services User" role** to the service principal:
-   - Go to your AI Project in Azure Portal
-   - Navigate to "Access control (IAM)"
-   - Click "Add role assignment"
-   - Select "Cognitive Services User" role
-   - Select your service principal
-   - Save
-
-4. **Set environment variables:**
-   ```bash
-   AZURE_PROJECT_ENDPOINT=https://your-project.cognitiveservices.azure.com/
-   AZURE_TENANT_ID=your-tenant-id
-   AZURE_CLIENT_ID=your-client-id
-   AZURE_CLIENT_SECRET=your-client-secret
-   ```
-
-#### Google Gemini
+### OpenRouter
 
 ```typescript
-import { googleClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
-import { PrismaClient } from '@prisma/client'
-import { GoogleGenAI } from '@google/genai'
-
-const prisma = new PrismaClient()
-const google = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY })
-
-const client = supercompat({
-  client: googleClientAdapter({ google }),
-  storage: prismaStorageAdapter({ prisma }),
-  runAdapter: completionsRunAdapter(),
-})
-```
-
-Supports computer use (`computer_use_preview`) via the native Gemini SDK with automatic coordinate denormalization.
-
-#### OpenRouter
-
-Access 200+ models (Gemini, DeepSeek, Qwen, Grok, MiniMax, Kimi, GLM, and more) through a single API:
-
-```typescript
-import { openRouterClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
-import { PrismaClient } from '@prisma/client'
+import { createClient, openRouterClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat/openaiResponses'
 import { OpenRouter } from '@openrouter/sdk'
 
-const prisma = new PrismaClient()
-const openRouter = new OpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-})
-
-const client = supercompat({
-  client: openRouterClientAdapter({ openRouter }),
+const client = createClient({
+  client: openRouterClientAdapter({ openRouter: new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY }) }),
   storage: prismaStorageAdapter({ prisma }),
   runAdapter: completionsRunAdapter(),
 })
 ```
 
-The OpenRouter adapter also works without storage/run adapters for direct chat completions:
+### Together AI
 
 ```typescript
-import { supercompat, openRouterClientAdapter } from 'supercompat'
-import { OpenRouter } from '@openrouter/sdk'
-
-const openRouter = new OpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-})
-
-const client = supercompat({
-  client: openRouterClientAdapter({ openRouter }),
-})
-
-const result = await client.chat.completions.create({
-  model: 'google/gemini-3-flash-preview',
-  messages: [{ role: 'user', content: 'Hello!' }],
-})
-```
-
-#### Perplexity
-
-```typescript
-import { perplexityClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
-import { PrismaClient } from '@prisma/client'
+import { createClient, togetherClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat/openaiResponses'
 import OpenAI from 'openai'
 
-const prisma = new PrismaClient()
-const perplexity = new OpenAI({
-  apiKey: process.env.PERPLEXITY_API_KEY,
-  baseURL: 'https://api.perplexity.ai',
-})
-
-const client = supercompat({
-  client: perplexityClientAdapter({ perplexity }),
+const client = createClient({
+  client: togetherClientAdapter({
+    together: new OpenAI({ apiKey: process.env.TOGETHER_API_KEY, baseURL: 'https://api.together.xyz/v1' }),
+  }),
   storage: prismaStorageAdapter({ prisma }),
   runAdapter: completionsRunAdapter(),
 })
 ```
 
-#### Together AI
+### Perplexity
 
 ```typescript
-import { togetherClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
-import { PrismaClient } from '@prisma/client'
+import { createClient, perplexityClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat/openaiResponses'
 import OpenAI from 'openai'
 
-const prisma = new PrismaClient()
-const together = new OpenAI({
-  apiKey: process.env.TOGETHER_API_KEY,
-  baseURL: 'https://api.together.xyz/v1',
-})
-
-const client = supercompat({
-  client: togetherClientAdapter({ together }),
+const client = createClient({
+  client: perplexityClientAdapter({
+    perplexity: new OpenAI({ apiKey: process.env.PERPLEXITY_API_KEY, baseURL: 'https://api.perplexity.ai' }),
+  }),
   storage: prismaStorageAdapter({ prisma }),
   runAdapter: completionsRunAdapter(),
 })
 ```
 
-#### Ollama (Local)
+### Ollama (Local)
 
 ```typescript
-import { ollamaClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
-import { PrismaClient } from '@prisma/client'
+import { createClient, ollamaClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat/openaiResponses'
 import OpenAI from 'openai'
 
-const prisma = new PrismaClient()
-const ollama = new OpenAI({
-  apiKey: 'ollama', // Required but unused
-  baseURL: 'http://localhost:11434/v1',
-})
-
-const client = supercompat({
-  client: ollamaClientAdapter({ ollama }),
+const client = createClient({
+  client: ollamaClientAdapter({
+    ollama: new OpenAI({ apiKey: 'ollama', baseURL: 'http://localhost:11434/v1' }),
+  }),
   storage: prismaStorageAdapter({ prisma }),
   runAdapter: completionsRunAdapter(),
 })
 ```
 
-#### Humiris
+</details>
+
+## Run Adapters
+
+Run adapters control how model calls are executed. The `completionsRunAdapter` works with any provider via Chat Completions. Native run adapters call provider APIs directly, unlocking built-in tools like web search, code interpreter, and computer use.
+
+### Responses API Run Adapters
+
+| Run Adapter | Import | Provider | Function Tools | Web Search | File Search | Code Interpreter | Computer Use |
+|---|---|---|---|---|---|---|---|
+| `completionsRunAdapter` | `openaiResponses` | Any | Yes | — | — | — | — |
+| `anthropicRunAdapter` | `openaiResponses` | Anthropic | Yes | Yes | — | Yes | Yes |
+| `geminiRunAdapter` | `openaiResponses` | Google | Yes | — | — | — | Yes |
+| `azureAgentsResponsesRunAdapter` | `openaiResponses` | Azure | Yes | — | Yes | Yes | — |
+| `openaiResponsesRunAdapter` | `openaiResponses` | OpenAI | Yes | Yes | Yes | Yes | Yes |
+| `azureResponsesRunAdapter` | `openaiResponses` | Azure | Yes | Yes | — | Yes | — |
 
 ```typescript
-import { humirisClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
-import { PrismaClient } from '@prisma/client'
-import OpenAI from 'openai'
+// Any provider — function tools via Chat Completions
+import { completionsRunAdapter } from 'supercompat/openaiResponses'
 
-const prisma = new PrismaClient()
-const humiris = new OpenAI({
-  apiKey: process.env.HUMIRIS_API_KEY,
-  baseURL: process.env.HUMIRIS_BASE_URL,
-})
+// Anthropic — native web search, code execution, computer use
+import { anthropicRunAdapter } from 'supercompat/openaiResponses'
 
-const client = supercompat({
-  client: humirisClientAdapter({ humiris }),
-  storage: prismaStorageAdapter({ prisma }),
-  runAdapter: completionsRunAdapter(),
-})
+// Google Gemini — native computer use
+import { geminiRunAdapter } from 'supercompat/openaiResponses'
+
+// Azure AI Agents — native file search, code interpreter
+import { azureAgentsResponsesRunAdapter } from 'supercompat/openaiResponses'
+
+// OpenAI — native Responses API with all built-in tools
+import { openaiResponsesRunAdapter } from 'supercompat/openaiResponses'
+
+// Azure — native Responses API
+import { azureResponsesRunAdapter } from 'supercompat/openaiResponses'
 ```
+
+### Assistants API Run Adapters
+
+| Run Adapter | Import | Provider | Notes |
+|---|---|---|---|
+| `completionsRunAdapter` | `openaiAssistants` | Any | Function tools via Chat Completions |
+| `responsesRunAdapter` | `openaiAssistants` | OpenAI | Delegates to Responses API |
+| `azureAgentsRunAdapter` | `openaiAssistants` | Azure | Uses Azure AI Agents service |
+| `perplexityAgentRunAdapter` | `openaiAssistants` | Perplexity | Uses `/v1/agent` endpoint |
 
 ## Storage Adapters
 
-Storage adapters persist threads, messages, runs, and run steps. Choose based on your infrastructure needs.
+### Responses API Storage
 
-### Prisma Storage Adapter
+| Storage Adapter | Import | Backend | Notes |
+|---|---|---|---|
+| `prismaStorageAdapter` | `openaiResponses` | PostgreSQL (Prisma) | Full conversation, response, and output item persistence |
 
-Store everything in your own database using Prisma. Gives you full control over data and queries.
+### Assistants API Storage
+
+| Storage Adapter | Import | Backend | Notes |
+|---|---|---|---|
+| `prismaStorageAdapter` | `openaiAssistants` | PostgreSQL (Prisma) | Full thread, message, run, and step persistence |
+| `responsesStorageAdapter` | `openaiAssistants` | OpenAI Responses API | No database needed; uses OpenAI for storage |
+| `azureAgentsStorageAdapter` | `openaiAssistants` | Azure AI Agents | Manages agents, threads, messages, files, vector stores |
+| `azureResponsesStorageAdapter` | `openaiAssistants` | Azure AI + Responses API | Hybrid: Azure for threads/files, Responses for runs |
+
+#### `responsesStorageAdapter` options
 
 ```typescript
-import { supercompat, groqClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
-import { PrismaClient } from '@prisma/client'
-import Groq from 'groq-sdk'
+import { responsesStorageAdapter } from 'supercompat/openaiAssistants'
 
-const prisma = new PrismaClient()
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
-
-const client = supercompat({
-  client: groqClientAdapter({ groq }),
-  storage: prismaStorageAdapter({ prisma }),
-  runAdapter: completionsRunAdapter(),
+responsesStorageAdapter({
+  deferItemCreationUntilRun: true,  // default: false
 })
 ```
 
-#### Database Setup
+When `deferItemCreationUntilRun` is `false` (default), `messages.create()` immediately persists messages to the Responses API via `conversations.items.create()`. Messages are visible via `messages.list()` before a run starts.
 
-Add the following models to your Prisma schema:
+When `deferItemCreationUntilRun` is `true`, messages are buffered in memory and only sent when `runs.create()` is called. This reduces API calls but means messages are not visible until a run starts.
+
+## Responses API Reference
+
+The Responses API output supports these operations:
+
+| Operation | Method |
+|---|---|
+| Create response | `client.responses.create({ model, input, ... })` |
+| Create streaming response | `client.responses.create({ model, input, stream: true })` |
+| Retrieve response | `client.responses.retrieve(id)` |
+| Delete response | `client.responses.del(id)` |
+| List input items | `client.responses.inputItems.list(id)` |
+| Function calling | `tools: [{ type: 'function', ... }]` |
+| Function output | `input: [{ type: 'function_call_output', call_id, output }]` |
+| Conversations | `conversation: {}` or `previous_response_id` |
+| Structured output | `text: { format: { type: 'json_schema', ... } }` |
+| Computer use | `tools: [{ type: 'computer' }]` |
+| Truncation | `truncation: 'auto'` |
+| Tool choice | `tool_choice: 'required'` |
+
+## Assistants API Reference
+
+| Resource | Methods |
+|---|---|
+| Assistants | `create`, `retrieve`, `update`, `list`, `delete` |
+| Threads | `create`, `retrieve`, `update`, `delete` |
+| Messages | `create`, `retrieve`, `update`, `list`, `delete` |
+| Runs | `create`, `createAndPoll`, `retrieve`, `update`, `list`, `cancel`, `submitToolOutputs`, `submitToolOutputsAndPoll` |
+| Run Steps | `list`, `retrieve` |
+| Files | `create`, `retrieve`, `delete` |
+| Vector Stores | `create`, `retrieve`, `delete` |
+
+## Computer Use
+
+Computer use lets models interact with a virtual screen — taking screenshots, clicking, typing, scrolling. Supercompat normalizes computer use across providers into the standard `computer_call` / `computer_call_output` format, regardless of which provider is behind it.
+
+Supported providers: **OpenAI** (gpt-5.4), **Anthropic** (claude-sonnet-4), **Google Gemini** (gemini-3-flash)
+
+```typescript
+import { createClient, anthropicClientAdapter, prismaStorageAdapter, anthropicRunAdapter } from 'supercompat/openaiResponses'
+import Anthropic from '@anthropic-ai/sdk'
+
+const anthropic = new Anthropic()
+const client = createClient({
+  client: anthropicClientAdapter({ anthropic }),
+  storage: prismaStorageAdapter({ prisma }),
+  runAdapter: anthropicRunAdapter({ anthropic }),  // native adapter for computer use
+})
+
+const response = await client.responses.create({
+  model: 'claude-sonnet-4-20250514',
+  input: 'Take a screenshot of the current page.',
+  tools: [{ type: 'computer' }],
+})
+
+// Same computer_call format regardless of provider
+const computerCall = response.output.find(item => item.type === 'computer_call')
+// computerCall.actions = [{ type: 'screenshot' }]
+
+// Send the screenshot back
+const next = await client.responses.create({
+  model: 'claude-sonnet-4-20250514',
+  previous_response_id: response.id,
+  tools: [{ type: 'computer' }],
+  input: [{
+    type: 'computer_call_output',
+    call_id: computerCall.call_id,
+    output: {
+      type: 'computer_screenshot',
+      image_url: 'data:image/png;base64,...',
+    },
+  }],
+})
+```
+
+Provider-native formats are translated automatically:
+
+- **OpenAI** (`gpt-5.4`): native `computer` tool, passed through directly
+- **Anthropic** (`claude-sonnet-4`): `computer_20250124` beta tool — coordinate arrays translated to x/y, action strings to typed objects
+- **Google Gemini** (`gemini-3-flash`): `computerUse` tool — function calls translated to `computer_call` items
+
+## Database Setup
+
+### Responses API
+
+<details>
+<summary>Prisma schema for Responses API</summary>
 
 ```prisma
+model Conversation {
+  id          String     @id @default(dbgenerated("gen_random_uuid()"))
+  metadata    Json?
+  responses   Response[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+enum ResponseStatus {
+  QUEUED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+  INCOMPLETE
+}
+
+enum TruncationType {
+  AUTO
+  LAST_MESSAGES
+  DISABLED
+}
+
+model Response {
+  id                          String           @id @default(dbgenerated("gen_random_uuid()"))
+  conversationId              String?
+  conversation                Conversation?    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  model                       String
+  status                      ResponseStatus
+  error                       Json?
+  metadata                    Json?
+  usage                       Json?
+  instructions                String?
+  temperature                 Float?
+  topP                        Float?
+  maxOutputTokens             Int?
+  truncationType              TruncationType   @default(DISABLED)
+  truncationLastMessagesCount Int?
+  textFormatType              String?          @default("text")
+  textFormatSchema            Json?
+  input                       Json?
+  outputItems                 ResponseOutputItem[]
+  tools                       ResponseTool[]
+  createdAt                   DateTime         @default(now())
+  updatedAt                   DateTime         @updatedAt
+
+  @@index([conversationId])
+}
+
+enum ResponseOutputItemType {
+  MESSAGE
+  FUNCTION_CALL
+  COMPUTER_CALL
+}
+
+enum ResponseOutputItemStatus {
+  IN_PROGRESS
+  COMPLETED
+  INCOMPLETE
+}
+
+model ResponseOutputItem {
+  id                  String                   @id @default(dbgenerated("gen_random_uuid()"))
+  responseId          String
+  response            Response                 @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  type                ResponseOutputItemType
+  status              ResponseOutputItemStatus @default(IN_PROGRESS)
+  role                String?
+  content             Json?
+  callId              String?
+  name                String?
+  arguments           String?
+  actions             Json?
+  pendingSafetyChecks Json?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  @@index([responseId])
+  @@index([createdAt(sort: Asc)])
+}
+
+enum ResponseToolType {
+  FUNCTION
+  FILE_SEARCH
+  WEB_SEARCH
+  CODE_INTERPRETER
+  COMPUTER_USE
+}
+
+model ResponseTool {
+  id                  String              @id @default(dbgenerated("gen_random_uuid()"))
+  type                ResponseToolType
+  responseId          String
+  response            Response            @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  functionTool        ResponseFunctionTool?
+  fileSearchTool      ResponseFileSearchTool?
+  webSearchTool       ResponseWebSearchTool?
+  codeInterpreterTool ResponseCodeInterpreterTool?
+  computerUseTool     ResponseComputerUseTool?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([responseId])
+}
+
+model ResponseFunctionTool {
+  id          String       @id @default(dbgenerated("gen_random_uuid()"))
+  name        String
+  description String?
+  parameters  Json
+  strict      Boolean      @default(false)
+  toolId      String       @unique
+  tool        ResponseTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model ResponseFileSearchTool {
+  id             String       @id @default(dbgenerated("gen_random_uuid()"))
+  vectorStoreIds String[]     @default([])
+  maxNumResults  Int          @default(20)
+  toolId         String       @unique
+  tool           ResponseTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model ResponseWebSearchTool {
+  id        String       @id @default(dbgenerated("gen_random_uuid()"))
+  toolId    String       @unique
+  tool      ResponseTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model ResponseCodeInterpreterTool {
+  id        String       @id @default(dbgenerated("gen_random_uuid()"))
+  toolId    String       @unique
+  tool      ResponseTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model ResponseComputerUseTool {
+  id            String       @id @default(dbgenerated("gen_random_uuid()"))
+  displayHeight Int          @default(720)
+  displayWidth  Int          @default(1280)
+  environment   String       @default("linux")
+  toolId        String       @unique
+  tool          ResponseTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+```
+
+</details>
+
+### Assistants API
+
+<details>
+<summary>Prisma schema for Assistants API</summary>
+
+```prisma
+model Assistant {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  modelSlug    String?
+  instructions String?
+  name         String?
+  description  String?
+  metadata     Json?
+  threads      Thread[]
+  runs         Run[]
+  runSteps     RunStep[]
+  messages     Message[]
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
+}
+
 model Thread {
   id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   assistantId String    @db.Uuid
@@ -573,459 +763,91 @@ model RunStep {
   @@index([threadId, runId, type, status])
   @@index([createdAt(sort: Asc)])
 }
+```
 
-model Assistant {
-  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  threads   Thread[]
-  runs      Run[]
-  runSteps  RunStep[]
-  messages  Message[]
-  createdAt DateTime  @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime  @updatedAt @db.Timestamptz(6)
+</details>
+
+### Azure AI Agents
+
+Azure storage adapters require an additional model for persisting function tool outputs:
+
+```prisma
+model AzureAgentsFunctionOutput {
+  id           String   @id @default(dbgenerated("gen_random_uuid()"))
+  runId        String
+  toolCallId   String
+  output       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([runId, toolCallId])
+  @@index([runId])
 }
 ```
 
-Then run:
+After adding the schema, run:
 
 ```bash
 npx prisma db push
 npx prisma generate
 ```
 
-### OpenAI Responses API Storage Adapter
+## Migrating from v3 to v4
 
-Use OpenAI's Responses API for storage (no database needed):
+### Import paths
 
-```typescript
-import { supercompat, openaiClientAdapter, responsesStorageAdapter, responsesRunAdapter } from 'supercompat'
-import OpenAI from 'openai'
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
-const client = supercompat({
-  client: openaiClientAdapter({ openai }),
-  storage: responsesStorageAdapter({ openai }),
-  runAdapter: responsesRunAdapter(),
-})
-```
-
-### Azure AI Agents Storage Adapter
-
-Use Azure AI Foundry's native storage with Prisma for function output persistence:
+All imports now require an explicit output path. The root `supercompat` import no longer exports adapters.
 
 ```typescript
-import { supercompat, azureAiProjectClientAdapter, azureAgentsStorageAdapter, azureAgentsRunAdapter } from 'supercompat'
-import { AIProjectClient } from '@azure/ai-projects'
-import { ClientSecretCredential } from '@azure/identity'
-import { PrismaClient } from '@prisma/client'
+// v3
+import { supercompat, openaiClientAdapter, prismaStorageAdapter } from 'supercompat'
 
-const credential = new ClientSecretCredential(
-  process.env.AZURE_TENANT_ID!,
-  process.env.AZURE_CLIENT_ID!,
-  process.env.AZURE_CLIENT_SECRET!
-)
+// v4 — Assistants output
+import { supercompat, openaiClientAdapter, prismaStorageAdapter } from 'supercompat/openaiAssistants'
 
-const azureAiProject = new AIProjectClient(
-  process.env.AZURE_PROJECT_ENDPOINT!,
-  credential
-)
-
-const prisma = new PrismaClient()
-const runAdapter = azureAgentsRunAdapter({ azureAiProject })
-
-const client = supercompat({
-  client: azureAiProjectClientAdapter({ azureAiProject }),
-  storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
-  runAdapter,
-})
+// v4 — Responses output
+import { createClient, openaiClientAdapter, prismaStorageAdapter } from 'supercompat/openaiResponses'
 ```
 
-**Important:** Azure AI Agents storage requires Prisma to persist function tool call outputs. Azure's API does not persist function outputs after submission, so they are stored in a database table and reattached when run steps are retrieved. Add the `AzureAgentsFunctionOutput` model to your Prisma schema:
+### New Responses API output
 
-```prisma
-// Azure Agents-specific table for storing function tool call outputs
-// since Azure API doesn't persist these after submission
-model AzureAgentsFunctionOutput {
-  id           String   @id @default(dbgenerated("gen_random_uuid()"))
-  runId        String   // The run ID where the tool was called
-  toolCallId   String   // The specific tool call ID
-  output       String   // The output that was submitted
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+v4 adds `supercompat/openaiResponses` — a full Responses API implementation with its own storage adapter, run adapters, and Prisma schema. See [Responses API](#responses-api) and [Database Setup](#database-setup) for details.
 
-  @@unique([runId, toolCallId])
-  @@index([runId])
-  @@index([createdAt(sort: Desc)])
-}
-```
+### New run adapters
 
-See the [Azure AI Agents setup instructions](#azure-ai-agents) above for details on creating a service principal and configuring permissions.
+v4 adds native run adapters for the Responses API output that call provider APIs directly, enabling built-in tools:
 
-## Run Adapters
+| Adapter | Import | What it does |
+|---|---|---|
+| `openaiResponsesRunAdapter` | `supercompat/openaiResponses` | Calls OpenAI's native Responses API |
+| `azureResponsesRunAdapter` | `supercompat/openaiResponses` | Calls Azure's native Responses API |
+| `anthropicRunAdapter` | `supercompat/openaiResponses` | Calls Anthropic with native web search, code execution, computer use |
+| `geminiRunAdapter` | `supercompat/openaiResponses` | Calls Gemini with native computer use |
+| `azureAgentsResponsesRunAdapter` | `supercompat/openaiResponses` | Calls Azure Agents with file search, code interpreter |
+| `perplexityAgentRunAdapter` | `supercompat/openaiAssistants` | Calls Perplexity's `/v1/agent` endpoint |
 
-Run adapters execute AI runs and manage streaming. Different adapters support different storage backends.
+The `completionsRunAdapter` still works for all providers on both outputs.
 
-### Completions Run Adapter
+### Prisma schema changes
 
-Use with Prisma storage for maximum flexibility:
+If you use `prismaStorageAdapter` for the Assistants API output, no schema changes are required.
 
-```typescript
-import { completionsRunAdapter } from 'supercompat'
+If you're adding the new Responses API output, you'll need the Responses Prisma models (see [Responses API schema](#responses-api)).
 
-const client = supercompat({
-  client: /* any client adapter */,
-  storage: prismaStorageAdapter({ prisma }),
-  runAdapter: completionsRunAdapter(),
-})
-```
+## Conformance Testing
 
-### Responses Run Adapter
+Supercompat ships with conformance tests that verify adapter behavior against the real OpenAI APIs.
 
-Use with OpenAI's Responses API storage:
+**Responses API**: 29 contracts across 14 targets — CRUD, streaming, function tools, built-in tools, conversations, structured output, truncation, and parameter handling.
 
-```typescript
-import { responsesRunAdapter } from 'supercompat'
+**Assistants API**: 48 contracts across 15 targets — assistant CRUD, thread/message lifecycle, run polling and streaming, tool calls, pagination, and metadata.
 
-const client = supercompat({
-  client: openaiClientAdapter({ openai }),
-  storage: responsesStorageAdapter({ openai }),
-  runAdapter: responsesRunAdapter(),
-})
-```
-
-### Azure Agents Run Adapter
-
-Use with Azure AI Agents storage (requires Prisma):
-
-```typescript
-import { azureAgentsRunAdapter } from 'supercompat'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
-const runAdapter = azureAgentsRunAdapter({ azureAiProject })
-
-const client = supercompat({
-  client: azureAiProjectClientAdapter({ azureAiProject }),
-  storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
-  runAdapter,
-})
-```
-
-## Usage Examples
-
-### Basic Conversation
-
-```typescript
-// Create a thread
-const thread = await client.beta.threads.create()
-
-// Add a message
-await client.beta.threads.messages.create(thread.id, {
-  role: 'user',
-  content: 'What is the weather like today?',
-})
-
-// Run the assistant
-const run = await client.beta.threads.runs.createAndPoll(thread.id, {
-  assistant_id: 'asst_abc123',
-})
-
-// Get the response
-const messages = await client.beta.threads.messages.list(thread.id)
-console.log(messages.data[0].content)
-```
-
-### Streaming Responses
-
-```typescript
-const run = await client.beta.threads.runs.create(thread.id, {
-  assistant_id: 'asst_abc123',
-  stream: true,
-})
-
-for await (const event of run) {
-  if (event.event === 'thread.message.delta') {
-    const delta = event.data.delta.content?.[0]
-    if (delta?.type === 'text') {
-      process.stdout.write(delta.text.value)
-    }
-  }
-}
-```
-
-### Function Calling
-
-```typescript
-// Create assistant with tools
-const assistant = await client.beta.assistants.create({
-  model: 'llama-3.3-70b-versatile',
-  tools: [
-    {
-      type: 'function',
-      function: {
-        name: 'get_weather',
-        description: 'Get the current weather for a location',
-        parameters: {
-          type: 'object',
-          properties: {
-            location: { type: 'string' },
-          },
-          required: ['location'],
-        },
-      },
-    },
-  ],
-})
-
-// Run with tool calls
-const run = await client.beta.threads.runs.createAndPoll(thread.id, {
-  assistant_id: assistant.id,
-})
-
-// Handle tool calls
-if (run.status === 'requires_action') {
-  const toolCalls = run.required_action?.submit_tool_outputs.tool_calls || []
-  const toolOutputs = toolCalls.map((toolCall) => ({
-    tool_call_id: toolCall.id,
-    output: JSON.stringify({ temperature: 72, condition: 'sunny' }),
-  }))
-
-  await client.beta.threads.runs.submitToolOutputsAndPoll(run.id, {
-    thread_id: thread.id,
-    tool_outputs: toolOutputs,
-  })
-}
-```
-
-### Code Interpreter
-
-```typescript
-const assistant = await client.beta.assistants.create({
-  model: 'gpt-4o',
-  tools: [{ type: 'code_interpreter' }],
-})
-
-const run = await client.beta.threads.runs.createAndPoll(thread.id, {
-  assistant_id: assistant.id,
-})
-
-// Get run steps to see code execution
-const steps = await client.beta.threads.runs.steps.list(thread.id, run.id)
-for (const step of steps.data) {
-  if (step.type === 'tool_calls') {
-    console.log(step.step_details.tool_calls)
-  }
-}
-```
-
-### Multiple Providers Example
-
-Use different providers for different use cases:
-
-```typescript
-// Fast responses with Groq
-const fastClient = supercompat({
-  client: groqClientAdapter({ groq }),
-  storage: prismaStorageAdapter({ prisma }),
-  runAdapter: completionsRunAdapter(),
-})
-
-// Complex reasoning with Claude
-const smartClient = supercompat({
-  client: anthropicClientAdapter({ anthropic }),
-  storage: prismaStorageAdapter({ prisma }),
-  runAdapter: completionsRunAdapter(),
-})
-
-// Cost-effective with Mistral
-const economicClient = supercompat({
-  client: mistralClientAdapter({ mistral }),
-  storage: prismaStorageAdapter({ prisma }),
-  runAdapter: completionsRunAdapter(),
-})
-```
-
-## Configuration Patterns
-
-### Production-Ready Setup
-
-```typescript
-import { supercompat, groqClientAdapter, prismaStorageAdapter, completionsRunAdapter } from 'supercompat'
-import { PrismaClient } from '@prisma/client'
-import Groq from 'groq-sdk'
-
-// Singleton pattern for Prisma
-const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-})
-
-// Singleton pattern for AI client
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-})
-
-// Create client factory
-function createAssistantClient() {
-  return supercompat({
-    client: groqClientAdapter({ groq }),
-    storage: prismaStorageAdapter({ prisma }),
-    runAdapter: completionsRunAdapter(),
-  })
-}
-
-// Export for use across your app
-export const assistantClient = createAssistantClient()
-export { prisma }
-```
-
-### Multi-Tenant Setup
-
-```typescript
-function createTenantClient(tenantId: string) {
-  return supercompat({
-    client: groqClientAdapter({ groq }),
-    storage: prismaStorageAdapter({
-      prisma: prisma.$extends({
-        query: {
-          $allModels: {
-            async $allOperations({ args, query }) {
-              args.where = { ...args.where, tenantId }
-              return query(args)
-            },
-          },
-        },
-      }),
-    }),
-    runAdapter: completionsRunAdapter(),
-  })
-}
-```
-
-## Examples
-
-Check out the `examples/` directory for full working examples:
-
-- **prisma-nextjs** - Full-stack Next.js app with Prisma storage and multiple AI providers
-
-## API Compatibility
-
-Supercompat implements the OpenAI Assistants API, so you can use the [official OpenAI documentation](https://platform.openai.com/docs/assistants/overview) as reference.
-
-### Supported Endpoints
-
-- ✅ `beta.threads.create()`
-- ✅ `beta.threads.messages.create()`
-- ✅ `beta.threads.messages.list()`
-- ✅ `beta.threads.runs.create()`
-- ✅ `beta.threads.runs.createAndPoll()`
-- ✅ `beta.threads.runs.retrieve()`
-- ✅ `beta.threads.runs.submitToolOutputs()`
-- ✅ `beta.threads.runs.submitToolOutputsAndPoll()`
-- ✅ `beta.threads.runs.steps.list()`
-- ✅ `beta.assistants.create()`
-
-### Not Yet Supported
-
-The following endpoints are not yet implemented:
-
-**Threads:**
-- ❌ `beta.threads.retrieve()` - Get a specific thread
-- ❌ `beta.threads.update()` - Update thread metadata
-- ❌ `beta.threads.delete()` - Delete a thread
-
-**Messages:**
-- ❌ `beta.threads.messages.retrieve()` - Get a specific message
-- ❌ `beta.threads.messages.update()` - Update message metadata
-- ❌ `beta.threads.messages.delete()` - Delete a message
-
-**Runs:**
-- ❌ `beta.threads.runs.list()` - List all runs for a thread
-- ❌ `beta.threads.runs.update()` - Update run metadata
-- ❌ `beta.threads.runs.cancel()` - Cancel an in-progress run
-- ❌ `beta.threads.runs.steps.retrieve()` - Get a specific step
-
-**Assistants:**
-- ❌ `beta.assistants.list()` - List all assistants
-- ❌ `beta.assistants.retrieve()` - Get a specific assistant
-- ❌ `beta.assistants.update()` - Update an assistant
-- ❌ `beta.assistants.delete()` - Delete an assistant
-
-**Vector Stores & Files:**
-- ❌ `beta.vectorStores.*` - All vector store operations
-- ❌ `beta.files.*` - File upload and management operations
-
-*Pull requests welcome to add support for these endpoints!*
-
-## Advanced Features
-
-### Streaming Events
-
-All storage adapters support streaming events:
-
-- `thread.run.created`
-- `thread.run.in_progress`
-- `thread.run.requires_action`
-- `thread.run.completed`
-- `thread.run.failed`
-- `thread.message.created`
-- `thread.message.delta`
-- `thread.message.completed`
-- `thread.run.step.created`
-- `thread.run.step.delta`
-- `thread.run.step.completed`
-
-### Error Handling
-
-```typescript
-try {
-  const run = await client.beta.threads.runs.createAndPoll(thread.id, {
-    assistant_id: 'asst_abc123',
-  })
-} catch (error) {
-  if (error.status === 'failed') {
-    console.error('Run failed:', error.last_error)
-  }
-}
-```
-
-### Metadata and Custom Fields
-
-```typescript
-const thread = await client.beta.threads.create({
-  metadata: {
-    userId: 'user_123',
-    sessionId: 'session_456',
-  },
-})
-```
-
-## Testing
-
-Run the test suite:
-
-```bash
-npm run test
-```
-
-Run with environment variables:
-
-```bash
-npm run test:env
-```
-
-## Contributing
-
-Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+Each target is a unique combination of client adapter + storage adapter + run adapter, tested against the same contracts. The baseline target runs against the real OpenAI API to establish ground truth.
 
 ## License
 
 MIT
 
-## Support
-
-- GitHub Issues: [Report bugs or request features](https://github.com/supercorp-ai/supercompat/issues)
-- Documentation: See the `examples/` directory for working code
-
 ---
 
-Made with ❤️ by [Supercorp](https://github.com/supercorp-ai)
+Made by [Supercorp](https://supercorp.ai)

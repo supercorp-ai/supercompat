@@ -5,7 +5,7 @@
     "declaration": true,
     "noEmit": false,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/openaiAssistants/*"]
     }
   },
   "include": ["src"],

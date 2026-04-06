@@ -8,7 +8,9 @@
   "exports": {
     ".": "./dist/index.js",
     "./*": "./dist/*.js",
-    "./types": "./dist/types/index.js"
+    "./types": "./dist/types/index.js",
+    "./openaiAssistants": "./dist/openaiAssistants/index.js",
+    "./openaiResponses": "./dist/openaiResponses/index.js"
   },
   "files": [
     "dist"
@@ -33,13 +35,13 @@
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.67.0",
     "@mistralai/mistralai": "^1.6.0",
-    "@prisma/client": "^6.18.0",
+    "@prisma/client": "^6.19.1",
     "@superinterface/react": "^5.2.2",
     "@types/lodash": "^4.17.20",
     "groq-sdk": "^0.21.0",
     "humiris-ai": "^1.11.0",
+    "openai": "^6.27.0",
     "prisma": "^6.18.0",
-    "openai": "^6.6.0",
     "tsup": "^8.5.0",
     "undici": "^7.16.0"
   }
