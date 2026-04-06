@@ -2,7 +2,7 @@ import type OpenAI from 'openai'
 import type { AIProjectClient } from '@azure/ai-projects'
 import dayjs from 'dayjs'
 import type { RunAdapterWithAssistant } from '@/types'
-import { runRegexp } from '@/lib/runs/runRegexp'
+import { runRegexp } from '@/openaiAssistants/lib/runs/runRegexp'
 
 type RunGetResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Run>

@@ -4,7 +4,7 @@ import {
   isOpenaiComputerUseModel,
   serializeCompatComputerCall,
   serializeComputerUseTool,
-} from '../../../src/openaiAssistants/lib/openaiComputerUse'
+} from '../../../src/lib/openaiComputerUse'
 import { serializeResponseAsRun } from '../../../src/openaiAssistants/lib/responses/serializeResponseAsRun'
 import { serializeItemAsComputerCallRunStep } from '../../../src/openaiAssistants/lib/items/serializeItemAsComputerCallRunStep'
 

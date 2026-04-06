@@ -1,5 +1,5 @@
 import type OpenAI from 'openai'
-import { responseRegexp } from '@/lib/responses/responseRegexp'
+import { responseRegexp } from '@/openaiAssistants/lib/responses/responseRegexp'
 
 type ResponseGetResponse = Response & {
   json: () => Promise<OpenAI.Responses.Response>

@@ -1,7 +1,7 @@
 import type OpenAI from 'openai'
 import { omit } from 'radash'
-import { systemDeveloperMessages } from '@/lib/messages/systemDeveloperMessages'
-import { isOModel } from '@/lib/models/isOModel'
+import { systemDeveloperMessages } from '@/openaiAssistants/lib/messages/systemDeveloperMessages'
+import { isOModel } from '@/openaiAssistants/lib/models/isOModel'
 
 const encoder = new TextEncoder()
 

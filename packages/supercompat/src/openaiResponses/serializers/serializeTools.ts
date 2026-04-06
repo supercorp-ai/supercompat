@@ -1,4 +1,4 @@
-import { serializeComputerUseTool } from '../../openaiAssistants/lib/openaiComputerUse'
+import { serializeComputerUseTool } from '@/lib/openaiComputerUse'
 
 type ToolWithRelations = {
   id: string

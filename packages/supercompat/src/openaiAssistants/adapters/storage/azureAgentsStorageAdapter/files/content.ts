@@ -1,6 +1,6 @@
 import { Readable } from 'node:stream'
 import type { AIProjectClient } from '@azure/ai-projects'
-import { fileContentRegexp } from '@/lib/files/fileContentRegexp'
+import { fileContentRegexp } from '@/openaiAssistants/lib/files/fileContentRegexp'
 import type { RequestHandler } from '@/types'
 
 const headersToRecord = (headers: any): Record<string, string> => {

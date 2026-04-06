@@ -3,7 +3,7 @@ import dayjs from 'dayjs'
 import { onEvent } from '../onEvent'
 import { getMessages } from '../getMessages'
 import { serializeResponse } from '../../serializers/serializeResponse'
-import { RunAdapterPartobClient } from '../../../openaiAssistants/types'
+import { RunAdapterPartobClient } from '@/types'
 
 const createTools = async ({
   prisma,

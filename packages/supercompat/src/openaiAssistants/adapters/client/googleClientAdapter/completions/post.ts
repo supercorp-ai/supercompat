@@ -1,7 +1,7 @@
 import type { GoogleGenAI, Content, Part, Tool, FunctionResponsePart } from '@google/genai'
 import { createId } from '@paralleldrive/cuid2'
 import { uid } from 'radash'
-import { nonEmptyMessages } from '@/lib/messages/nonEmptyMessages'
+import { nonEmptyMessages } from '@/openaiAssistants/lib/messages/nonEmptyMessages'
 import { normalizeComputerToolCallPayload } from '../../anthropicClientAdapter/normalizeComputerToolCallPayload'
 import { normalizeGeminiAction, isGeminiAction } from '../normalizeGeminiAction'
 

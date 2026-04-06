@@ -1,7 +1,7 @@
 import type OpenAI from 'openai'
 import type { RunAdapterWithAssistant } from '@/types'
-import { runRegexp } from '@/lib/runs/runRegexp'
-import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
+import { runRegexp } from '@/openaiAssistants/lib/runs/runRegexp'
+import { serializeResponseAsRun } from '@/openaiAssistants/lib/responses/serializeResponseAsRun'
 
 type GetResponse = Response & {
   json: () => Promise<ReturnType<OpenAI.Beta.Threads.Runs['retrieve']>>

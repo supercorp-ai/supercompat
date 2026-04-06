@@ -3,7 +3,7 @@ import type { AIProjectClient } from '@azure/ai-projects'
 import type { PrismaClient } from '@prisma/client'
 import dayjs from 'dayjs'
 import type { RequestHandler } from '@/types'
-import { stepRegexp } from '@/lib/steps/stepRegexp'
+import { stepRegexp } from '@/openaiAssistants/lib/steps/stepRegexp'
 
 export const get = ({
   azureAiProject,

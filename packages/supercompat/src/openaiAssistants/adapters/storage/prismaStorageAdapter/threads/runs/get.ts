@@ -1,7 +1,7 @@
 import type OpenAI from 'openai'
 import type { PrismaClient, Run as PrismaRun } from '@prisma/client'
 import { assign } from 'radash'
-import { runsRegexp } from '@/lib/runs/runsRegexp'
+import { runsRegexp } from '@/openaiAssistants/lib/runs/runsRegexp'
 import { serializeRun } from './serializeRun'
 import { mapPrismaRun } from './mapPrismaRun'
 

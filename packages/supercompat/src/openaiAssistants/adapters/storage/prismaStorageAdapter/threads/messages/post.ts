@@ -2,7 +2,7 @@ import type OpenAI from 'openai'
 import { isArray } from 'radash'
 import type { Prisma, PrismaClient } from '@prisma/client'
 import { serializeMessage } from './serializeMessage'
-import { messagesRegexp } from '@/lib/messages/messagesRegexp'
+import { messagesRegexp } from '@/openaiAssistants/lib/messages/messagesRegexp'
 
 type MessageCreateResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Messages.Message>

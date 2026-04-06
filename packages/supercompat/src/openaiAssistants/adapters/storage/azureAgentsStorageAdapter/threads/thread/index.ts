@@ -1,7 +1,7 @@
 import type { AIProjectClient } from '@azure/ai-projects'
 import type OpenAI from 'openai'
 import dayjs from 'dayjs'
-import { threadRegexp } from '@/lib/threads/threadRegexp'
+import { threadRegexp } from '@/openaiAssistants/lib/threads/threadRegexp'
 import type { RequestHandler } from '@/types'
 
 const serializeThread = (thread: any): OpenAI.Beta.Threads.Thread => ({

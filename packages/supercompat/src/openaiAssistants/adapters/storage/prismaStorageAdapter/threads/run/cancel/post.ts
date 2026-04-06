@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client'
-import { cancelRunRegexp } from '@/lib/runs/cancelRunRegexp'
+import { cancelRunRegexp } from '@/openaiAssistants/lib/runs/cancelRunRegexp'
 import { serializeRun } from '../../runs/serializeRun'
 import { mapPrismaRun } from '../../runs/mapPrismaRun'
 

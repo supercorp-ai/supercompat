@@ -1,7 +1,7 @@
 import type OpenAI from 'openai'
 import type { AIProjectClient } from '@azure/ai-projects'
 import dayjs from 'dayjs'
-import { messageRegexp } from '@/lib/messages/messageRegexp'
+import { messageRegexp } from '@/openaiAssistants/lib/messages/messageRegexp'
 import type { RequestHandler } from '@/types'
 
 const serializeMessage = (message: any): OpenAI.Beta.Threads.Message => {

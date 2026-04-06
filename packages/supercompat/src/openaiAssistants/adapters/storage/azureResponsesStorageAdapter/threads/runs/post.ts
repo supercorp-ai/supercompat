@@ -2,18 +2,18 @@ import type OpenAI from 'openai'
 import { uid } from 'radash'
 import dayjs from 'dayjs'
 import { assign } from 'radash'
-import { runsRegexp } from '@/lib/runs/runsRegexp'
-import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
+import { runsRegexp } from '@/openaiAssistants/lib/runs/runsRegexp'
+import { serializeResponseAsRun } from '@/openaiAssistants/lib/responses/serializeResponseAsRun'
 import { RunAdapterWithAssistant } from '@/types'
-import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveResponseItemsToConversationMetadata'
-import { enqueueSSE } from '@/lib/sse/enqueueSSE'
+import { saveResponseItemsToConversationMetadata } from '@/openaiAssistants/lib/responses/saveResponseItemsToConversationMetadata'
+import { enqueueSSE } from '@/openaiAssistants/lib/sse/enqueueSSE'
 import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
 import {
   defaultAssistant,
   serializeTools,
   textConfig,
   truncation,
-} from '@/adapters/storage/responsesStorageAdapter/threads/runs/shared'
+} from '@/openaiAssistants/adapters/storage/responsesStorageAdapter/threads/runs/shared'
 
 type RunCreateResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Run>

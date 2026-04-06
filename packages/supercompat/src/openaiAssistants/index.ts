@@ -1,5 +1,5 @@
-export { supercompat as createClient } from './supercompat'
-export { supercompat } from './supercompat'
+export { supercompat as createClient } from '../supercompat'
+export { supercompat } from '../supercompat'
 export { groqClientAdapter } from './adapters/client/groqClientAdapter'
 export { openaiClientAdapter } from './adapters/client/openaiClientAdapter'
 export { azureOpenaiClientAdapter } from './adapters/client/azureOpenaiClientAdapter'
@@ -25,4 +25,4 @@ export {
   isOpenaiComputerUseModel,
   serializeCompatComputerCall,
   serializeComputerUseTool,
-} from './lib/openaiComputerUse'
+} from '../lib/openaiComputerUse'

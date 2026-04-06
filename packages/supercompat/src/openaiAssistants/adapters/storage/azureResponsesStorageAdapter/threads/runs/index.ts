@@ -1,6 +1,6 @@
 import type { OpenAI } from 'openai'
 import type { RequestHandler, RunAdapterWithAssistant } from '@/types'
-import { get } from '@/adapters/storage/responsesStorageAdapter/threads/runs/get'
+import { get } from '@/openaiAssistants/adapters/storage/responsesStorageAdapter/threads/runs/get'
 import { post } from './post'
 
 export const runs = ({

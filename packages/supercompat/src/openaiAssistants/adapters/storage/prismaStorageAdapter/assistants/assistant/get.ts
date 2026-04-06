@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client'
-import { assistantRegexp } from '@/lib/assistants/assistantRegexp'
+import { assistantRegexp } from '@/openaiAssistants/lib/assistants/assistantRegexp'
 import { serializeAssistant } from '../serializeAssistant'
 
 export const get = ({

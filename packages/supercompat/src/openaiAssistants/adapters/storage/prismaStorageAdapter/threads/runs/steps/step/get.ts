@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client'
-import { stepRegexp } from '@/lib/steps/stepRegexp'
+import { stepRegexp } from '@/openaiAssistants/lib/steps/stepRegexp'
 import { serializeRunStep } from '../serializeRunStep'
 
 export const get = ({

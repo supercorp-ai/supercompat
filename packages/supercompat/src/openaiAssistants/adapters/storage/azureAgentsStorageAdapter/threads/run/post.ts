@@ -2,7 +2,7 @@ import type OpenAI from 'openai'
 import type { AIProjectClient } from '@azure/ai-projects'
 import dayjs from 'dayjs'
 import type { RequestHandler } from '@/types'
-import { runRegexp } from '@/lib/runs/runRegexp'
+import { runRegexp } from '@/openaiAssistants/lib/runs/runRegexp'
 
 export const post = ({
   azureAiProject,

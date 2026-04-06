@@ -2,8 +2,8 @@ import type OpenAI from 'openai'
 import dayjs from 'dayjs'
 import { isArray } from 'radash'
 import type { RunAdapterWithAssistant } from '@/types'
-import { messagesRegexp } from '@/lib/messages/messagesRegexp'
-import { serializeItemAsMessage } from '@/lib/items/serializeItemAsMessage'
+import { messagesRegexp } from '@/openaiAssistants/lib/messages/messagesRegexp'
+import { serializeItemAsMessage } from '@/openaiAssistants/lib/items/serializeItemAsMessage'
 
 type MessageCreateResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Messages.Message>

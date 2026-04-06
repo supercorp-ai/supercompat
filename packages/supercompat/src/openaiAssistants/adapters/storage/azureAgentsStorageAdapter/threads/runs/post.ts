@@ -2,8 +2,8 @@ import type OpenAI from 'openai'
 import type { AIProjectClient } from '@azure/ai-projects'
 import { uid } from 'radash'
 import dayjs from 'dayjs'
-import { runsRegexp } from '@/lib/runs/runsRegexp'
-import { enqueueSSE } from '@/lib/sse/enqueueSSE'
+import { runsRegexp } from '@/openaiAssistants/lib/runs/runsRegexp'
+import { enqueueSSE } from '@/openaiAssistants/lib/sse/enqueueSSE'
 import { RunAdapterWithAssistant } from '@/types'
 
 // Get azureAgentId from the run adapter

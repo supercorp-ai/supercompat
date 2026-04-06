@@ -1,7 +1,7 @@
 // Re-exports from openaiAssistants (shared for now — will be replaced with
 // Responses-native adapters as the new surface is built)
-export { supercompat as createClient } from '../openaiAssistants/supercompat'
-export { supercompat } from '../openaiAssistants/supercompat'
+export { supercompat as createClient } from '../supercompat'
+export { supercompat } from '../supercompat'
 export { groqClientAdapter } from '../openaiAssistants/adapters/client/groqClientAdapter'
 export { openaiClientAdapter } from '../openaiAssistants/adapters/client/openaiClientAdapter'
 export { azureOpenaiClientAdapter } from '../openaiAssistants/adapters/client/azureOpenaiClientAdapter'

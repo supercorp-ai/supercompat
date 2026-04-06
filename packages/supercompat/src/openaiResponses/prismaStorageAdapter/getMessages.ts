@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client'
-import type { MessageWithRun } from '../../openaiAssistants/types'
+import type { MessageWithRun } from '@/types'
 import dayjs from 'dayjs'
 
 const makeMessage = (overrides: Partial<MessageWithRun> & { role: string; content: any }): MessageWithRun => ({

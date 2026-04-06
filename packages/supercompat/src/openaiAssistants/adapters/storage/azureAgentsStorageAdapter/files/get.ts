@@ -1,7 +1,7 @@
 import type { AIProjectClient } from '@azure/ai-projects'
-import { fileRegexp } from '@/lib/files/fileRegexp'
+import { fileRegexp } from '@/openaiAssistants/lib/files/fileRegexp'
 import type { RequestHandler } from '@/types'
-import { transformAzureFile } from '@/lib/files/transformAzureFile'
+import { transformAzureFile } from '@/openaiAssistants/lib/files/transformAzureFile'
 
 export const file = ({
   azureAiProject,

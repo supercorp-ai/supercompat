@@ -1,5 +1,5 @@
 import type OpenAI from 'openai'
-import { alternatingMessages } from '@/lib/messages/alternatingMessages'
+import { alternatingMessages } from '@/openaiAssistants/lib/messages/alternatingMessages'
 
 const encoder = new TextEncoder()
 

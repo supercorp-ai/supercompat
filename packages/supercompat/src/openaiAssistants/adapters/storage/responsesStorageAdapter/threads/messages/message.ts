@@ -1,8 +1,8 @@
 import type { OpenAI } from 'openai'
 import type { RequestHandler, RunAdapterWithAssistant } from '@/types'
-import { messageRegexp } from '@/lib/messages/messageRegexp'
-import { serializeItemAsMessage } from '@/lib/items/serializeItemAsMessage'
-import { responseId } from '@/lib/items/responseId'
+import { messageRegexp } from '@/openaiAssistants/lib/messages/messageRegexp'
+import { serializeItemAsMessage } from '@/openaiAssistants/lib/items/serializeItemAsMessage'
+import { responseId } from '@/openaiAssistants/lib/items/responseId'
 
 export const message = ({
   client,

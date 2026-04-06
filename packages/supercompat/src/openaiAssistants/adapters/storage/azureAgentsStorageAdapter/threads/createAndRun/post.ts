@@ -3,7 +3,7 @@ import type { AIProjectClient } from '@azure/ai-projects'
 import dayjs from 'dayjs'
 import type { RunAdapterWithAssistant } from '@/types'
 import type { RequestHandler } from '@/types'
-import { enqueueSSE } from '@/lib/sse/enqueueSSE'
+import { enqueueSSE } from '@/openaiAssistants/lib/sse/enqueueSSE'
 import { uid } from 'radash'
 
 export const post = ({

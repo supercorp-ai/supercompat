@@ -1,5 +1,5 @@
 import type OpenAI from 'openai'
-import { isOModel } from '@/lib/models/isOModel'
+import { isOModel } from '@/openaiAssistants/lib/models/isOModel'
 
 export const systemDeveloperMessages = ({
   messages,

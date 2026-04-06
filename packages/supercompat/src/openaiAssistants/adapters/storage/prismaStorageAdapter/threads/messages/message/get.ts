@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client'
-import { messageRegexp } from '@/lib/messages/messageRegexp'
+import { messageRegexp } from '@/openaiAssistants/lib/messages/messageRegexp'
 import { serializeMessage } from '../serializeMessage'
 
 export const get = ({

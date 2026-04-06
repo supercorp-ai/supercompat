@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client'
-import { StorageAdapterArgs } from '../../openaiAssistants/types'
-import type { RequestHandler } from '../../openaiAssistants/types'
+import { StorageAdapterArgs } from '@/types'
+import type { RequestHandler } from '@/types'
 import { post as responsesPost } from './responses/post'
 import { get as responseGet } from './responses/response/get'
 import { del as responseDel } from './responses/response/del'

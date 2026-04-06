@@ -2,7 +2,7 @@ import type OpenAI from 'openai'
 // @ts-ignore-next-line
 import type { PrismaClient, Message } from '@prisma/client'
 import { assign, last } from 'radash'
-import { messagesRegexp } from '@/lib/messages/messagesRegexp'
+import { messagesRegexp } from '@/openaiAssistants/lib/messages/messagesRegexp'
 import { serializeMessage } from './serializeMessage'
 
 type MessageCreateResponse = Response & {

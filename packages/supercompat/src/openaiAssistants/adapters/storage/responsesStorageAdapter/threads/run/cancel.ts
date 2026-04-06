@@ -1,7 +1,7 @@
 import type { OpenAI } from 'openai'
 import type { RequestHandler, RunAdapterWithAssistant } from '@/types'
-import { cancelRunRegexp } from '@/lib/runs/cancelRunRegexp'
-import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
+import { cancelRunRegexp } from '@/openaiAssistants/lib/runs/cancelRunRegexp'
+import { serializeResponseAsRun } from '@/openaiAssistants/lib/responses/serializeResponseAsRun'
 
 export const cancelRun = ({
   client,

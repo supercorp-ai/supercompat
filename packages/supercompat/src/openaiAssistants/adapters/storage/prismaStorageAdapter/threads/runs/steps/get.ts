@@ -1,6 +1,6 @@
 import type { PrismaClient, RunStep } from '@prisma/client'
 import { assign } from 'radash'
-import { stepsRegexp } from '@/lib/steps/stepsRegexp'
+import { stepsRegexp } from '@/openaiAssistants/lib/steps/stepsRegexp'
 import { serializeRunStep } from './serializeRunStep'
 
 export const get = ({

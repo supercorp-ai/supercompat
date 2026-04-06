@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client'
-import { threadRegexp } from '@/lib/threads/threadRegexp'
+import { threadRegexp } from '@/openaiAssistants/lib/threads/threadRegexp'
 import { serializeThread } from '../serializeThread'
 
 export const post = ({

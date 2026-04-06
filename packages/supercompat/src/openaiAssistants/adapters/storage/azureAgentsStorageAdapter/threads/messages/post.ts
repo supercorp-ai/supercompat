@@ -2,7 +2,7 @@ import type OpenAI from 'openai'
 import type { AIProjectClient } from '@azure/ai-projects'
 import dayjs from 'dayjs'
 import type { RunAdapterWithAssistant } from '@/types'
-import { messagesRegexp } from '@/lib/messages/messagesRegexp'
+import { messagesRegexp } from '@/openaiAssistants/lib/messages/messagesRegexp'
 
 type MessageCreateResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Messages.Message>

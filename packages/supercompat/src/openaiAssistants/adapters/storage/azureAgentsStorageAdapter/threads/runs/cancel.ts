@@ -1,7 +1,7 @@
 import type OpenAI from 'openai'
 import type { AIProjectClient } from '@azure/ai-projects'
 import dayjs from 'dayjs'
-import { cancelRunRegexp } from '@/lib/runs/cancelRunRegexp'
+import { cancelRunRegexp } from '@/openaiAssistants/lib/runs/cancelRunRegexp'
 import type { RequestHandler } from '@/types'
 
 export const post = ({

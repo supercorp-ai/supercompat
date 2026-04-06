@@ -1,7 +1,7 @@
 import type OpenAI from 'openai'
 import type { AIProjectClient } from '@azure/ai-projects'
 import dayjs from 'dayjs'
-import { runsRegexp } from '@/lib/runs/runsRegexp'
+import { runsRegexp } from '@/openaiAssistants/lib/runs/runsRegexp'
 
 type RunListResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Runs.RunsPage>

@@ -1,12 +1,12 @@
 import type { OpenAI } from 'openai'
 import type { RunAdapterWithAssistant } from '@/types'
-import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
-import { serializeItemAsFunctionCallRunStep } from '@/lib/items/serializeItemAsFunctionCallRunStep'
-import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsComputerCallRunStep'
+import { submitToolOutputsRegexp } from '@/openaiAssistants/lib/runs/submitToolOutputsRegexp'
+import { serializeItemAsFunctionCallRunStep } from '@/openaiAssistants/lib/items/serializeItemAsFunctionCallRunStep'
+import { serializeItemAsComputerCallRunStep } from '@/openaiAssistants/lib/items/serializeItemAsComputerCallRunStep'
 import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
-import { enqueueSSE } from '@/lib/sse/enqueueSSE'
-import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
-import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveResponseItemsToConversationMetadata'
+import { enqueueSSE } from '@/openaiAssistants/lib/sse/enqueueSSE'
+import { serializeResponseAsRun } from '@/openaiAssistants/lib/responses/serializeResponseAsRun'
+import { saveResponseItemsToConversationMetadata } from '@/openaiAssistants/lib/responses/saveResponseItemsToConversationMetadata'
 import { getToolCallOutputItems, serializeTools, truncation } from '../shared'
 
 export const post = ({

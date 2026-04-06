@@ -3,8 +3,8 @@ import type { AIProjectClient } from '@azure/ai-projects'
 import type { PrismaClient } from '@prisma/client'
 import { uid } from 'radash'
 import dayjs from 'dayjs'
-import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
-import { enqueueSSE } from '@/lib/sse/enqueueSSE'
+import { submitToolOutputsRegexp } from '@/openaiAssistants/lib/runs/submitToolOutputsRegexp'
+import { enqueueSSE } from '@/openaiAssistants/lib/sse/enqueueSSE'
 import { RunAdapterWithAssistant } from '@/types'
 
 // Complete conversion function from run adapter

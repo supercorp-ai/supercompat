@@ -1,6 +1,6 @@
 import type { OpenAI } from 'openai'
 import type { RequestHandler } from '@/types'
-import { threadRegexp } from '@/lib/threads/threadRegexp'
+import { threadRegexp } from '@/openaiAssistants/lib/threads/threadRegexp'
 import { serializeThread } from '../serializeThread'
 
 export const thread = ({

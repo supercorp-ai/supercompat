@@ -1,9 +1,9 @@
 import type OpenAI from 'openai'
 import type { RunAdapterWithAssistant } from '@/types'
 import { assign } from 'radash'
-import { messagesRegexp } from '@/lib/messages/messagesRegexp'
-import { serializeItemAsMessage } from '@/lib/items/serializeItemAsMessage'
-import { responseId } from '@/lib/items/responseId'
+import { messagesRegexp } from '@/openaiAssistants/lib/messages/messagesRegexp'
+import { serializeItemAsMessage } from '@/openaiAssistants/lib/items/serializeItemAsMessage'
+import { responseId } from '@/openaiAssistants/lib/items/responseId'
 
 type MessageCreateResponse = Response & {
   json: () => Promise<ReturnType<OpenAI.Beta.Threads.Messages['create']>>

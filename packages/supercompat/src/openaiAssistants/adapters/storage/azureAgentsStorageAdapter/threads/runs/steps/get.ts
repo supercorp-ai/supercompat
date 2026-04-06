@@ -3,7 +3,7 @@ import type { AIProjectClient } from '@azure/ai-projects'
 import type { PrismaClient } from '@prisma/client'
 import dayjs from 'dayjs'
 import type { RunAdapterWithAssistant } from '@/types'
-import { stepsRegexp } from '@/lib/steps/stepsRegexp'
+import { stepsRegexp } from '@/openaiAssistants/lib/steps/stepsRegexp'
 
 type StepListResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Runs.Steps.RunStepsPage>

@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client'
 import dayjs from 'dayjs'
-import type { RequestHandler } from '../../../openaiAssistants/types'
+import type { RequestHandler } from '@/types'
 
 const serializeConversation = (conv: any) => ({
   id: conv.id,

@@ -1,5 +1,5 @@
 import type { AzureOpenAI } from 'openai'
-import { completions } from '@/adapters/client/openaiClientAdapter/completions'
+import { completions } from '@/openaiAssistants/adapters/client/openaiClientAdapter/completions'
 
 export const azureOpenaiClientAdapter = ({
   azureOpenai,
