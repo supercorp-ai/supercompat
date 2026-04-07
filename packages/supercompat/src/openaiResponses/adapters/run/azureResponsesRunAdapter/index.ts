@@ -24,7 +24,7 @@ export const azureResponsesRunAdapter = ({
 }) => ({
   type: 'responses-azure' as const,
 
-  handleResponsesRun: async ({
+  handleRun: async ({
     requestBody,
     onEvent,
   }: HandleArgs) => {
@@ -40,7 +40,4 @@ export const azureResponsesRunAdapter = ({
     }
   },
 
-  handleRun: async () => {
-    throw new Error('azureResponsesRunAdapter does not support Assistants-style handleRun. Use handleResponsesRun instead.')
-  },
 })

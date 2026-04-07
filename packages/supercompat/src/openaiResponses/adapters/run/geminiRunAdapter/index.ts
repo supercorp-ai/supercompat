@@ -93,7 +93,7 @@ export const geminiRunAdapter = ({
 }) => ({
   type: 'responses-gemini' as const,
 
-  handleResponsesRun: async ({
+  handleRun: async ({
     requestBody,
     onEvent,
   }: HandleArgs) => {
@@ -311,7 +311,4 @@ export const geminiRunAdapter = ({
     })
   },
 
-  handleRun: async () => {
-    throw new Error('geminiRunAdapter does not support Assistants-style handleRun.')
-  },
 })

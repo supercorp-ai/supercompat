@@ -5,7 +5,7 @@ import { test, describe } from 'node:test'
 import { GoogleGenAI } from '@google/genai'
 import { completionsContracts } from '../contracts'
 import { createPrismaTestClient } from '../contracts/lib/prismaTestHelper'
-import { googleClientAdapter } from '../../../src/openaiAssistants/index'
+import { googleClientAdapter } from '../../../src/openai/index'
 
 const apiKey = process.env.GOOGLE_API_KEY
 if (!apiKey) {

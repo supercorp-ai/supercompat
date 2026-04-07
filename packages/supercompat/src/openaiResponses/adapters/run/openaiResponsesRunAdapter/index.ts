@@ -23,7 +23,7 @@ export const openaiResponsesRunAdapter = ({
 }) => ({
   type: 'responses-openai' as const,
 
-  handleResponsesRun: async ({
+  handleRun: async ({
     requestBody,
     onEvent,
   }: HandleArgs) => {
@@ -37,7 +37,4 @@ export const openaiResponsesRunAdapter = ({
     }
   },
 
-  handleRun: async () => {
-    throw new Error('openaiResponsesRunAdapter does not support Assistants-style handleRun. Use handleResponsesRun instead.')
-  },
 })

@@ -6,7 +6,7 @@ import OpenAI from 'openai'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import { completionsContracts } from '../contracts'
 import { createPrismaTestClient } from '../contracts/lib/prismaTestHelper'
-import { openaiClientAdapter } from '../../../src/openaiAssistants/index'
+import { openaiClientAdapter } from '../../../src/openai/index'
 
 const apiKey = process.env.TEST_OPENAI_API_KEY
 if (!apiKey) {

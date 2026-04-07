@@ -30,7 +30,7 @@ export const azureAgentsResponsesRunAdapter = ({
 }) => ({
   type: 'responses-azure-agents' as const,
 
-  handleResponsesRun: async ({
+  handleRun: async ({
     requestBody,
     onEvent,
     agentId: existingAgentId,
@@ -60,17 +60,20 @@ export const azureAgentsResponsesRunAdapter = ({
       return tool
     })
 
+    // Collect vector_store_ids from file_search tools
+    const vectorStoreIds = (requestBody.tools || [])
+      .filter((t: any) => t.type === 'file_search' && t.vector_store_ids?.length)
+      .flatMap((t: any) => t.vector_store_ids)
+
     let agentId = existingAgentId
     if (!agentId) {
       const agent = await azureAiProject.agents.createAgent(requestBody.model, {
         name: `temp_${uid(8)}`,
         instructions: requestBody.instructions || '',
         tools,
-        ...(requestBody.tool_resources ? {
+        ...(vectorStoreIds.length > 0 ? {
           toolResources: {
-            ...(requestBody.tool_resources?.file_search ? {
-              fileSearch: { vectorStoreIds: requestBody.tool_resources.file_search.vector_store_ids || [] },
-            } : {}),
+            fileSearch: { vectorStoreIds },
           },
         } : {}),
       })
@@ -85,19 +88,29 @@ export const azureAgentsResponsesRunAdapter = ({
       threadId = thread.id
     }
 
-    // Add input messages
+    // Separate input items by type
     const input = requestBody.input
+    const toolOutputItems: any[] = []
+    const messageItems: any[] = []
+
     if (typeof input === 'string') {
-      await azureAiProject.agents.messages.create(threadId, 'user', input)
+      messageItems.push({ type: 'message', role: 'user', content: input })
     } else if (Array.isArray(input)) {
       for (const item of input) {
-        if (item.type === 'message' || item.role) {
-          const content = typeof item.content === 'string' ? item.content
-            : Array.isArray(item.content) ? item.content.map((c: any) => c.text || c).join('')
-            : String(item.content)
-          await azureAiProject.agents.messages.create(threadId, item.role || 'user', content)
+        if (item.type === 'function_call_output') {
+          toolOutputItems.push(item)
+        } else if (item.type === 'message' || item.role) {
+          messageItems.push(item)
         }
       }
+    }
+
+    // Add messages to thread
+    for (const item of messageItems) {
+      const content = typeof item.content === 'string' ? item.content
+        : Array.isArray(item.content) ? item.content.map((c: any) => c.text || c).join('')
+        : String(item.content)
+      await azureAiProject.agents.messages.create(threadId!, item.role || 'user', content)
     }
 
     // Emit response.created
@@ -118,12 +131,48 @@ export const azureAgentsResponsesRunAdapter = ({
       response: { id: responseId, status: 'in_progress' },
     })
 
-    // Create and poll the run
-    const run = await azureAiProject.agents.runs.create(threadId, agentId)
-    let current = run
-    while (current.status === 'queued' || current.status === 'in_progress') {
-      await new Promise(r => setTimeout(r, 500))
-      current = await azureAiProject.agents.runs.get(threadId, run.id)
+    let current: any
+
+    if (toolOutputItems.length > 0) {
+      // Tool output submission — find the pending run and submit outputs
+      const runs: any[] = []
+      for await (const r of azureAiProject.agents.runs.list(threadId!)) {
+        runs.push(r)
+      }
+      const pendingRun = runs.find((r: any) => r.status === 'requires_action')
+
+      if (pendingRun) {
+        const toolOutputs = toolOutputItems.map((item: any) => ({
+          toolCallId: item.call_id,
+          output: typeof item.output === 'string' ? item.output : JSON.stringify(item.output),
+        }))
+        await azureAiProject.agents.runs.submitToolOutputs(threadId!, pendingRun.id, toolOutputs)
+
+        current = pendingRun
+        while (current.status === 'queued' || current.status === 'in_progress' || current.status === 'requires_action') {
+          await new Promise(r => setTimeout(r, 500))
+          current = await azureAiProject.agents.runs.get(threadId!, pendingRun.id)
+        }
+      } else {
+        // No pending run — create a new one with tool outputs as a user message
+        await azureAiProject.agents.messages.create(threadId!, 'user',
+          toolOutputItems.map((item: any) => `Tool result for ${item.call_id}: ${typeof item.output === 'string' ? item.output : JSON.stringify(item.output)}`).join('\n')
+        )
+        const run = await azureAiProject.agents.runs.create(threadId!, agentId!)
+        current = run
+        while (current.status === 'queued' || current.status === 'in_progress') {
+          await new Promise(r => setTimeout(r, 500))
+          current = await azureAiProject.agents.runs.get(threadId!, run.id)
+        }
+      }
+    } else {
+      // Normal run — create and poll
+      const run = await azureAiProject.agents.runs.create(threadId!, agentId!)
+      current = run
+      while (current.status === 'queued' || current.status === 'in_progress') {
+        await new Promise(r => setTimeout(r, 500))
+        current = await azureAiProject.agents.runs.get(threadId!, run.id)
+      }
     }
 
     // Collect output
@@ -241,7 +290,4 @@ export const azureAgentsResponsesRunAdapter = ({
     try { createdAgent && await azureAiProject.agents.deleteAgent(agentId!) } catch {}
   },
 
-  handleRun: async () => {
-    throw new Error('azureAgentsResponsesRunAdapter does not support Assistants-style handleRun.')
-  },
 })

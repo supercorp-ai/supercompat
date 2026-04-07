@@ -11,7 +11,7 @@ import {
   groqClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
-} from '../../../src/openaiAssistants/index'
+} from '../../../src/openai/index'
 
 dns.setDefaultResultOrder('ipv4first')
 

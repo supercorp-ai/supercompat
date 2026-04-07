@@ -9,8 +9,7 @@
     ".": "./dist/index.js",
     "./*": "./dist/*.js",
     "./types": "./dist/types/index.js",
-    "./openaiAssistants": "./dist/openaiAssistants/index.js",
-    "./openaiResponses": "./dist/openaiResponses/index.js"
+    "./openai": "./dist/openai/index.js"
   },
   "files": [
     "dist"

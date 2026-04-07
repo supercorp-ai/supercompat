@@ -9,7 +9,7 @@ import {
   openaiClientAdapter,
   supercompat,
   responsesStorageAdapter,
-} from '../../../src/openaiAssistants/index'
+} from '../../../src/openai/index'
 
 // The responsesStorageAdapter SSE stream wraps events as:
 //   { event: null, data: { event: 'thread.run.created', data: {...} } }

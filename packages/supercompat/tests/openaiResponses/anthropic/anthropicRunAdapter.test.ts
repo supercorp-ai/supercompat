@@ -11,7 +11,7 @@ import {
   anthropicClientAdapter,
   anthropicRunAdapter,
   prismaStorageAdapter,
-} from '../../../src/openaiResponses/index'
+} from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
 
 const apiKey = process.env.ANTHROPIC_API_KEY

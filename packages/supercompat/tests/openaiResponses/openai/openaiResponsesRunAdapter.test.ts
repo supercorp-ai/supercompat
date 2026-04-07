@@ -23,7 +23,7 @@ import {
   openaiClientAdapter,
   openaiResponsesRunAdapter,
   prismaStorageAdapter,
-} from '../../../src/openaiResponses/index'
+} from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
 
 const apiKey = process.env.TEST_OPENAI_API_KEY

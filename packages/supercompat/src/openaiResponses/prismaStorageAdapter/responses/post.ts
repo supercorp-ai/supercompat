@@ -246,8 +246,19 @@ export const post = ({
     ...(responseFormat ? { responseFormat } : {}),
   })
 
-  // Check if run adapter supports direct Responses API passthrough
-  const isPassthrough = typeof (runAdapter as any).handleResponsesRun === 'function'
+  // Build Responses API request body for native adapters
+  const requestBody: any = { model, input }
+  if (instructions) requestBody.instructions = instructions
+  if (tools.length > 0) requestBody.tools = tools
+  if (metadata) requestBody.metadata = metadata
+  if (conversationId) requestBody.conversation = conversationId
+  if (temperature != null) requestBody.temperature = temperature
+  if (top_p != null) requestBody.top_p = top_p
+  if (max_output_tokens != null) requestBody.max_output_tokens = max_output_tokens
+  if (truncation) requestBody.truncation = truncation === 'DISABLED' ? 'disabled' : 'auto'
+  if (text) requestBody.text = text
+  if (body.tool_choice) requestBody.tool_choice = body.tool_choice
+  if (body.parallel_tool_calls != null) requestBody.parallel_tool_calls = body.parallel_tool_calls
 
   const readableStream = new ReadableStream({
     async start(controller) {
@@ -257,136 +268,106 @@ export const post = ({
         } catch {}
       }
 
+      // Assistants event translator (for completionsRunAdapter)
+      const assistantsOnEvent = onEvent({
+        prisma,
+        controller: {
+          ...controller,
+          enqueue: enqueueEvent,
+        },
+        responseId: response.id,
+      })
+
+      // Track completed response from native adapters
+      let completedResponse: any = null
+
+      // Unified onEvent handler — accepts both Responses and Assistants events
+      const unifiedOnEvent = async (event: any) => {
+        if (event.type?.startsWith('response.')) {
+          // Native Responses event — pass through to SSE stream
+          enqueueEvent(event)
+
+          if (event.type === 'response.completed') {
+            completedResponse = event.response
+          }
+        } else if (event.event) {
+          // Assistants event — translate to Responses events
+          return assistantsOnEvent(event)
+        }
+      }
+
       try {
-        if (isPassthrough) {
-          // Direct passthrough: call responses.create() natively
-          // Build the Responses API request body
-          const requestBody: any = { model, input }
-          if (instructions) requestBody.instructions = instructions
-          if (tools.length > 0) requestBody.tools = tools
-          if (metadata) requestBody.metadata = metadata
-          if (conversationId) requestBody.conversation = conversationId
-          if (temperature != null) requestBody.temperature = temperature
-          if (top_p != null) requestBody.top_p = top_p
-          if (max_output_tokens != null) requestBody.max_output_tokens = max_output_tokens
-          if (truncation) requestBody.truncation = truncation === 'DISABLED' ? 'disabled' : 'auto'
-          if (text) requestBody.text = text
-          if (body.tool_choice) requestBody.tool_choice = body.tool_choice
-          if (body.parallel_tool_calls != null) requestBody.parallel_tool_calls = body.parallel_tool_calls
+        await (runAdapter.handleRun as any)({
+          // Native adapters use requestBody + onEvent
+          requestBody,
+          // Completions adapter uses run + onEvent + getMessages
+          run: virtualRun,
+          onEvent: unifiedOnEvent,
+          getMessages: getMessages({
+            prisma,
+            conversationId,
+            input,
+            truncationLastMessagesCount,
+          }),
+        })
 
-          let completedResponse: any = null
-
-          await (runAdapter as any).handleResponsesRun({
-            requestBody,
-            onEvent: async (event: any) => {
-              enqueueEvent(event)
-
-              // Track completed response for DB update
-              if (event.type === 'response.completed') {
-                completedResponse = event.response
-              }
+        // Store output items from native adapters
+        if (completedResponse) {
+          await prisma.response.update({
+            where: { id: response.id },
+            data: {
+              status: 'COMPLETED',
+              usage: (completedResponse.usage ?? undefined) as any,
             },
           })
 
-          // Update DB with final state
-          if (completedResponse) {
-            await prisma.response.update({
-              where: { id: response.id },
-              data: {
-                status: 'COMPLETED',
-                usage: completedResponse.usage ?? undefined,
-              },
-            })
-
-            // Store output items
-            for (const item of completedResponse.output ?? []) {
-              if (item.type === 'message') {
-                await prisma.responseOutputItem.create({
-                  data: {
-                    responseId: response.id,
-                    type: 'MESSAGE',
-                    status: 'COMPLETED',
-                    role: item.role || 'assistant',
-                    content: item.content as any,
-                  },
-                })
-              } else if (item.type === 'function_call') {
-                await prisma.responseOutputItem.create({
-                  data: {
-                    responseId: response.id,
-                    type: 'FUNCTION_CALL',
-                    status: 'COMPLETED',
-                    callId: item.call_id,
-                    name: item.name,
-                    arguments: item.arguments,
-                  },
-                })
-              } else if (item.type === 'computer_call') {
-                await prisma.responseOutputItem.create({
-                  data: {
-                    responseId: response.id,
-                    type: 'COMPUTER_CALL',
-                    status: 'COMPLETED',
-                    callId: item.call_id,
-                    actions: item.actions as any,
-                    pendingSafetyChecks: item.pending_safety_checks as any,
-                  },
-                })
-              }
+          for (const item of completedResponse.output ?? []) {
+            if (item.type === 'message') {
+              await prisma.responseOutputItem.create({
+                data: {
+                  responseId: response.id,
+                  type: 'MESSAGE',
+                  status: 'COMPLETED',
+                  role: item.role || 'assistant',
+                  content: item.content as any,
+                },
+              })
+            } else if (item.type === 'function_call') {
+              await prisma.responseOutputItem.create({
+                data: {
+                  responseId: response.id,
+                  type: 'FUNCTION_CALL',
+                  status: 'COMPLETED',
+                  callId: item.call_id,
+                  name: item.name,
+                  arguments: item.arguments,
+                },
+              })
+            } else if (item.type === 'computer_call') {
+              await prisma.responseOutputItem.create({
+                data: {
+                  responseId: response.id,
+                  type: 'COMPUTER_CALL',
+                  status: 'COMPLETED',
+                  callId: item.call_id,
+                  actions: item.actions as any,
+                  pendingSafetyChecks: item.pending_safety_checks as any,
+                },
+              })
             }
           }
-        } else {
-          // Standard path: use completionsRunAdapter with Assistants event translation
-          await runAdapter.handleRun({
-            run: virtualRun,
-            onEvent: onEvent({
-              prisma,
-              controller: {
-                ...controller,
-                enqueue: enqueueEvent,
-              },
-              responseId: response.id,
-            }),
-            getMessages: getMessages({
-              prisma,
-              conversationId,
-              input,
-              truncationLastMessagesCount,
-            }),
-          })
         }
       } catch (error: any) {
         console.error(error)
 
-        if (isPassthrough) {
-          enqueueEvent({
-            type: 'response.failed',
-            response: {
-              id: response.id,
-              status: 'failed',
-              error: { code: 'server_error', message: error?.message ?? '' },
-            },
-          })
-        } else {
-          await onEvent({
-            prisma,
-            controller: {
-              ...controller,
-              enqueue: enqueueEvent,
-            },
-            responseId: response.id,
-          })({
-            event: 'thread.run.failed',
-            data: {
-              id: response.id,
-              failed_at: dayjs().unix(),
-              last_error: {
-                code: 'server_error',
-                message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
-              },
-            },
-          } as any)
-        }
+        enqueueEvent({
+          type: 'response.failed',
+          response: {
+            id: response.id,
+            status: 'failed',
+            error: { code: 'server_error', message: error?.message ?? '' },
+          },
+        })
       }
 
       controller.close()

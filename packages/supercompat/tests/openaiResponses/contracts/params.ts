@@ -31,7 +31,9 @@ export const structuredOutput: ResponsesContract = async (client) => {
 
   const messageItem = response.output.find((o: any) => o.type === 'message')
   assert.ok(messageItem, 'Should have message')
-  const text = messageItem.content[0]?.text ?? ''
+  let text = messageItem.content[0]?.text ?? ''
+  // Strip markdown code fences if model wraps JSON in them
+  text = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim()
   const parsed = JSON.parse(text)
   assert.equal(parsed.result, 4)
 }

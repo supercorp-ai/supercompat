@@ -36,7 +36,7 @@ import {
   openaiClientAdapter,
   completionsRunAdapter,
   prismaStorageAdapter,
-} from '../../../src/openaiResponses/index'
+} from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
 
 function createClient(): OpenAI {

@@ -563,6 +563,15 @@ export const post = ({
   const { contents, systemInstruction } = serializeMessages(messages)
   const geminiTools = serializeTools(body.tools)
 
+  // Translate response_format to Google's structured output config
+  const responseFormatConfig: Record<string, any> = {}
+  if (body.response_format?.type === 'json_schema' && body.response_format.json_schema?.schema) {
+    responseFormatConfig.responseMimeType = 'application/json'
+    responseFormatConfig.responseSchema = body.response_format.json_schema.schema
+  } else if (body.response_format?.type === 'json_object') {
+    responseFormatConfig.responseMimeType = 'application/json'
+  }
+
   const params: any = {
     model: body.model,
     contents,
@@ -572,6 +581,7 @@ export const post = ({
       ...(typeof body.temperature === 'number' ? { temperature: body.temperature } : {}),
       ...(typeof body.top_p === 'number' ? { topP: body.top_p } : {}),
       ...(typeof body.max_tokens === 'number' ? { maxOutputTokens: body.max_tokens } : {}),
+      ...responseFormatConfig,
     },
   }
 

@@ -5,7 +5,7 @@ import { test, describe } from 'node:test'
 import Anthropic from '@anthropic-ai/sdk'
 import { completionsContracts } from '../contracts'
 import { createPrismaTestClient } from '../contracts/lib/prismaTestHelper'
-import { anthropicClientAdapter } from '../../../src/openaiAssistants/index'
+import { anthropicClientAdapter } from '../../../src/openai/index'
 
 const apiKey = process.env.ANTHROPIC_API_KEY
 if (!apiKey) {

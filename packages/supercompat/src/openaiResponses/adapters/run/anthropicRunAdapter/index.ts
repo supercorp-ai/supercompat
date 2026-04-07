@@ -205,7 +205,7 @@ export const anthropicRunAdapter = ({
 }) => ({
   type: 'responses-anthropic' as const,
 
-  handleResponsesRun: async ({
+  handleRun: async ({
     requestBody,
     onEvent,
   }: HandleArgs) => {
@@ -426,7 +426,4 @@ export const anthropicRunAdapter = ({
     })
   },
 
-  handleRun: async () => {
-    throw new Error('anthropicRunAdapter does not support Assistants-style handleRun.')
-  },
 })

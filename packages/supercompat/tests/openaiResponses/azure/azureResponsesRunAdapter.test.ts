@@ -10,7 +10,7 @@ import {
   azureAiProjectClientAdapter,
   azureResponsesRunAdapter,
   prismaStorageAdapter,
-} from '../../../src/openaiResponses/index'
+} from '../../../src/openai/index'
 import { AIProjectClient } from '@azure/ai-projects-v2'
 import { ClientSecretCredential } from '@azure/identity'
 import { PrismaClient } from '@prisma/client'

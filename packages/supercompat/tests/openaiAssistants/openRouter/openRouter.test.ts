@@ -8,7 +8,7 @@ import {
   openRouterClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
-} from '../../../src/openaiAssistants/index'
+} from '../../../src/openai/index'
 
 const openrouterApiKey = process.env.OPENROUTER_API_KEY
 

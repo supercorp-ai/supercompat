@@ -5,7 +5,7 @@ import { test, describe } from 'node:test'
 import Groq from 'groq-sdk'
 import { completionsContracts } from '../contracts'
 import { createPrismaTestClient } from '../contracts/lib/prismaTestHelper'
-import { groqClientAdapter } from '../../../src/openaiAssistants/index'
+import { groqClientAdapter } from '../../../src/openai/index'
 
 const apiKey = process.env.GROQ_API_KEY
 if (!apiKey) {

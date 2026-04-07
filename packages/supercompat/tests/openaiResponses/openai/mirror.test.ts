@@ -7,7 +7,7 @@ import {
   openaiClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
-} from '../../../src/openaiResponses/index'
+} from '../../../src/openai/index'
 
 /**
  * Mirror of assistantsApiCompat.test.ts — same scenarios,
