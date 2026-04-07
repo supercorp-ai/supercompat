@@ -37,3 +37,6 @@ yarn-error.log*
 .DS_Store
 *.pem
 .claude
+scripts/runTests.mjs
+test-results/
+scripts/runTests.mjs
