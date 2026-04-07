@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { post } from '../../../src/openaiAssistants/adapters/client/openRouterClientAdapter/completions/post.ts'
+import { post } from '../../../src/adapters/client/openRouterClientAdapter/completions/post.ts'
 
 // Mock OpenRouter client that returns streaming chunks via a mock HTTPClient.
 // The streaming path uses raw fetch (bypassing SDK Zod validation), so we mock

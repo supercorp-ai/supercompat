@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@prisma/client'
 import { StorageAdapterArgs } from '@/types'
-import { prismaStorageAdapter as assistantsPrismaStorageAdapter } from '@/openaiAssistants/adapters/storage/prismaStorageAdapter'
-import { prismaStorageAdapter as responsesPrismaStorageAdapter } from '@/openaiResponses/prismaStorageAdapter'
+import { prismaStorageAdapter as assistantsPrismaStorageAdapter } from '@/handlers/assistants/prismaStorageAdapter'
+import { prismaStorageAdapter as responsesPrismaStorageAdapter } from '@/handlers/responses/prisma'
 
 export const prismaStorageAdapter = ({
   prisma,

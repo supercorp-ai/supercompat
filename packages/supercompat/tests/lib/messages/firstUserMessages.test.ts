@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import type OpenAI from 'openai'
-import { firstUserMessages } from '../../../src/openaiAssistants/lib/messages/firstUserMessages.ts'
+import { firstUserMessages } from '../../../src/lib/messages/firstUserMessages.ts'
 
 test('adds placeholder when first message is not user', () => {
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [

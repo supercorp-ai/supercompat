@@ -33,7 +33,7 @@ const exclude = new Set([
 const responsesContracts = Object.fromEntries(Object.entries(_all).filter(([n]) => !exclude.has(n)))
 
 function createClient() {
-  config.model = 'claude-sonnet-4-20250514'
+  config.model = 'claude-sonnet-4-6'
   const anthropic = new Anthropic({ apiKey })
 
   return supercompat({

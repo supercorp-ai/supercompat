@@ -38,8 +38,8 @@ const exclude = new Set([
 ])
 const responsesContracts = Object.fromEntries(Object.entries(_all).filter(([n]) => !exclude.has(n)))
 
-import { post as fileUploadPost, del as fileDeleteHandler } from '../../../src/openaiAssistants/adapters/storage/azureAgentsStorageAdapter/files/upload'
-import { createVectorStore, getVectorStore, deleteVectorStore } from '../../../src/openaiAssistants/adapters/storage/azureAgentsStorageAdapter/vectorStores'
+import { post as fileUploadPost, del as fileDeleteHandler } from '../../../src/handlers/assistants/azureAgentsStorageAdapter/files/upload'
+import { createVectorStore, getVectorStore, deleteVectorStore } from '../../../src/handlers/assistants/azureAgentsStorageAdapter/vectorStores'
 
 function createClient() {
   config.model = 'gpt-4.1-mini'

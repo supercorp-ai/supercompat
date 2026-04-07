@@ -1,9 +1,9 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { normalizeComputerToolCallPayload } from '../../../src/openaiAssistants/adapters/client/anthropicClientAdapter/normalizeComputerToolCallPayload'
-import { normalizeGeminiAction } from '../../../src/openaiAssistants/adapters/client/googleClientAdapter/normalizeGeminiAction'
-import { post } from '../../../src/openaiAssistants/adapters/client/googleClientAdapter/completions/post'
-import { serializeMessages } from '../../../src/openaiAssistants/adapters/client/googleClientAdapter/completions/post'
+import { normalizeComputerToolCallPayload } from '../../../src/adapters/client/anthropicClientAdapter/normalizeComputerToolCallPayload'
+import { normalizeGeminiAction } from '../../../src/adapters/client/googleClientAdapter/normalizeGeminiAction'
+import { post } from '../../../src/adapters/client/googleClientAdapter/completions/post'
+import { serializeMessages } from '../../../src/adapters/client/googleClientAdapter/completions/post'
 
 test('normalizeComputerToolCallPayload converts screenshot action', () => {
   const result = normalizeComputerToolCallPayload({

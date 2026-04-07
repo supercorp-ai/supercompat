@@ -5,9 +5,9 @@ import OpenAI from 'openai'
 import { AIProjectClient } from '@azure/ai-projects-v2'
 import { ClientSecretCredential } from '@azure/identity'
 import { supercompat } from '../src'
-import { azureResponsesStorageAdapter } from '../../../src/openaiAssistants/adapters/storage/azureResponsesStorageAdapter'
-import { responsesRunAdapter } from '../../../src/openaiAssistants/adapters/run/responsesRunAdapter'
-import { azureAiProjectClientAdapter } from '../../../src/openaiAssistants/adapters/client/azureAiProjectClientAdapter'
+import { azureResponsesStorageAdapter } from '../../../src/handlers/assistants/azureResponsesStorageAdapter'
+import { responsesRunAdapter } from '../../../src/adapters/run/responsesRunAdapter'
+import { azureAiProjectClientAdapter } from '../../../src/adapters/client/azureAiProjectClientAdapter'
 
 const azureEndpoint = process.env.AZURE_PROJECT_ENDPOINT
 const azureTenantId = process.env.AZURE_TENANT_ID

@@ -13,7 +13,7 @@ if (!apiKey) { console.log('Skipping: OPENROUTER_API_KEY required'); process.exi
 if (!process.env.DATABASE_URL) { console.log('Skipping: DATABASE_URL required'); process.exit(0) }
 
 function createClient() {
-  config.model = 'anthropic/claude-sonnet-4'
+  config.model = 'anthropic/claude-sonnet-4-6'
   return supercompat({
     client: openRouterClientAdapter({ openRouter: new OpenRouter({ apiKey }) }),
     runAdapter: completionsRunAdapter(),

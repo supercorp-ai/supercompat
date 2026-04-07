@@ -5,8 +5,8 @@ import {
   serializeCompatComputerCall,
   serializeComputerUseTool,
 } from '../../../src/lib/openaiComputerUse'
-import { serializeResponseAsRun } from '../../../src/openaiAssistants/lib/responses/serializeResponseAsRun'
-import { serializeItemAsComputerCallRunStep } from '../../../src/openaiAssistants/lib/items/serializeItemAsComputerCallRunStep'
+import { serializeResponseAsRun } from '../../../src/lib/responses/serializeResponseAsRun'
+import { serializeItemAsComputerCallRunStep } from '../../../src/lib/items/serializeItemAsComputerCallRunStep'
 
 // -- isOpenaiComputerUseModel --
 

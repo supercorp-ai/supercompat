@@ -14,7 +14,7 @@ const apiKey = process.env.GROQ_API_KEY
 if (!apiKey) { console.log('Skipping: groq key required'); process.exit(0) }
 if (!process.env.DATABASE_URL) { console.log('Skipping: DATABASE_URL required'); process.exit(0) }
 
-const model = 'qwen/qwen3-32b'
+const model = 'meta-llama/llama-4-scout-17b-16e-instruct'
 
 
 

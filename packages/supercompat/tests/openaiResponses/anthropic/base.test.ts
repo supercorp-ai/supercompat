@@ -13,7 +13,7 @@ if (!apiKey) { console.log('Skipping: ANTHROPIC_API_KEY required'); process.exit
 if (!process.env.DATABASE_URL) { console.log('Skipping: DATABASE_URL required'); process.exit(0) }
 
 function createClient() {
-  config.model = 'claude-sonnet-4-20250514'
+  config.model = 'claude-sonnet-4-6'
   return supercompat({
     client: anthropicClientAdapter({ anthropic: new Anthropic({ apiKey }) }),
     runAdapter: completionsRunAdapter(),

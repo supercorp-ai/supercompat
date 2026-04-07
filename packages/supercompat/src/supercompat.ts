@@ -1,6 +1,6 @@
 import OpenAI, { AzureOpenAI } from 'openai'
-import { supercompatFetch, type Args } from './openaiAssistants/supercompatFetch'
-import { endpointFromBaseUrl } from './openaiAssistants/lib/azureOpenai/endpointFromBaseUrl'
+import { supercompatFetch, type Args } from './supercompatFetch'
+import { endpointFromBaseUrl } from './lib/azureOpenai/endpointFromBaseUrl'
 
 export const supercompat = ({
   client,
