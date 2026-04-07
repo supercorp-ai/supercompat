@@ -185,7 +185,8 @@ export const azureAgentsResponsesRunAdapter = ({
         messages.push(m)
       }
 
-      const assistantMsg = messages.find(m => m.role === 'assistant')
+      const assistantMsgs = messages.filter(m => m.role === 'assistant')
+      const assistantMsg = assistantMsgs[assistantMsgs.length - 1]
       if (assistantMsg) {
         const text = assistantMsg.content
           ?.filter((c: any) => c.type === 'text')

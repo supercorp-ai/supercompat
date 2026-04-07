@@ -1,7 +1,7 @@
 import type OpenAI from 'openai'
 
 type AnthropicTool = {
-  type: 'computer_20250124' | 'code_execution_20250825'
+  type: 'computer_20250124' | 'computer_20251124' | 'code_execution_20250825'
 }
 
 export const serializeBetas = ({
@@ -11,7 +11,9 @@ export const serializeBetas = ({
 }) => {
   const betas = []
 
-  if (tools.some((tool) => tool.type === 'computer_20250124')) {
+  if (tools.some((tool) => tool.type === 'computer_20251124')) {
+    betas.push('computer-use-2025-11-24')
+  } else if (tools.some((tool) => tool.type === 'computer_20250124')) {
     betas.push('computer-use-2025-01-24')
   }
 

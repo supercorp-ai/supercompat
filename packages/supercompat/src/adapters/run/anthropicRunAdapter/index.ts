@@ -97,8 +97,14 @@ const translateAnthropicAction = (input: any): any => {
   }
 }
 
+// Models that use the newer computer_20251124 tool type
+const usesNewComputerTool = (model: string) => {
+  const m = model.toLowerCase()
+  return m.includes('4-6') || m.includes('4.6') || m.includes('opus-4-6') || m.includes('sonnet-4-6')
+}
+
 // Map Responses API tool format → Anthropic tool format
-const serializeTools = (tools: any[]): { tools: any[]; betas: string[]; computerToolNames: Set<string> } => {
+const serializeTools = (tools: any[], model: string): { tools: any[]; betas: string[]; computerToolNames: Set<string> } => {
   const anthropicTools: any[] = []
   const betas = new Set<string>()
   const computerToolNames = new Set<string>()
@@ -117,12 +123,13 @@ const serializeTools = (tools: any[]): { tools: any[]; betas: string[]; computer
       anthropicTools.push({ type: 'code_execution_20250522', name: 'code_execution' })
       betas.add('code-execution-2025-05-22')
     } else if (tool.type === 'computer' || tool.type === 'computer_use_preview') {
+      const useNew = usesNewComputerTool(model)
       anthropicTools.push({
-        type: 'computer_20250124',
+        type: useNew ? 'computer_20251124' : 'computer_20250124',
         display_width_px: tool.display_width || 1280,
         display_height_px: tool.display_height || 720,
       })
-      betas.add('computer-use-2025-01-24')
+      betas.add(useNew ? 'computer-use-2025-11-24' : 'computer-use-2025-01-24')
       computerToolNames.add(COMPUTER_TOOL_NAME)
     }
   }
@@ -209,7 +216,7 @@ export const anthropicRunAdapter = ({
     requestBody,
     onEvent,
   }: HandleArgs) => {
-    const { tools: anthropicTools, betas, computerToolNames } = serializeTools(requestBody.tools || [])
+    const { tools: anthropicTools, betas, computerToolNames } = serializeTools(requestBody.tools || [], requestBody.model || '')
     const { system, messages } = serializeInput(requestBody.input, requestBody.instructions)
 
     const responseId = `resp_${uid(24)}`

@@ -178,15 +178,18 @@ describe('Threads CRUD', () => {
   test('update thread metadata', async () => {
     const client = createClient()
     const thread = await client.beta.threads.create({
-      metadata: { assistantId },
+      metadata: { assistantId, myKey: 'test' },
     })
 
     const updated = await client.beta.threads.update(thread.id, {
-      metadata: { assistantId, updated: 'true' },
+      metadata: { assistantId, myKey: 'test', updated: 'true' },
     })
 
     assert.equal(updated.id, thread.id)
-    assert.deepEqual(updated.metadata, { assistantId, updated: 'true' })
+    // assistantId is internal and stripped from metadata — only custom fields returned
+    assert.equal((updated.metadata as any)?.myKey, 'test')
+    assert.equal((updated.metadata as any)?.updated, 'true')
+    assert.equal((updated.metadata as any)?.assistantId, undefined)
 
     // Cleanup
     await prisma.thread.delete({ where: { id: thread.id } })

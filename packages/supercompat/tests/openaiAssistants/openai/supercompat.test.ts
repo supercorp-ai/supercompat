@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import OpenAI from "openai";
 import { HttpsProxyAgent } from "https-proxy-agent";
-import { supercompat, openaiClientAdapter } from "../src/index.ts";
+import { supercompat, openaiClientAdapter } from '../../../src/openai/index';
 
 const apiKey = process.env.TEST_OPENAI_API_KEY;
 

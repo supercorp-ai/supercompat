@@ -2,7 +2,8 @@ import { test, describe } from 'node:test'
 import OpenAI from 'openai'
 import { responsesContracts as _allContracts } from '../contracts'
 
-const exclude = new Set(['builtin-tools: web search', 'builtin-tools: file search', 'builtin-tools: code interpreter', 'builtin-tools: computer use'])
+// Together API does not support parallel tool calls — platform limitation
+const exclude = new Set(['builtin-tools: web search', 'builtin-tools: file search', 'builtin-tools: code interpreter', 'builtin-tools: computer use', 'tools: parallel function calls'])
 const responsesContracts = Object.fromEntries(Object.entries(_allContracts).filter(([n]) => !exclude.has(n)))
 import { config } from '../contracts/lib/config'
 import { supercompat, togetherClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openai/index'

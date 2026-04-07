@@ -160,7 +160,7 @@ export const onEvent = ({
         })
 
       default:
-        console.log('No Responses API handler for event', event.event)
+        // Unhandled events (e.g. thread.run.created) are silently ignored
     }
   }
 }

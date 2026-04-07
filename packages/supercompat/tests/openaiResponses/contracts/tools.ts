@@ -41,7 +41,7 @@ export const functionCallRoundTrip: ResponsesContract = async (client) => {
   // Step 2: submit function output and get final response
   const response2 = await client.responses.create({
     model: config.model,
-    instructions: 'You MUST call the get_weather tool. NEVER answer without calling it first.',
+    instructions: 'The user asked about weather in Paris. You already called get_weather and received the result. Now respond to the user with the weather information.',
     input: [
       // Re-send the function call as input
       {

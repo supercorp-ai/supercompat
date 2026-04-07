@@ -647,8 +647,8 @@ test(
 
     const tools = [
       {
-        type: 'computer_20250124',
-        computer_20250124: {
+        type: 'computer_20251124',
+        computer_20251124: {
           name: 'computer',
           display_width_px: 1280,
           display_height_px: 720,

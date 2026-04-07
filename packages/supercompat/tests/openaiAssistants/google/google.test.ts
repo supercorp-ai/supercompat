@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { GoogleGenAI } from "@google/genai";
-import { supercompat, googleClientAdapter } from "../src/index.ts";
+import { supercompat, googleClientAdapter } from '../../../src/openai/index';
 
 const apiKey = process.env.GOOGLE_API_KEY;
 

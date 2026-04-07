@@ -17,8 +17,12 @@ if (!process.env.DATABASE_URL) {
   process.exit(0)
 }
 
+// Together API does not support parallel tool calls — platform limitation
+const exclude = new Set(['tools: parallel tool calls'])
+const filteredContracts = Object.fromEntries(Object.entries(completionsContracts).filter(([n]) => !exclude.has(n)))
+
 describe('prismaStorageAdapter + Together', { timeout: 600_000 }, () => {
-  for (const [name, contract] of Object.entries(completionsContracts)) {
+  for (const [name, contract] of Object.entries(filteredContracts)) {
     test(name, { timeout: 120_000 }, async () => contract(await createPrismaTestClient({
       clientAdapter: togetherClientAdapter({
         together: new OpenAI({ apiKey, baseURL: 'https://api.together.xyz/v1' }),
