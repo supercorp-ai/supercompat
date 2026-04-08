@@ -1,9 +1,20 @@
-import type { ResponseOutputItem } from '@prisma/client'
+export interface SerializableOutputItem {
+  id: string
+  type: string
+  status: string
+  role?: string | null
+  content?: unknown
+  callId?: string | null
+  name?: string | null
+  arguments?: string | null
+  actions?: unknown
+  pendingSafetyChecks?: unknown
+}
 
 export const serializeOutputItem = ({
   outputItem,
 }: {
-  outputItem: ResponseOutputItem
+  outputItem: SerializableOutputItem
 }) => {
   if (outputItem.type === 'MESSAGE') {
     return {
@@ -23,8 +34,8 @@ export const serializeOutputItem = ({
       type: 'computer_call' as const,
       call_id: outputItem.callId ?? '',
       status: outputItem.status.toLowerCase(),
-      actions: (outputItem as any).actions ?? [],
-      pending_safety_checks: (outputItem as any).pendingSafetyChecks ?? [],
+      actions: outputItem.actions ?? [],
+      pending_safety_checks: outputItem.pendingSafetyChecks ?? [],
     }
   }
 

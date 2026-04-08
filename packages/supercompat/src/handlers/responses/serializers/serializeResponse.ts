@@ -1,18 +1,33 @@
-import type { Response as PrismaResponse, ResponseOutputItem } from '@prisma/client'
 import dayjs from 'dayjs'
 import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
-import { serializeOutputItem } from './serializeOutputItem'
+import { serializeOutputItem, type SerializableOutputItem } from './serializeOutputItem'
 import { serializeTools } from './serializeTools'
 
-type ResponseWithRelations = PrismaResponse & {
-  outputItems?: ResponseOutputItem[]
+export interface SerializableResponse {
+  id: string
+  createdAt: Date | string | number
+  status: string
+  error?: unknown
+  instructions?: string | null
+  maxOutputTokens?: number | null
+  model: string
+  temperature?: number | null
+  topP?: number | null
+  truncationType?: string | null
+  truncationLastMessagesCount?: number | null
+  textFormatType?: string | null
+  textFormatSchema?: unknown
+  usage?: unknown
+  metadata?: unknown
+  conversationId?: string | null
+  outputItems?: SerializableOutputItem[]
   tools?: any[]
 }
 
 export const serializeResponse = ({
   response,
 }: {
-  response: ResponseWithRelations
+  response: SerializableResponse
 }) => {
   const output = (response.outputItems ?? []).map((outputItem) =>
     serializeOutputItem({ outputItem })

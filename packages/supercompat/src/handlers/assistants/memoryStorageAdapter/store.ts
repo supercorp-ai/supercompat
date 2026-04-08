@@ -19,7 +19,7 @@ export class Collection<T extends StoreRecord = StoreRecord> {
       updatedAt: now,
       ...data,
       _seq: globalSeq++,
-    } as T
+    } as unknown as T
     this.items.set(record.id, record)
     return structuredClone(record)
   }
@@ -36,7 +36,8 @@ export class Collection<T extends StoreRecord = StoreRecord> {
       return structuredClone(item)
     }
     // Scan for match
-    for (const item of this.items.values()) {
+    const items = Array.from(this.items.values())
+    for (const item of items) {
       let match = true
       for (const [key, value] of Object.entries(where)) {
         if ((item as any)[key] !== value) { match = false; break }
@@ -137,7 +138,7 @@ export class Collection<T extends StoreRecord = StoreRecord> {
 
   deleteMany(where: Record<string, any>): number {
     let count = 0
-    for (const item of this.items.values()) {
+    for (const item of Array.from(this.items.values())) {
       if (matchesWhere(item, where)) {
         this.items.delete(item.id)
         count++
@@ -161,7 +162,7 @@ export class Collection<T extends StoreRecord = StoreRecord> {
       }
       return item
     }
-    for (const item of this.items.values()) {
+    for (const item of Array.from(this.items.values())) {
       let match = true
       for (const [key, value] of Object.entries(where)) {
         if ((item as any)[key] !== value) { match = false; break }
@@ -183,6 +184,36 @@ function matchesWhere(item: any, where: Record<string, any>): boolean {
   return true
 }
 
+export type ResponseRecord = StoreRecord & {
+  status: string
+  model: string
+  instructions?: string | null
+  metadata?: unknown
+  maxOutputTokens?: number | null
+  temperature?: number | null
+  topP?: number | null
+  truncationType?: string | null
+  truncationLastMessagesCount?: number | null
+  textFormatType?: string | null
+  textFormatSchema?: unknown
+  usage?: unknown
+  conversationId?: string | null
+  error?: unknown
+}
+
+export type OutputItemRecord = StoreRecord & {
+  type: string
+  status: string
+  role?: string | null
+  content?: unknown
+  callId?: string | null
+  name?: string | null
+  arguments?: string | null
+  actions?: unknown
+  pendingSafetyChecks?: unknown
+  responseId?: string
+}
+
 export class MemoryStore {
   assistants = new Collection()
   threads = new Collection()
@@ -190,8 +221,8 @@ export class MemoryStore {
   runs = new Collection()
   runSteps = new Collection()
   conversations = new Collection()
-  responses = new Collection()
-  responseOutputItems = new Collection()
+  responses = new Collection<ResponseRecord>()
+  responseOutputItems = new Collection<OutputItemRecord>()
   responseTools = new Collection()
   responseFunctionTools = new Collection()
   responseFileSearchTools = new Collection()
