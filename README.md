@@ -47,7 +47,7 @@ const client = supercompat({
 
 // Standard OpenAI Responses API — backed by Claude
 const response = await client.responses.create({
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet-4-6-20250603',
   input: 'What is the capital of France?',
   stream: true,
 })
@@ -78,7 +78,7 @@ const client = supercompat({
 
 // Standard OpenAI Assistants API — backed by Groq
 const assistant = await client.beta.assistants.create({
-  model: 'qwen/qwen3-32b',
+  model: 'llama-3.3-70b-versatile',
   instructions: 'Be concise.',
 })
 
@@ -406,7 +406,7 @@ const client = supercompat({
 })
 
 const response = await client.responses.create({
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet-4-6-20250603',
   input: 'Take a screenshot of the current page.',
   tools: [{ type: 'computer' }],
 })
@@ -416,7 +416,7 @@ const computerCall = response.output.find(item => item.type === 'computer_call')
 
 // Send the screenshot back
 const next = await client.responses.create({
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet-4-6-20250603',
   previous_response_id: response.id,
   tools: [{ type: 'computer' }],
   input: [{
