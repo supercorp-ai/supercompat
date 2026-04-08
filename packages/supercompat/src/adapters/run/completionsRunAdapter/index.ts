@@ -96,8 +96,8 @@ export const completionsRunAdapter = () => {
           : {}),
         ...(isEmpty(run.tools) ? {} : { tools: run.tools }),
         ...(run.tool_choice && run.tool_choice !== 'auto' ? {
-          tool_choice: typeof run.tool_choice === 'object' && run.tool_choice.type === 'function' && run.tool_choice.name
-            ? { type: 'function' as const, function: { name: run.tool_choice.name } }
+          tool_choice: typeof run.tool_choice === 'object' && (run.tool_choice as any).type === 'function' && (run.tool_choice as any).name
+            ? { type: 'function' as const, function: { name: (run.tool_choice as any).name } }
             : run.tool_choice,
         } : {}),
       } as OpenAI.ChatCompletionCreateParamsStreaming
