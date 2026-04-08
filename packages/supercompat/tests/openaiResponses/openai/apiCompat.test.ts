@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import OpenAI from 'openai'
 import { PrismaClient } from '@prisma/client'
 import {
-  createClient,
+  supercompat,
   openaiClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
@@ -20,7 +20,7 @@ const prisma = new PrismaClient()
 const makeClient = () => {
   const realOpenAI = new OpenAI({ apiKey })
 
-  return createClient({
+  return supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
     storage: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),

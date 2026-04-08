@@ -5,14 +5,14 @@ import { PrismaClient } from '@prisma/client'
 
 // Test that both import paths work
 import {
-  createClient as createResponsesClient,
+  supercompat as createResponsesClient,
   openaiClientAdapter as responsesOpenaiClientAdapter,
   prismaStorageAdapter as responsesPrismaStorageAdapter,
   completionsRunAdapter as responsesCompletionsRunAdapter,
 } from '../../../src/openai/index'
 
 import {
-  createClient as createAssistantsClient,
+  supercompat as createAssistantsClient,
   openaiClientAdapter as assistantsOpenaiClientAdapter,
   prismaStorageAdapter as assistantsPrismaStorageAdapter,
   completionsRunAdapter as assistantsCompletionsRunAdapter,

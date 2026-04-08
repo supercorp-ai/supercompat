@@ -1,5 +1,4 @@
 // Unified OpenAI output — supports both Assistants API and Responses API
-export { supercompat as createClient } from '../supercompat'
 export { supercompat } from '../supercompat'
 
 // Client adapters
