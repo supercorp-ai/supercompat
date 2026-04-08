@@ -193,8 +193,10 @@ const createOnEvent = ({
         content: event.data.content,
         toolCalls: (event.data as any).tool_calls ?? null,
       })
-      controller.enqueue({ ...event, data: serializeMessage(updated) })
-      return serializeMessage(updated)
+      const serialized = serializeMessage(updated)
+      controller.enqueue({ ...event, data: serialized })
+      // completionsRunAdapter reads .toolCalls directly to decide requires_action
+      return { ...serialized, toolCalls: updated.toolCalls ?? null }
     }
   }
 }
