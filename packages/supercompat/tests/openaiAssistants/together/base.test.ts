@@ -27,7 +27,7 @@ describe('prismaStorageAdapter + Together', { timeout: 600_000 }, () => {
       clientAdapter: togetherClientAdapter({
         together: new OpenAI({ apiKey, baseURL: 'https://api.together.xyz/v1' }),
       }),
-      model: 'openai/gpt-oss-20b',
+      model: 'openai/gpt-oss-120b',
     })))
   }
 })

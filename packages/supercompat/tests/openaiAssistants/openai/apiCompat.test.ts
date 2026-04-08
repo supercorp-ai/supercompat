@@ -763,6 +763,9 @@ describe('Assistant edge cases', () => {
     const a2 = await client.beta.assistants.create({ model: 'gpt-4o-mini', name: 'Page2' })
     const a3 = await client.beta.assistants.create({ model: 'gpt-4o-mini', name: 'Page3' })
 
+    // Allow eventual consistency in OpenAI's API
+    await new Promise(r => setTimeout(r, 1000))
+
     const page1 = await client.beta.assistants.list({ limit: 2 })
     assert.ok(page1.data.length <= 2)
 

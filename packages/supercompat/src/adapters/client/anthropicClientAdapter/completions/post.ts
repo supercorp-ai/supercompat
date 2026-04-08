@@ -45,9 +45,16 @@ export const post = ({
     }
   }
 
+  // Translate OpenAI tool_choice → Anthropic tool_choice
+  const toolChoiceConfig: Record<string, any> = {}
+  if (body.tool_choice && typeof body.tool_choice === 'object' && body.tool_choice.type === 'function') {
+    toolChoiceConfig.tool_choice = { type: 'tool', name: body.tool_choice.function?.name }
+  }
+
   const resultOptions = {
-    ...omit(body, ['response_format']),
+    ...omit(body, ['response_format', 'tool_choice']),
     ...outputConfig,
+    ...toolChoiceConfig,
     model: body.model,
     ...serializeBetas({
       tools: body.tools,

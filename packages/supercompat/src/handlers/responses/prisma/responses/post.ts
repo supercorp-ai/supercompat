@@ -55,6 +55,7 @@ const buildVirtualRun = ({
   tools,
   threadId,
   responseFormat,
+  toolChoice,
 }: {
   responseId: string
   model: string
@@ -62,6 +63,7 @@ const buildVirtualRun = ({
   tools: any[]
   threadId: string
   responseFormat?: any
+  toolChoice?: any
 }) => ({
   id: responseId,
   object: 'thread.run' as 'thread.run',
@@ -101,7 +103,7 @@ const buildVirtualRun = ({
   max_prompt_tokens: null,
   temperature: null,
   top_p: null,
-  tool_choice: 'auto' as 'auto',
+  tool_choice: toolChoice ?? ('auto' as 'auto'),
   parallel_tool_calls: true,
 })
 
@@ -244,6 +246,7 @@ export const post = ({
     tools,
     threadId,
     ...(responseFormat ? { responseFormat } : {}),
+    ...(body.tool_choice ? { toolChoice: body.tool_choice } : {}),
   })
 
   // Build Responses API request body for native adapters

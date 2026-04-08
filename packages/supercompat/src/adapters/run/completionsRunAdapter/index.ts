@@ -19,6 +19,7 @@ const updatedToolCall = ({
   const result = _.cloneDeep(toolCall)
 
   for (const [key, value] of Object.entries(delta.function)) {
+    if (value == null) continue
     result.function[key] = `${result.function[key] ?? ''}${value}`
   }
 
@@ -94,6 +95,11 @@ export const completionsRunAdapter = () => {
           ? { response_format: run.response_format }
           : {}),
         ...(isEmpty(run.tools) ? {} : { tools: run.tools }),
+        ...(run.tool_choice && run.tool_choice !== 'auto' ? {
+          tool_choice: typeof run.tool_choice === 'object' && run.tool_choice.type === 'function' && run.tool_choice.name
+            ? { type: 'function' as const, function: { name: run.tool_choice.name } }
+            : run.tool_choice,
+        } : {}),
       } as OpenAI.ChatCompletionCreateParamsStreaming
 
       let providerResponse

@@ -72,6 +72,9 @@ export async function cleanup(client: OpenAI, ids: {
   assistantId?: string
   threadId?: string
 }) {
+  // Let fire-and-forget DB writes settle before deleting resources
+  await new Promise((r) => setTimeout(r, 500))
+
   try {
     if (ids.threadId) await client.beta.threads.delete(ids.threadId)
   } catch {}

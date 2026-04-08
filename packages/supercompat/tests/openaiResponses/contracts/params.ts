@@ -93,7 +93,7 @@ export const maxOutputTokens: ResponsesContract = async (client) => {
 export const temperatureParam: ResponsesContract = async (client) => {
   const response = await client.responses.create({
     model: config.model,
-    input: 'Say hi.',
+    input: 'Write a short paragraph about the history of computing.',
     temperature: 0,
   })
 

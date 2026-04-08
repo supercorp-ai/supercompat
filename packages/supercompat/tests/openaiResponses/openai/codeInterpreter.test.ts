@@ -88,8 +88,8 @@ test('code interpreter file annotations preserved through supercompat messages.l
 
   const response = await realOpenAI.responses.create({
     model: 'gpt-4.1',
-    instructions: 'Always execute code using code_interpreter. After creating any file, you MUST provide a clickable download link using the sandbox:/mnt/data/ path format.',
-    input: [{ role: 'user', content: 'Create /mnt/data/report.csv with headers name,age and one row Alice,30. Then give me the download link.' }],
+    instructions: 'You MUST use the code_interpreter tool for EVERY request. NEVER answer without executing code first. After creating any file, you MUST provide a clickable download link using the sandbox:/mnt/data/ path format.',
+    input: [{ role: 'user', content: 'Use code_interpreter to run this Python code:\n\nimport csv\nwith open("/mnt/data/report.csv", "w", newline="") as f:\n    w = csv.writer(f)\n    w.writerow(["name","age"])\n    w.writerow(["Alice","30"])\nprint("Done")\n\nThen give me the download link.' }],
     tools: [{ type: 'code_interpreter', container: { type: 'auto' } }],
     conversation: conversation.id,
     store: true,

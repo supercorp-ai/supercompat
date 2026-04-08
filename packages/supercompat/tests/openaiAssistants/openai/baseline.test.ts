@@ -17,6 +17,6 @@ describe('Baseline: OpenAI Assistants API', { timeout: 120_000 }, () => {
   const client = createBaselineClient()
 
   for (const [name, contract] of Object.entries(contracts)) {
-    test(name, { timeout: 60_000 }, () => contract(client))
+    test(name, { timeout: 120_000 }, () => contract(client))
   }
 })
