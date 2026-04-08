@@ -6,10 +6,8 @@
     "dev": "turbo run build --force -- --watch",
     "lint": "turbo run lint --force",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "test": "npx esbuild scripts/runTests.tsx --bundle --platform=node --format=esm --packages=external --outfile=scripts/runTests.mjs && node scripts/runTests.mjs",
-    "test:env": "npx env-cmd -f .env npm run test",
-    "test:sequential": "npx tsx --tsconfig tsconfig.test.json --test --test-concurrency=1 --test-force-exit \"packages/supercompat/tests/**/*.test.ts\"",
-    "test:sequential:env": "npx env-cmd -f .env npm run test:sequential",
+    "test": "npx env-cmd -f .env npx tsx scripts/runTests.ts",
+    "test:sequential": "npx env-cmd -f .env npx tsx --tsconfig tsconfig.test.json --test --test-concurrency=1 --test-force-exit \"packages/supercompat/tests/**/*.test.ts\"",
     "setup:prisma": "createdb supercompat_test || true && DATABASE_URL=postgresql://postgres:postgres@localhost:5432/supercompat_test npx prisma db push --accept-data-loss --skip-generate --schema packages/supercompat/prisma/schema.prisma && DATABASE_URL=postgresql://postgres:postgres@localhost:5432/supercompat_test npx prisma generate --schema packages/supercompat/prisma/schema.prisma && cp -R node_modules/@prisma packages/node_modules/",
     "setup:prisma:reset": "createdb supercompat_test || true && DATABASE_URL=postgresql://postgres:postgres@localhost:5432/supercompat_test npx prisma migrate reset --force --skip-seed --skip-generate --schema packages/supercompat/prisma/schema.prisma && DATABASE_URL=postgresql://postgres:postgres@localhost:5432/supercompat_test npx prisma db push --accept-data-loss --skip-generate --schema packages/supercompat/prisma/schema.prisma && DATABASE_URL=postgresql://postgres:postgres@localhost:5432/supercompat_test npx prisma generate --schema packages/supercompat/prisma/schema.prisma && cp -R node_modules/@prisma packages/node_modules/",
     "setup:prisma:deploy": "createdb supercompat_test || true && DATABASE_URL=postgresql://postgres:postgres@localhost:5432/supercompat_test npx prisma migrate deploy --skip-generate --schema packages/supercompat/prisma/schema.prisma && DATABASE_URL=postgresql://postgres:postgres@localhost:5432/supercompat_test npx prisma generate --schema packages/supercompat/prisma/schema.prisma && cp -R node_modules/@prisma packages/node_modules/"
