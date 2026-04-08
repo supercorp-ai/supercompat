@@ -17,7 +17,7 @@ import {
   supercompat,
   responsesStorageAdapter,
   prismaStorageAdapter,
-} from '../../../src/openaiAssistants/index'
+} from '../../../src/openai/index'
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -1202,8 +1202,9 @@ async function runVisionAgentTest(opts: {
     })
     b.end()
 
-    const choice = response.choices[0]
-    assert.ok(choice, 'Expected at least one choice')
+    const choices = response.choices ?? []
+    const choice = choices[0]
+    assert.ok(choice, `Expected at least one choice, got: ${JSON.stringify(response).slice(0, 300)}`)
 
     const text = (choice.message.content ?? '').trim()
     messages.push({ role: 'assistant', content: text })
@@ -1355,8 +1356,9 @@ async function runOpenRouterAdapterTest(opts: {
     })
     b.end()
 
-    const choice = response.choices[0]
-    assert.ok(choice, 'Expected at least one choice')
+    const choices = response.choices ?? []
+    const choice = choices[0]
+    assert.ok(choice, `Expected at least one choice from ${model}, got: ${JSON.stringify(response).slice(0, 300)}`)
 
     // Check for text-only response (model is done)
     if (!choice.message.tool_calls || choice.message.tool_calls.length === 0) {

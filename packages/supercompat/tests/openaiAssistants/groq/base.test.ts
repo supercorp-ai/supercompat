@@ -1,11 +1,12 @@
 /**
  * Conformance: prismaStorageAdapter + completionsRunAdapter + Groq
+ * Groq free tier has a 6000 TPM limit, so we add a delay between tests.
  */
-import { test, describe } from 'node:test'
+import { test, describe, beforeEach } from 'node:test'
 import Groq from 'groq-sdk'
 import { completionsContracts } from '../contracts'
 import { createPrismaTestClient } from '../contracts/lib/prismaTestHelper'
-import { groqClientAdapter } from '../../../src/openaiAssistants/index'
+import { groqClientAdapter } from '../../../src/openai/index'
 
 const apiKey = process.env.GROQ_API_KEY
 if (!apiKey) {
@@ -17,7 +18,9 @@ if (!process.env.DATABASE_URL) {
   process.exit(0)
 }
 
-describe('prismaStorageAdapter + Groq', { timeout: 600_000 }, () => {
+describe('prismaStorageAdapter + Groq', { timeout: 600_000, concurrency: 1 }, () => {
+  beforeEach(() => new Promise(r => setTimeout(r, 3000)))
+
   for (const [name, contract] of Object.entries(completionsContracts)) {
     test(name, { timeout: 120_000 }, async () => contract(await createPrismaTestClient({
       clientAdapter: groqClientAdapter({ groq: new Groq({ apiKey }) }),

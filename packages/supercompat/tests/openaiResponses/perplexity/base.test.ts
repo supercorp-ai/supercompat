@@ -2,7 +2,7 @@ import { test, describe } from 'node:test'
 import OpenAI from 'openai'
 import { responsesContracts as _all } from '../contracts'
 import { config } from '../contracts/lib/config'
-import { supercompat, perplexityClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openaiResponses/index'
+import { supercompat, perplexityClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
 
 const apiKey = process.env.PERPLEXITY_API_KEY

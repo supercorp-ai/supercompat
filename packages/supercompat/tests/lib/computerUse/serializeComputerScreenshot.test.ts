@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { serializeMessage } from '../../../src/openaiAssistants/adapters/run/completionsRunAdapter/messages/serializeMessage.ts'
+import { serializeMessage } from '../../../src/adapters/run/completionsRunAdapter/messages/serializeMessage.ts'
 
 const makeMessage = ({
   toolCalls,

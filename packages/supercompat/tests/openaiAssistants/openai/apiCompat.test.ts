@@ -8,7 +8,7 @@ import {
   openaiClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
-} from '../../../src/openaiAssistants/index'
+} from '../../../src/openai/index'
 
 const apiKey = process.env.TEST_OPENAI_API_KEY
 
@@ -178,15 +178,18 @@ describe('Threads CRUD', () => {
   test('update thread metadata', async () => {
     const client = createClient()
     const thread = await client.beta.threads.create({
-      metadata: { assistantId },
+      metadata: { assistantId, myKey: 'test' },
     })
 
     const updated = await client.beta.threads.update(thread.id, {
-      metadata: { assistantId, updated: 'true' },
+      metadata: { assistantId, myKey: 'test', updated: 'true' },
     })
 
     assert.equal(updated.id, thread.id)
-    assert.deepEqual(updated.metadata, { assistantId, updated: 'true' })
+    // assistantId is internal and stripped from metadata — only custom fields returned
+    assert.equal((updated.metadata as any)?.myKey, 'test')
+    assert.equal((updated.metadata as any)?.updated, 'true')
+    assert.equal((updated.metadata as any)?.assistantId, undefined)
 
     // Cleanup
     await prisma.thread.delete({ where: { id: thread.id } })
@@ -759,6 +762,9 @@ describe('Assistant edge cases', () => {
     const a1 = await client.beta.assistants.create({ model: 'gpt-4o-mini', name: 'Page1' })
     const a2 = await client.beta.assistants.create({ model: 'gpt-4o-mini', name: 'Page2' })
     const a3 = await client.beta.assistants.create({ model: 'gpt-4o-mini', name: 'Page3' })
+
+    // Allow eventual consistency in OpenAI's API
+    await new Promise(r => setTimeout(r, 1000))
 
     const page1 = await client.beta.assistants.list({ limit: 2 })
     assert.ok(page1.data.length <= 2)

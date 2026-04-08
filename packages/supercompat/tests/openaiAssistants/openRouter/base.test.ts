@@ -5,7 +5,7 @@ import { test, describe } from 'node:test'
 import { OpenRouter } from '@openrouter/sdk'
 import { completionsContracts } from '../contracts'
 import { createPrismaTestClient } from '../contracts/lib/prismaTestHelper'
-import { openRouterClientAdapter } from '../../../src/openaiAssistants/index'
+import { openRouterClientAdapter } from '../../../src/openai/index'
 
 const apiKey = process.env.OPENROUTER_API_KEY
 if (!apiKey) {

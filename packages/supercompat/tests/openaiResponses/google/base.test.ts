@@ -4,7 +4,7 @@ import { responsesContracts as _allContracts } from '../contracts'
 const exclude = new Set(['builtin-tools: web search', 'builtin-tools: file search', 'builtin-tools: code interpreter', 'builtin-tools: computer use'])
 const responsesContracts = Object.fromEntries(Object.entries(_allContracts).filter(([n]) => !exclude.has(n)))
 import { config } from '../contracts/lib/config'
-import { supercompat, googleClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openaiResponses/index'
+import { supercompat, googleClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
 
 

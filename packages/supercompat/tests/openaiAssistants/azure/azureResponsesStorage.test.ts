@@ -36,7 +36,7 @@ import {
   azureAiProjectClientAdapter,
   responsesRunAdapter,
   azureResponsesStorageAdapter,
-} from '../../../src/openaiAssistants/index'
+} from '../../../src/openai/index'
 
 const endpoint = process.env.AZURE_PROJECT_ENDPOINT
 const tenantId = process.env.AZURE_TENANT_ID

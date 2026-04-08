@@ -2,7 +2,7 @@ import { test, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { AIProjectClient } from '@azure/ai-projects'
 import { ClientSecretCredential } from '@azure/identity'
-import { azureAiProjectClientAdapter, supercompat } from '../../../src/openaiAssistants/index'
+import { azureAiProjectClientAdapter, supercompat } from '../../../src/openai/index'
 
 const azureEndpoint = process.env.AZURE_PROJECT_ENDPOINT
 const azureTenantId = process.env.AZURE_TENANT_ID

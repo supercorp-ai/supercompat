@@ -21,6 +21,13 @@ const MCP_URL = `http://localhost:${MCP_PORT}`
 const DOCKER_CONTEXT = process.env.COMPUTER_USE_MCP_DIR ?? path.resolve(__dirname, '../../../../../../computer-use-mcp')
 const HEALTH_TIMEOUT_MS = 120_000
 
+// Skip if Docker is not available
+import { execSync as execSyncCheck } from 'child_process'
+try { execSyncCheck('docker info', { stdio: 'ignore' }) } catch {
+  console.log('Skipping: Docker is not available')
+  process.exit(0)
+}
+
 const apiKey = process.env.TEST_OPENAI_API_KEY
 if (!apiKey) {
   console.log('Skipping: TEST_OPENAI_API_KEY required')

@@ -12,7 +12,7 @@ import {
   supercompat,
   completionsRunAdapter,
   prismaStorageAdapter,
-} from '../../../../src/openaiAssistants/index'
+} from '../../../../src/openai/index'
 import { config } from './config'
 
 export async function createPrismaTestClient({

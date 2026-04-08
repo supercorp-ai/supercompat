@@ -10,7 +10,7 @@ import {
   openRouterClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
-} from '../../../src/openaiAssistants/index'
+} from '../../../src/openai/index'
 
 const openrouterApiKey = process.env.OPENROUTER_API_KEY
 
@@ -64,7 +64,9 @@ CRITICAL RULES:
 2. NEVER answer a question without having taken a screenshot first.
 3. After every click or keypress, take another screenshot to see the result.
 4. Perform exactly ONE action per tool call.
-5. Only respond with a final text answer AFTER you have gathered all required information from the screen via screenshots.`
+5. Only respond with a final text answer AFTER you have gathered all required information from the screen via screenshots.
+6. When you receive a screenshot, ANALYZE it carefully and describe what you see. Do NOT just say "let me take a screenshot" — you already have the screenshot result, so read it.
+7. NEVER give a final answer that only says you will take a screenshot. You must actually analyze the screenshot content you received.`
 
 // ---------------------------------------------------------------------------
 // Docker lifecycle helpers

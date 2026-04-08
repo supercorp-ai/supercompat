@@ -10,7 +10,7 @@ import {
   azureAiProjectClientAdapter,
   azureAgentsResponsesRunAdapter,
   prismaStorageAdapter,
-} from '../../../src/openaiResponses/index'
+} from '../../../src/openai/index'
 import { AIProjectClient } from '@azure/ai-projects'
 import { ClientSecretCredential } from '@azure/identity'
 import { PrismaClient } from '@prisma/client'
@@ -38,15 +38,34 @@ const exclude = new Set([
 ])
 const responsesContracts = Object.fromEntries(Object.entries(_all).filter(([n]) => !exclude.has(n)))
 
+import { post as fileUploadPost, del as fileDeleteHandler } from '../../../src/handlers/assistants/azureAgentsStorageAdapter/files/upload'
+import { createVectorStore, getVectorStore, deleteVectorStore } from '../../../src/handlers/assistants/azureAgentsStorageAdapter/vectorStores'
+
 function createClient() {
   config.model = 'gpt-4.1-mini'
   const credential = new ClientSecretCredential(tenantId!, clientId!, clientSecret!)
   const azureAiProject = new AIProjectClient(endpoint!, credential)
 
+  // Use prismaStorageAdapter for Responses handlers, plus Azure file/vectorStore handlers
+  const basePrisma = prismaStorageAdapter({ prisma: new PrismaClient() })
+
+  const storageWithAzureFiles = (args: any) => {
+    const base = basePrisma(args)
+    return {
+      requestHandlers: {
+        ...base.requestHandlers,
+        '^/(?:v1|/?openai)/files$': { post: fileUploadPost({ azureAiProject }) },
+        '^/(?:v1|/?openai)/files/[^/]+$': { delete: fileDeleteHandler({ azureAiProject }) },
+        '^/(?:v1|/?openai)/vector_stores$': { post: createVectorStore({ azureAiProject }) },
+        '^/(?:v1|/?openai)/vector_stores/[^/]+$': { get: getVectorStore({ azureAiProject }), delete: deleteVectorStore({ azureAiProject }) },
+      },
+    }
+  }
+
   return supercompat({
     client: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsResponsesRunAdapter({ azureAiProject }),
-    storage: prismaStorageAdapter({ prisma: new PrismaClient() }),
+    storage: storageWithAzureFiles,
   })
 }
 

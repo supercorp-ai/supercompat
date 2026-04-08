@@ -1,2 +1,2 @@
-// Import from 'supercompat/openaiAssistants' or 'supercompat/openaiResponses' instead.
+// Import from 'supercompat/openai' instead.
 export {}

@@ -7,7 +7,7 @@ import {
   azureResponsesStorageAdapter,
   responsesRunAdapter,
   supercompat,
-} from '../../../src/openaiAssistants/index'
+} from '../../../src/openai/index'
 
 const azureEndpoint = process.env.AZURE_PROJECT_ENDPOINT
 const azureTenantId = process.env.AZURE_TENANT_ID

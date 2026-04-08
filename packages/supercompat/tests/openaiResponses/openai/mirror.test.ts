@@ -7,7 +7,7 @@ import {
   openaiClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
-} from '../../../src/openaiResponses/index'
+} from '../../../src/openai/index'
 
 /**
  * Mirror of assistantsApiCompat.test.ts — same scenarios,
@@ -1659,7 +1659,7 @@ describe('Strict Function Tool', () => {
         type: 'function',
         name: 'calc',
         description: 'Calculate',
-        parameters: { type: 'object', properties: { expr: { type: 'string' } }, required: ['expr'] },
+        parameters: { type: 'object', properties: { expr: { type: 'string' } }, required: ['expr'], additionalProperties: false },
         strict: true,
       }],
     })

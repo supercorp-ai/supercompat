@@ -5,7 +5,7 @@ import { responsesContracts as _allContracts } from '../contracts'
 const exclude = new Set(['builtin-tools: web search', 'builtin-tools: file search', 'builtin-tools: code interpreter', 'builtin-tools: computer use'])
 const responsesContracts = Object.fromEntries(Object.entries(_allContracts).filter(([n]) => !exclude.has(n)))
 import { config } from '../contracts/lib/config'
-import { supercompat, anthropicClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openaiResponses/index'
+import { supercompat, anthropicClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
 
 const apiKey = process.env.ANTHROPIC_API_KEY
@@ -13,7 +13,7 @@ if (!apiKey) { console.log('Skipping: ANTHROPIC_API_KEY required'); process.exit
 if (!process.env.DATABASE_URL) { console.log('Skipping: DATABASE_URL required'); process.exit(0) }
 
 function createClient() {
-  config.model = 'claude-sonnet-4-20250514'
+  config.model = 'claude-sonnet-4-6'
   return supercompat({
     client: anthropicClientAdapter({ anthropic: new Anthropic({ apiKey }) }),
     runAdapter: completionsRunAdapter(),

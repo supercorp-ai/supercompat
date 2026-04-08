@@ -9,21 +9,21 @@ import {
   openaiClientAdapter as responsesOpenaiClientAdapter,
   prismaStorageAdapter as responsesPrismaStorageAdapter,
   completionsRunAdapter as responsesCompletionsRunAdapter,
-} from '../../../src/openaiResponses/index'
+} from '../../../src/openai/index'
 
 import {
   createClient as createAssistantsClient,
   openaiClientAdapter as assistantsOpenaiClientAdapter,
   prismaStorageAdapter as assistantsPrismaStorageAdapter,
   completionsRunAdapter as assistantsCompletionsRunAdapter,
-} from '../../../src/openaiAssistants/index'
+} from '../../../src/openai/index'
 
 import {
   supercompat,
   openaiClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
-} from '../../../src/openaiAssistants/index'
+} from '../../../src/openai/index'
 
 const apiKey = process.env.TEST_OPENAI_API_KEY
 

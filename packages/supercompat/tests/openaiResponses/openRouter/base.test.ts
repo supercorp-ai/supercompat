@@ -2,10 +2,11 @@ import { test, describe } from 'node:test'
 import { OpenRouter } from '@openrouter/sdk'
 import { responsesContracts as _allContracts } from '../contracts'
 
-const exclude = new Set(['builtin-tools: web search', 'builtin-tools: file search', 'builtin-tools: code interpreter', 'builtin-tools: computer use'])
+// OpenRouter does not respect max_output_tokens — causes timeout
+const exclude = new Set(['builtin-tools: web search', 'builtin-tools: file search', 'builtin-tools: code interpreter', 'builtin-tools: computer use', 'params: max_output_tokens'])
 const responsesContracts = Object.fromEntries(Object.entries(_allContracts).filter(([n]) => !exclude.has(n)))
 import { config } from '../contracts/lib/config'
-import { supercompat, openRouterClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openaiResponses/index'
+import { supercompat, openRouterClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
 
 const apiKey = process.env.OPENROUTER_API_KEY
@@ -13,7 +14,7 @@ if (!apiKey) { console.log('Skipping: OPENROUTER_API_KEY required'); process.exi
 if (!process.env.DATABASE_URL) { console.log('Skipping: DATABASE_URL required'); process.exit(0) }
 
 function createClient() {
-  config.model = 'anthropic/claude-sonnet-4'
+  config.model = 'anthropic/claude-sonnet-4-6'
   return supercompat({
     client: openRouterClientAdapter({ openRouter: new OpenRouter({ apiKey }) }),
     runAdapter: completionsRunAdapter(),

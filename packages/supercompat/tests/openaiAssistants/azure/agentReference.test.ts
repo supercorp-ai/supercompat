@@ -38,7 +38,7 @@ test('Azure agent reference is included when assistant_id is provided', async ()
   }
 
   // Import and call the Azure post handler
-  const { post } = await import('../src/adapters/storage/azureResponsesStorageAdapter/threads/runs/post')
+  const { post } = await import('../../../src/handlers/assistants/azureResponsesStorageAdapter/threads/runs/post')
 
   const handler = post({
     client: mockClient as any,
@@ -116,7 +116,7 @@ test('Azure agent reference is not included when assistant_id is missing', async
   }
 
   // Import and call the Azure post handler
-  const { post } = await import('../src/adapters/storage/azureResponsesStorageAdapter/threads/runs/post')
+  const { post } = await import('../../../src/handlers/assistants/azureResponsesStorageAdapter/threads/runs/post')
 
   const handler = post({
     client: mockClient as any,
@@ -182,7 +182,7 @@ test('Azure agent reference resolves from assistant_id and omits instructions', 
     handleRun: async () => {},
   }
 
-  const { post } = await import('../src/adapters/storage/azureResponsesStorageAdapter/threads/runs/post')
+  const { post } = await import('../../../src/handlers/assistants/azureResponsesStorageAdapter/threads/runs/post')
 
   const handler = post({
     client: mockClient as any,

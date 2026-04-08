@@ -5,7 +5,7 @@ import { test, describe } from 'node:test'
 import { Mistral } from '@mistralai/mistralai'
 import { completionsContracts } from '../contracts'
 import { createPrismaTestClient } from '../contracts/lib/prismaTestHelper'
-import { mistralClientAdapter } from '../../../src/openaiAssistants/index'
+import { mistralClientAdapter } from '../../../src/openai/index'
 
 const apiKey = process.env.MISTRAL_API_KEY
 if (!apiKey) {
