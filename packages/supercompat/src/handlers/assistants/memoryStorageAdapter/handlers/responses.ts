@@ -103,6 +103,13 @@ const createResponsesOnEvent = ({
           output_index: outputIndex,
           item: serializeOutputItem({ outputItem }),
         })
+        enqueueEvent({
+          type: 'response.content_part.added',
+          item_id: outputItem.id,
+          output_index: outputIndex,
+          content_index: 0,
+          part: { type: 'output_text', text: '', annotations: [] },
+        })
         return outputItem
       }
 
@@ -144,16 +151,25 @@ const createResponsesOnEvent = ({
           text,
         })
         enqueueEvent({
+          type: 'response.content_part.done',
+          item_id: currentOutputItemId,
+          output_index: outputIndex,
+          content_index: 0,
+          part: { type: 'output_text', text, annotations: [] },
+        })
+        enqueueEvent({
           type: 'response.output_item.done',
           output_index: outputIndex,
           item: serializeOutputItem({ outputItem: updated }),
         })
         outputIndex++
-        return
+        // completionsRunAdapter reads .toolCalls to decide requires_action
+        return { ...event.data, toolCalls: (event.data as any).tool_calls ?? null }
       }
 
       case 'thread.run.step.created':
-        return
+        // completionsRunAdapter reads .id from the returned step
+        return { id: event.data.id ?? `step_${Date.now()}` }
 
       case 'thread.run.step.delta': {
         const toolCalls = ((event as any).data.delta as any)?.step_details?.tool_calls
