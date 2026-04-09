@@ -40,6 +40,7 @@ export const responsesConversationsContracts = {
 export const responsesBuiltinToolsContracts = {
   'builtin-tools: web search': builtinTools.webSearch,
   'builtin-tools: file search': builtinTools.fileSearch,
+  'builtin-tools: file input inline': builtinTools.fileInputInline,
   'builtin-tools: code interpreter': builtinTools.codeInterpreter,
   'builtin-tools: computer use': builtinTools.computerUse,
 }

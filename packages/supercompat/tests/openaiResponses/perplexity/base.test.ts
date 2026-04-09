@@ -12,7 +12,7 @@ if (!process.env.DATABASE_URL) { console.log('Skipping: DATABASE_URL required');
 // Perplexity doesn't support function calling or built-in tools via /chat/completions
 const exclude = new Set([
   'tools: function call', 'tools: function call round-trip', 'tools: parallel function calls',
-  'builtin-tools: web search', 'builtin-tools: file search', 'builtin-tools: code interpreter', 'builtin-tools: computer use',
+  'builtin-tools: web search', 'builtin-tools: file search', 'builtin-tools: code interpreter', 'builtin-tools: computer use', 'builtin-tools: file input inline',
   'params: tool_choice',
 ])
 const responsesContracts = Object.fromEntries(Object.entries(_all).filter(([n]) => !exclude.has(n)))

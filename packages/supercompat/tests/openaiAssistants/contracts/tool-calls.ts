@@ -1,6 +1,11 @@
 import type OpenAI from 'openai'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { config } from './lib/config'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 import {
   assertRunShape,
   assertRequiredActionShape,
@@ -242,13 +247,10 @@ export const continueAfterToolCall: Contract = async (client) => {
 // --- File search ---
 
 export const fileSearchCall: Contract = async (client) => {
-  // Create a file with searchable content
-  const fileContent = new Blob(
-    ['The secret project codename is Operation Thunderbolt. It launched on March 15, 2026. The budget was $4.2 million.'],
-    { type: 'text/plain' },
-  )
+  // Upload a PDF file with searchable content ("Lucky number is 2")
+  const pdfBytes = readFileSync(join(__dirname, 'lib', 'example.pdf'))
   const file = await client.files.create({
-    file: new File([fileContent], 'project-info.txt'),
+    file: new File([pdfBytes], 'example.pdf', { type: 'application/pdf' }),
     purpose: 'assistants',
   })
 
@@ -258,18 +260,18 @@ export const fileSearchCall: Contract = async (client) => {
     file_ids: [file.id],
   })
 
-  // Wait for file to be indexed — give extra time to ensure searchability
-  for (let i = 0; i < 30; i++) {
+  // Wait for file to be fully indexed
+  for (let i = 0; i < 60; i++) {
     const vs = await client.vectorStores.retrieve(vectorStore.id)
-    if (vs.file_counts.completed > 0) break
+    if (vs.file_counts.completed > 0 && vs.file_counts.in_progress === 0) break
     await new Promise(r => setTimeout(r, 1000))
   }
   // Extra buffer for search index propagation
-  await new Promise(r => setTimeout(r, 2000))
+  await new Promise(r => setTimeout(r, 5000))
 
   const assistant = await client.beta.assistants.create({
     model: config.model,
-    instructions: 'You are a document search assistant. You MUST ALWAYS use the file_search tool before answering ANY question. Search the uploaded files first, then answer based on what you find. NEVER claim you cannot find information without searching. NEVER refuse to search. The files contain the answer — search for it.',
+    instructions: 'You are a document search assistant. You MUST ALWAYS use the file_search tool before answering ANY question. Search the uploaded files first, then answer based ONLY on what you find. Do NOT say the information is not available without searching first.',
     tools: [{ type: 'file_search' }],
     tool_resources: {
       file_search: {
@@ -281,7 +283,7 @@ export const fileSearchCall: Contract = async (client) => {
   const thread = await client.beta.threads.create()
   await client.beta.threads.messages.create(thread.id, {
     role: 'user',
-    content: 'Search the uploaded files and tell me: what is the secret project codename? Use file_search.',
+    content: 'Search the uploaded file and tell me: what is the lucky number? Reply with just the number.',
   })
 
   const run = await client.beta.threads.runs.createAndPoll(thread.id, {
@@ -306,14 +308,14 @@ export const fileSearchCall: Contract = async (client) => {
     assert.ok(searchCall.file_search, 'Should have file_search details')
   }
 
-  // Assistant response should mention the codename
+  // Assistant response should mention the lucky number
   const messages = await client.beta.threads.messages.list(thread.id)
   const assistantMsg = messages.data.find(m => m.role === 'assistant')
   assert.ok(assistantMsg)
   const text = (assistantMsg.content[0] as any).text?.value?.toLowerCase() ?? ''
   assert.ok(
-    text.includes('thunderbolt') || text.includes('operation'),
-    `Response should mention the codename. Got: "${text.slice(0, 200)}"`,
+    text.includes('2'),
+    `Response should mention the lucky number 2. Got: "${text.slice(0, 200)}"`,
   )
 
   // Cleanup
@@ -625,4 +627,56 @@ export const multipleToolCallRounds: Contract = async (client) => {
   }
 
   await cleanup(client, { assistantId: assistant.id, threadId: thread.id })
+}
+
+// --- File search via message attachment ---
+
+export const fileSearchMessageAttachment: Contract = async (client) => {
+  // Upload the same PDF fixture ("Lucky number is 2")
+  const pdfBytes = readFileSync(join(__dirname, 'lib', 'example.pdf'))
+  const file = await client.files.create({
+    file: new File([pdfBytes], 'example.pdf', { type: 'application/pdf' }),
+    purpose: 'assistants',
+  })
+
+  // Create assistant with file_search enabled but NO vector store on the assistant
+  const assistant = await client.beta.assistants.create({
+    model: config.model,
+    instructions: 'You are a document search assistant. You MUST ALWAYS use the file_search tool to answer questions. Search the attached files first, then answer based on what you find.',
+    tools: [{ type: 'file_search' }],
+  })
+
+  const thread = await client.beta.threads.create()
+
+  // Attach file to the message (not the assistant)
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: 'What is the lucky number in the attached file? Reply with just the number.',
+    attachments: [
+      {
+        file_id: file.id,
+        tools: [{ type: 'file_search' as const }],
+      },
+    ],
+  })
+
+  const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+    assistant_id: assistant.id,
+  })
+
+  assert.equal(run.status, 'completed', 'File search run with message attachment should complete')
+
+  // Assistant response should mention the lucky number
+  const messages = await client.beta.threads.messages.list(thread.id)
+  const assistantMsg = messages.data.find(m => m.role === 'assistant')
+  assert.ok(assistantMsg, 'Should have assistant message')
+  const text = (assistantMsg.content[0] as any).text?.value?.toLowerCase() ?? ''
+  assert.ok(
+    text.includes('2'),
+    `Response should mention the lucky number 2. Got: "${text.slice(0, 200)}"`,
+  )
+
+  // Cleanup
+  await cleanup(client, { assistantId: assistant.id, threadId: thread.id })
+  await client.files.delete(file.id)
 }

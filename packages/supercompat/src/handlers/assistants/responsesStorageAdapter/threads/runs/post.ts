@@ -65,6 +65,10 @@ export const post = ({
 
   responseBody.model = model
   responseBody.metadata = metadata
+
+  // Files attached to messages are passed as input_file content blocks —
+  // the model reads them directly without needing file_search or vector stores.
+  // Only pass file_search tool when vector_store_ids are explicitly configured.
   Object.assign(responseBody, serializeTools({
     tools,
     useOpenaiComputerTool: isOpenaiComputerUseModel({ model }),

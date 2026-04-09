@@ -9,5 +9,9 @@ export const enqueueSSE = (
   event: string,
   data: unknown,
 ) => {
-  controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
+  try {
+    controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
+  } catch {
+    // Controller may already be closed if the stream ended before all events were enqueued
+  }
 }

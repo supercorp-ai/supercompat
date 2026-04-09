@@ -14,8 +14,9 @@ import { ClientSecretCredential } from '@azure/identity'
 import { contracts as _allContracts } from '../contracts'
 
 // createAndRunStream: Azure createThreadAndRun creates a non-streaming run,
-// can't retroactively stream it through the run adapter
-const { 'run: create and run stream': _, ...contracts } = _allContracts
+// can't retroactively stream it through the run adapter.
+// fileSearchMessageAttachment: Azure Agents doesn't support per-message file attachments.
+const { 'run: create and run stream': _, 'tools: file search message attachment': _2, ...contracts } = _allContracts
 import { config } from '../contracts/lib/config'
 import {
   supercompat,

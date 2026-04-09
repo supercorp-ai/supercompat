@@ -3,7 +3,7 @@ import OpenAI from 'openai'
 import { responsesContracts as _allContracts } from '../contracts'
 
 // Together via completionsRunAdapter: no parallel tool calls, no built-in tools
-const exclude = new Set(['builtin-tools: web search', 'builtin-tools: file search', 'builtin-tools: code interpreter', 'builtin-tools: computer use', 'tools: parallel function calls'])
+const exclude = new Set(['builtin-tools: web search', 'builtin-tools: file search', 'builtin-tools: code interpreter', 'builtin-tools: computer use', 'builtin-tools: file input inline', 'tools: parallel function calls'])
 const responsesContracts = Object.fromEntries(Object.entries(_allContracts).filter(([n]) => !exclude.has(n)))
 import { config } from '../contracts/lib/config'
 import { supercompat, togetherClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openai/index'

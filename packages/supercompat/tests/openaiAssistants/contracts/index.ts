@@ -79,6 +79,7 @@ export const coreContracts = {
   // Tool calls (streaming)
   'tools: round-trip stream': toolCalls.toolCallRoundTripStream,
   'tools: file search': toolCalls.fileSearchCall,
+  'tools: file search message attachment': toolCalls.fileSearchMessageAttachment,
   'tools: code interpreter': toolCalls.codeInterpreterCall,
 
   // Data integrity (after runs — messages exist in conversation)

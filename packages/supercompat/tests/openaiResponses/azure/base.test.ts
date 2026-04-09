@@ -2,7 +2,7 @@ import { test, describe } from 'node:test'
 import { AzureOpenAI } from 'openai'
 import { responsesContracts as _allContracts } from '../contracts'
 
-const exclude = new Set(['builtin-tools: web search', 'builtin-tools: file search', 'builtin-tools: code interpreter', 'builtin-tools: computer use'])
+const exclude = new Set(['builtin-tools: web search', 'builtin-tools: file search', 'builtin-tools: code interpreter', 'builtin-tools: computer use', 'builtin-tools: file input inline'])
 const responsesContracts = Object.fromEntries(Object.entries(_allContracts).filter(([n]) => !exclude.has(n)))
 import { config } from '../contracts/lib/config'
 import { supercompat, azureOpenaiClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openai/index'

@@ -96,6 +96,7 @@ export const post = ({
     if (metadata && typeof metadata === 'object') {
       responseBody.metadata = metadata
     }
+
     Object.assign(responseBody, serializeTools({
       tools,
       useOpenaiComputerTool: isOpenaiComputerUseModel({ model }),

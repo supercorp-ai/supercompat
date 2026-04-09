@@ -33,6 +33,7 @@ const exclude = new Set([
   'conversations: item retrieve',
   'params: max_output_tokens',
   'builtin-tools: web search',
+  'builtin-tools: file input inline',
   'builtin-tools: computer use',
   'params: structured output',
 ])

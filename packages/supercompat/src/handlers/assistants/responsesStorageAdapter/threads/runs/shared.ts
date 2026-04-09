@@ -12,8 +12,7 @@ export const serializeTools = ({
 }) => {
   if (!tools?.length) return {}
 
-  return {
-    tools: tools.map((tool) => {
+  const mapped = tools.map((tool) => {
       const toolType = (tool as any).type
 
       if (toolType === 'computer' || toolType === 'computer_use_preview') {
@@ -39,12 +38,15 @@ export const serializeTools = ({
         }
       }
 
-      // Responses API file_search needs vector_store_ids from tool_resources
+      // Responses API file_search needs vector_store_ids from tool_resources.
+      // When no vector_store_ids are configured, skip the tool — the model
+      // reads input_file content blocks directly without needing file_search.
       if (toolType === 'file_search') {
         const vectorStoreIds = toolResources?.file_search?.vector_store_ids ?? []
+        if (vectorStoreIds.length === 0) return null
         return {
           type: 'file_search',
-          ...(vectorStoreIds.length > 0 ? { vector_store_ids: vectorStoreIds } : {}),
+          vector_store_ids: vectorStoreIds,
         }
       }
 
@@ -53,8 +55,9 @@ export const serializeTools = ({
         // @ts-ignore-next-line
         ...(tool[tool.type] || {}),
       }
-    })
-  }
+    }).filter(Boolean)
+
+  return mapped.length > 0 ? { tools: mapped } : {}
 }
 
 export const truncation = ({

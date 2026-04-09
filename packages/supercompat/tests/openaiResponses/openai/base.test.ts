@@ -12,6 +12,7 @@ import { responsesContracts as _all } from '../contracts'
 const exclude = new Set([
   'builtin-tools: web search', 'builtin-tools: file search',
   'builtin-tools: code interpreter', 'builtin-tools: computer use',
+  'builtin-tools: file input inline',
 ])
 const responsesContracts = Object.fromEntries(Object.entries(_all).filter(([n]) => !exclude.has(n)))
 import { config } from '../contracts/lib/config'
