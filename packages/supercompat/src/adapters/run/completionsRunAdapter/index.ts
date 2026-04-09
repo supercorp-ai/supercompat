@@ -116,8 +116,8 @@ export const completionsRunAdapter = () => {
             failed_at: dayjs().unix(),
             status: 'in_progress',
             last_error: {
-              code: 'server_error',
-              message: `${e?.message ?? ''} ${e?.cause?.message ?? ''}`,
+              code: e?.code ?? e?.status?.toString() ?? 'server_error',
+              message: `${e?.message ?? 'Unknown error'}${e?.cause?.message ? ` (cause: ${e.cause.message})` : ''}${e?.status ? ` [status: ${e.status}]` : ''}`,
             },
           },
         })

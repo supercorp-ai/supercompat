@@ -1,6 +1,11 @@
 import type OpenAI from 'openai'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { config } from './lib/config'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 import {
   assertMessageShape,
   assertRunShape,
@@ -482,4 +487,198 @@ export const runUpdate: Contract = async (client) => {
   assert.deepEqual(updated.metadata, { updated: 'true' })
 
   await cleanup(client, { assistantId: assistant.id, threadId: thread.id })
+}
+
+export const fileSearchAnnotationIndexes: Contract = async (client) => {
+  // Upload a real PDF with substantial content
+  const pdfBytes = readFileSync(join(__dirname, 'lib', 'ai-vs-human-marketing.pdf'))
+  const file = await client.files.create({
+    file: new File([pdfBytes], 'ai-vs-human-marketing.pdf', { type: 'application/pdf' }),
+    purpose: 'assistants',
+  })
+
+  const vectorStore = await client.vectorStores.create({
+    name: 'Annotation Index Test',
+    file_ids: [file.id],
+  })
+
+  // Wait for indexing
+  for (let i = 0; i < 60; i++) {
+    const vs = await client.vectorStores.retrieve(vectorStore.id)
+    if (vs.file_counts.completed > 0 && vs.file_counts.in_progress === 0) break
+    await new Promise(r => setTimeout(r, 1000))
+  }
+  await new Promise(r => setTimeout(r, 5000))
+
+  const assistant = await client.beta.assistants.create({
+    model: config.model,
+    instructions: 'You are a research assistant. You MUST use file_search for EVERY question. You MUST include inline citations from the file for EVERY fact you state. NEVER answer without citing the source file.',
+    tools: [{ type: 'file_search' }],
+    tool_resources: { file_search: { vector_store_ids: [vectorStore.id] } },
+  })
+
+  const thread = await client.beta.threads.create()
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: 'Search the uploaded file and list 3 specific facts about AI marketing tools. You MUST cite the source file for each fact.',
+  })
+
+  const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+    assistant_id: assistant.id,
+    temperature: 0,
+  } as any)
+  assert.equal(run.status, 'completed')
+
+  const messages = await client.beta.threads.messages.list(thread.id)
+  const assistantMsg = messages.data.find(m => m.role === 'assistant')
+  assert.ok(assistantMsg, 'Should have assistant message')
+
+  const textContent = assistantMsg.content.find(c => c.type === 'text')
+  assert.ok(textContent && textContent.type === 'text', 'Should have text content')
+
+  const text = textContent.text.value
+  const annotations = textContent.text.annotations
+
+  // Validate each annotation's indexes (skip zeroed-out annotations from some adapters)
+  const validAnnotations = annotations.filter(ann =>
+    typeof ann.start_index === 'number' && typeof ann.end_index === 'number' &&
+    ann.end_index > ann.start_index
+  )
+
+  for (const ann of validAnnotations) {
+    assert.ok(ann.start_index >= 0, `start_index should be >= 0, got ${ann.start_index}`)
+    assert.ok(ann.end_index <= text.length, `end_index (${ann.end_index}) should be <= text length (${text.length})`)
+
+    // The annotation text should match the substring at those indexes
+    const substringAtIndex = text.slice(ann.start_index, ann.end_index)
+    assert.equal(
+      substringAtIndex,
+      ann.text,
+      `Annotation text "${ann.text}" should match text at indexes [${ann.start_index}:${ann.end_index}], but got "${substringAtIndex}"`,
+    )
+  }
+
+  // Should have at least one annotation (file_citation)
+  assert.ok(annotations.length >= 1, `Should have at least 1 annotation, got ${annotations.length}`)
+
+  // Annotations should not overlap
+  const sorted = [...annotations].sort((a, b) => a.start_index - b.start_index)
+  for (let i = 1; i < sorted.length; i++) {
+    assert.ok(
+      sorted[i].start_index >= sorted[i - 1].end_index,
+      `Annotations should not overlap: annotation ${i - 1} ends at ${sorted[i - 1].end_index}, annotation ${i} starts at ${sorted[i].start_index}`,
+    )
+  }
+
+  // Cleanup
+  await cleanup(client, { assistantId: assistant.id, threadId: thread.id })
+  await client.vectorStores.delete(vectorStore.id)
+  await client.files.delete(file.id)
+}
+
+export const runFailureErrorDetails: Contract = async (client) => {
+  let assistant: any
+  try {
+    assistant = await client.beta.assistants.create({
+      model: 'nonexistent-model-that-does-not-exist-12345',
+      instructions: 'Test error handling.',
+    })
+  } catch (e: any) {
+    // Some providers throw at assistant creation with invalid model — that's valid error handling
+    assert.ok(e.message || e.status, 'Error at assistant creation should have message or status')
+    return
+  }
+
+  const thread = await client.beta.threads.create()
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: 'Hello',
+  })
+
+  // The run should either throw or emit thread.run.failed
+  let threwAtCreate = false
+  let stream: any
+  try {
+    stream = await client.beta.threads.runs.create(thread.id, {
+      assistant_id: assistant.id,
+      stream: true,
+    })
+  } catch (e: any) {
+    threwAtCreate = true
+    assert.ok(e.message || e.status, 'Error at run creation should have message or status')
+  }
+
+  if (!threwAtCreate && stream) {
+    const events: any[] = []
+    try {
+      for await (const event of stream) {
+        events.push(event)
+      }
+    } catch (e: any) {
+      // Stream may throw during iteration — that's also valid
+      assert.ok(e.message || e.status, 'Stream error should have message or status')
+      return
+    }
+
+    const failedEvent = events.find(e => e.event === 'thread.run.failed')
+    if (failedEvent) {
+      const lastError = failedEvent.data.last_error
+      assert.ok(lastError, 'Failed run should have last_error')
+      assert.ok(lastError.code != null, 'last_error.code should not be null')
+      assert.ok(typeof lastError.message === 'string', `last_error.message should be a string, got ${typeof lastError.message}`)
+      assert.ok(lastError.message.length > 0, 'last_error.message should not be empty')
+      assert.ok(lastError.message !== 'undefined', 'last_error.message should not be the string "undefined"')
+    }
+    // If no failed event and no throw, the run may have completed (some adapters ignore invalid models)
+  }
+
+  try { await cleanup(client, { assistantId: assistant.id, threadId: thread.id }) } catch {}
+}
+
+export const invalidThreadError: Contract = async (client) => {
+  // Attempting to list messages on a non-existent thread should either throw or return empty
+  let threw = false
+  let errorHasInfo = false
+  try {
+    const result = await client.beta.threads.messages.list('thread_nonexistent_12345')
+    // If it doesn't throw, that's ok (memory adapter) — just verify it returns something valid
+    assert.ok(result, 'Should return a result object')
+  } catch (e: any) {
+    threw = true
+    errorHasInfo = !!(e.message || e.status)
+  }
+  // If it threw, the error should have useful information
+  if (threw) {
+    assert.ok(errorHasInfo, 'Error should have a message or status')
+  }
+}
+
+export const invalidAssistantRunError: Contract = async (client) => {
+  const thread = await client.beta.threads.create()
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: 'Hello',
+  })
+
+  // Running with a non-existent assistant should fail — either throw or return a failed run
+  let threw = false
+  let errorHasInfo = false
+  try {
+    const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+      assistant_id: 'asst_nonexistent_12345',
+    })
+    // Some adapters don't throw but return a failed/errored run
+    if (run.status === 'failed') {
+      assert.ok(run.last_error, 'Failed run should have last_error')
+    }
+  } catch (e: any) {
+    threw = true
+    errorHasInfo = !!(e.message || e.status)
+  }
+
+  if (threw) {
+    assert.ok(errorHasInfo, 'Error should have a message or status')
+  }
+
+  try { await client.beta.threads.delete(thread.id) } catch {}
 }

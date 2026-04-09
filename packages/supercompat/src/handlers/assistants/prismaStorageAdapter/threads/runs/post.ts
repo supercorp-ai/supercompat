@@ -124,8 +124,8 @@ export const post = ({
             id: run.id,
             failed_at: dayjs().unix(),
             last_error: {
-              code: 'server_error',
-              message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
+              code: error?.code ?? error?.status?.toString() ?? 'server_error',
+              message: `${error?.message ?? 'Unknown error'}${error?.cause?.message ? ` (cause: ${error.cause.message})` : ''}${error?.status ? ` [status: ${error.status}]` : ''}`,
             },
           },
         } as OpenAI.Beta.AssistantStreamEvent.ThreadRunFailed)

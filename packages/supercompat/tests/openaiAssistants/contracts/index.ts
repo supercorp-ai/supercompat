@@ -92,6 +92,10 @@ export const coreContracts = {
   'data: models list': dataIntegrity.modelsList,
   'data: run step retrieve': dataIntegrity.runStepRetrieve,
   'data: run update': dataIntegrity.runUpdate,
+  'data: file search annotation indexes': dataIntegrity.fileSearchAnnotationIndexes,
+  'data: run failure error details': dataIntegrity.runFailureErrorDetails,
+  'errors: invalid thread': dataIntegrity.invalidThreadError,
+  'errors: invalid assistant run': dataIntegrity.invalidAssistantRunError,
 }
 
 // Contracts for completions-based adapters (prisma + completionsRunAdapter).
@@ -129,6 +133,9 @@ export const completionsContracts = {
   'tools: multiple rounds': toolCalls.multipleToolCallRounds,
   'data: cancel run': dataIntegrity.cancelRun,
   'data: special chars in tool output': dataIntegrity.specialCharsInToolOutput,
+  'data: run failure error details': dataIntegrity.runFailureErrorDetails,
+  'errors: invalid thread': dataIntegrity.invalidThreadError,
+  'errors: invalid assistant run': dataIntegrity.invalidAssistantRunError,
 }
 
 // Contracts for providers that don't support function calling (e.g. Perplexity).
