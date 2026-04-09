@@ -15,10 +15,6 @@ import { threads } from '../responsesStorageAdapter/threads'
 import { thread } from '../responsesStorageAdapter/threads/thread'
 import { cancelRun as cancel } from '../responsesStorageAdapter/threads/run/cancel'
 import { messages } from '../responsesStorageAdapter/threads/messages'
-// File and vector store handlers from Azure Agents adapter
-import { post as fileUploadPost, del as fileDeleteHandler } from '../azureAgentsStorageAdapter/files/upload'
-import { file as fileGet } from '../azureAgentsStorageAdapter/files/get'
-import { createVectorStore, getVectorStore, deleteVectorStore } from '../azureAgentsStorageAdapter/vectorStores'
 import { runs } from './threads/runs'
 import { run } from '../responsesStorageAdapter/threads/run'
 import { steps } from '../responsesStorageAdapter/threads/runs/steps'
@@ -149,31 +145,48 @@ export const azureResponsesStorageAdapter = (): ((
       return wrapped
     }
 
-    // Lazy v1 client for file/vectorStore operations (v2 SDK lacks agents.files)
-    let cachedFileClient: any = null
-    const getFileClient = async () => {
-      if (cachedFileClient) return cachedFileClient
-      const aiProject = getAIProjectClient()
-      if (aiProject?.agents?.files) {
-        cachedFileClient = aiProject
-        return aiProject
-      }
-      const { AIProjectClient: V1 } = await import('@azure/ai-projects')
-      cachedFileClient = new V1(aiProject._endpoint, aiProject._credential)
-      return cachedFileClient
-    }
-
-    const createLazyFileHandler = (op: string): RequestHandler => async (url: string, options: any) => {
-      const fc = await getFileClient()
-      const handlers: Record<string, any> = {
-        upload: fileUploadPost({ azureAiProject: fc }),
-        get: fileGet({ azureAiProject: fc }).get,
-        delete: fileDeleteHandler({ azureAiProject: fc }),
-        vsCreate: createVectorStore({ azureAiProject: fc }),
-        vsGet: getVectorStore({ azureAiProject: fc }),
-        vsDelete: deleteVectorStore({ azureAiProject: fc }),
-      }
-      return handlers[op](url, options)
+    // For file/vectorStore operations, use the Azure OpenAI client's SDK methods directly.
+    // The getAzureClient() returns an authenticated OpenAI client that handles
+    // files.create, vectorStores.create, etc. with proper Azure OAuth.
+    const fileHandlers = {
+      upload: async (_url: string, options: any) => {
+        const azureClient = await getAzureClient()
+        const formData = await new Response(options.body, { headers: options.headers }).formData()
+        const fileBlob = formData.get('file') as File
+        const purpose = formData.get('purpose') as string
+        const file = await azureClient.files.create({ file: fileBlob, purpose: purpose as 'assistants' })
+        return new Response(JSON.stringify(file), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      },
+      get: async (url: string) => {
+        const azureClient = await getAzureClient()
+        const fileId = new URL(url).pathname.match(/files\/([^/]+)/)?.[1]!
+        const file = await azureClient.files.retrieve(fileId)
+        return new Response(JSON.stringify(file), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      },
+      delete: async (url: string) => {
+        const azureClient = await getAzureClient()
+        const fileId = new URL(url).pathname.match(/files\/([^/]+)/)?.[1]!
+        const result = await azureClient.files.delete(fileId)
+        return new Response(JSON.stringify(result), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      },
+      vsCreate: async (_url: string, options: any) => {
+        const azureClient = await getAzureClient()
+        const body = JSON.parse(options.body)
+        const vs = await azureClient.vectorStores.create(body)
+        return new Response(JSON.stringify(vs), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      },
+      vsGet: async (url: string) => {
+        const azureClient = await getAzureClient()
+        const vsId = new URL(url).pathname.match(/vector_stores\/([^/]+)/)?.[1]!
+        const vs = await azureClient.vectorStores.retrieve(vsId)
+        return new Response(JSON.stringify(vs), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      },
+      vsDelete: async (url: string) => {
+        const azureClient = await getAzureClient()
+        const vsId = new URL(url).pathname.match(/vector_stores\/([^/]+)/)?.[1]!
+        const result = await azureClient.vectorStores.delete(vsId)
+        return new Response(JSON.stringify(result), { status: 200, headers: { 'Content-Type': 'application/json' } })
+      },
     }
 
     return {
@@ -188,12 +201,11 @@ export const azureResponsesStorageAdapter = (): ((
         [submitToolOutputsRegexp]: createWrappedHandlers(submitToolOutputs, ['post']),
         [cancelRunRegexp]: createWrappedHandlers(cancel, ['post']),
         [responseRegexp]: createWrappedHandlers(responses, ['get']),
-        // File and vector store handlers need v1 AIProjectClient (has agents.files/vectorStores).
-        // Handlers lazily create a v1 client from the v2 client's endpoint/credentials.
-        '^/(?:v1|/?openai)/files$': { post: createLazyFileHandler('upload') },
-        [fileRegexp]: { get: createLazyFileHandler('get'), delete: createLazyFileHandler('delete') },
-        '^/(?:v1|/?openai)/vector_stores$': { post: createLazyFileHandler('vsCreate') },
-        '^/(?:v1|/?openai)/vector_stores/[^/]+$': { get: createLazyFileHandler('vsGet'), delete: createLazyFileHandler('vsDelete') },
+        // File and vector store operations use the Azure OpenAI client's SDK methods
+        '^/(?:v1|/?openai)/files$': { post: fileHandlers.upload },
+        [fileRegexp]: { get: fileHandlers.get, delete: fileHandlers.delete },
+        '^/(?:v1|/?openai)/vector_stores$': { post: fileHandlers.vsCreate },
+        '^/(?:v1|/?openai)/vector_stores/[^/]+$': { get: fileHandlers.vsGet, delete: fileHandlers.vsDelete },
       },
     }
   }
