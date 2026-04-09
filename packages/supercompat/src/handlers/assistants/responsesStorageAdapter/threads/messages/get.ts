@@ -39,12 +39,7 @@ export const get = ({
     order: sortOrder,
   })
 
-  // Filter to message-type items only. In the Assistants API, messages.list returns
-  // user and assistant messages. Tool calls (function_call, computer_call, etc.) and
-  // their outputs are accessed via runs.steps.list, not messages.list.
-  const conversationMessages = items.data.filter((item) => item.type === 'message')
-
-  const itemsWithRunIds = mapItemsWithRunIds({ conversation, items: conversationMessages })
+  const itemsWithRunIds = mapItemsWithRunIds({ conversation, items: items.data })
   const responseMap = await fetchResponsesForItems({
     client,
     items: itemsWithRunIds,

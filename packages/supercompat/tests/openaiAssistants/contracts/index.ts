@@ -94,6 +94,7 @@ export const coreContracts = {
   'data: run update': dataIntegrity.runUpdate,
   'data: file search annotation indexes': dataIntegrity.fileSearchAnnotationIndexes,
   'data: run failure error details': dataIntegrity.runFailureErrorDetails,
+  'data: tool call steps persist after reload': dataIntegrity.toolCallStepsPersistAfterReload,
   'errors: invalid thread': dataIntegrity.invalidThreadError,
   'errors: invalid assistant run': dataIntegrity.invalidAssistantRunError,
 }
@@ -134,6 +135,7 @@ export const completionsContracts = {
   'data: cancel run': dataIntegrity.cancelRun,
   'data: special chars in tool output': dataIntegrity.specialCharsInToolOutput,
   'data: run failure error details': dataIntegrity.runFailureErrorDetails,
+  'data: tool call steps persist after reload': dataIntegrity.toolCallStepsPersistAfterReload,
   'errors: invalid thread': dataIntegrity.invalidThreadError,
   'errors: invalid assistant run': dataIntegrity.invalidAssistantRunError,
 }

@@ -682,3 +682,68 @@ export const invalidAssistantRunError: Contract = async (client) => {
 
   try { await client.beta.threads.delete(thread.id) } catch {}
 }
+
+export const toolCallStepsPersistAfterReload: Contract = async (client) => {
+  const assistant = await client.beta.assistants.create({
+    model: config.model,
+    instructions: fixtures.instructions.forceWeatherTool,
+    tools: [fixtures.weatherTool],
+  })
+  const thread = await client.beta.threads.create()
+  await client.beta.threads.messages.create(thread.id, {
+    role: 'user',
+    content: fixtures.prompts.weather,
+  })
+
+  // Stream the run until requires_action
+  const runStream = client.beta.threads.runs.stream(thread.id, {
+    assistant_id: assistant.id,
+    tools: [fixtures.weatherTool],
+  })
+
+  const events = await collectStreamEvents(runStream)
+  const requiresAction = events.find(e => e.event === 'thread.run.requires_action')
+  assert.ok(requiresAction, 'Should have requires_action event')
+
+  const tc = requiresAction!.data.required_action.submit_tool_outputs.tool_calls[0]
+  assert.equal(tc.function.name, 'get_weather')
+
+  // Submit tool outputs via stream
+  const submitStream = client.beta.threads.runs.submitToolOutputsStream(
+    requiresAction!.data.id,
+    {
+      thread_id: thread.id,
+      tool_outputs: [{ tool_call_id: tc.id, output: fixtures.weatherToolOutput }],
+    },
+  )
+
+  const submitEvents = await collectStreamEvents(submitStream)
+  const completed = submitEvents.find(e => e.event === 'thread.run.completed')
+  assert.ok(completed, 'Should have run.completed after tool output submission')
+
+  // --- "Reload": re-fetch messages and steps from scratch ---
+  const messages = await client.beta.threads.messages.list(thread.id)
+  const assistantMessages = messages.data.filter(m => m.role === 'assistant')
+  assert.ok(assistantMessages.length >= 1, 'Should have at least 1 assistant message after reload')
+
+  // Find a message with a run_id that we can use to fetch steps
+  const messageWithRunId = assistantMessages.find(m => m.run_id)
+  assert.ok(messageWithRunId, 'At least one assistant message should have a run_id')
+
+  const steps = await client.beta.threads.runs.steps.list(
+    messageWithRunId!.run_id!,
+    { thread_id: thread.id },
+  )
+
+  const toolStep = steps.data.find(s => s.type === 'tool_calls')
+  assert.ok(
+    toolStep,
+    `Tool call step should persist after reload. Got step types: [${steps.data.map(s => s.type).join(', ')}]`,
+  )
+
+  const toolCallDetails = (toolStep!.step_details as any).tool_calls
+  assert.ok(toolCallDetails.length >= 1, 'Should have at least 1 tool call in step')
+  assert.equal(toolCallDetails[0].function.name, 'get_weather')
+
+  await cleanup(client, { assistantId: assistant.id, threadId: thread.id })
+}

@@ -23,16 +23,6 @@ export const get = ({
 
   const [, threadId, runId] = url.pathname.match(new RegExp(stepsRegexp))!
 
-  // const {
-  //   limit,
-  //   order,
-  //   after,
-  // } = assign({
-  //   limit: '20',
-  //   order: 'desc',
-  //   // after: null,
-  // }, Object.fromEntries(url.searchParams))
-
   const response = await client.responses.retrieve(runId)
 
   const latestToolCallItem = response.output.findLast((item) => (
