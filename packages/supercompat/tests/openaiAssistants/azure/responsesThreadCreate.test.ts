@@ -5,7 +5,7 @@ import { ClientSecretCredential } from '@azure/identity'
 import {
   azureAiProjectClientAdapter,
   azureResponsesStorageAdapter,
-  responsesRunAdapter,
+  openaiResponsesRunAdapter,
   supercompat,
 } from '../../../src/openai/index'
 
@@ -62,7 +62,7 @@ test('azureResponses: create thread with array content', async () => {
       azureAiProject,
     }),
     storage: azureResponsesStorageAdapter(),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => mockAssistant,
     }),
   })
@@ -123,7 +123,7 @@ test('azureResponses: create thread with string content', async () => {
       azureAiProject,
     }),
     storage: azureResponsesStorageAdapter(),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => mockAssistant,
     }),
   })
@@ -179,7 +179,7 @@ test('azureResponses: create thread with mixed content (text + image)', async ()
       azureAiProject,
     }),
     storage: azureResponsesStorageAdapter(),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => mockAssistant,
     }),
   })
@@ -246,7 +246,7 @@ test('azureResponses: create thread with multiple text parts', async () => {
       azureAiProject,
     }),
     storage: azureResponsesStorageAdapter(),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => mockAssistant,
     }),
   })
@@ -305,7 +305,7 @@ test('azureResponses: retrieve messages from thread', async () => {
       azureAiProject,
     }),
     storage: azureResponsesStorageAdapter(),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => mockAssistant,
     }),
   })

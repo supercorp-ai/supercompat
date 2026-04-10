@@ -5,7 +5,7 @@ import dayjs from 'dayjs'
 import { ProxyAgent, setGlobalDispatcher } from 'undici'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import {
-  responsesRunAdapter,
+  openaiResponsesRunAdapter,
   openaiClientAdapter,
   supercompat,
   responsesStorageAdapter,
@@ -134,7 +134,7 @@ test('code interpreter file annotations preserved through supercompat messages.l
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => openaiAssistant,
     }),
     storage: responsesStorageAdapter(),

@@ -352,7 +352,8 @@ Run adapters control how model calls are executed. The `completionsRunAdapter` w
 | Run Adapter | Provider | Notes |
 |---|---|---|
 | `completionsRunAdapter` | Any | Function tools via Chat Completions |
-| `responsesRunAdapter` | OpenAI | Delegates to Responses API |
+| `openaiResponsesRunAdapter` | OpenAI | Delegates to Responses API |
+| `azureResponsesRunAdapter` | Azure | Delegates to Azure Responses API |
 | `azureAgentsRunAdapter` | Azure | Uses Azure AI Agents service |
 | `perplexityAgentRunAdapter` | Perplexity | Uses `/v1/agent` endpoint |
 

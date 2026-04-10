@@ -67,6 +67,9 @@ export const runIdOnMessage: Contract = async (client) => {
     assistant_id: assistant.id,
   })
 
+  // Allow async metadata saves (waitUntil) to settle before reading messages
+  await new Promise(r => setTimeout(r, 1000))
+
   const messages = await client.beta.threads.messages.list(thread.id)
   const assistantMsg = messages.data.find(m => m.role === 'assistant')
 
@@ -367,6 +370,10 @@ export const specialCharsInToolOutput: Contract = async (client) => {
     tools: [fixtures.weatherTool],
   })
 
+  assert.ok(
+    run.required_action?.submit_tool_outputs?.tool_calls?.length,
+    `Run should require tool outputs (status: ${run.status}). Model may not have called the tool.`,
+  )
   const tc = run.required_action!.submit_tool_outputs.tool_calls[0]
   const specialOutput = JSON.stringify({
     description: 'Sunny with unicode: 你好 🌞\nTemperature: 72°F\tHumidity: "60%"',

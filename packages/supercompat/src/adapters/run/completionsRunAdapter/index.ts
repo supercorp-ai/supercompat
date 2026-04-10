@@ -2,7 +2,7 @@ import _ from 'lodash'
 import { uid, omit, isEmpty } from 'radash'
 import dayjs from 'dayjs'
 import OpenAI from 'openai'
-import { MessageWithRun } from '@/types'
+import { MessageWithRun, RunAdapterBody } from '@/types'
 import { messages } from './messages'
 
 const updatedToolCall = ({
@@ -57,14 +57,14 @@ export const completionsRunAdapter = () => {
   return {
     handleRun: async ({
       client,
-      run,
+      body: run,
       onEvent,
       getMessages,
     }: {
       client: OpenAI
-      run: OpenAI.Beta.Threads.Run
+      body: RunAdapterBody
       onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
-      getMessages: () => Promise<MessageWithRun[]>
+      getMessages?: () => Promise<MessageWithRun[]>
     }) => {
       if (run.status !== 'queued') return
 
@@ -84,17 +84,34 @@ export const completionsRunAdapter = () => {
         },
       })
 
+      // Resolve response_format: prefer explicit response_format, fall back to text.format (Responses API)
+      const textFormat = (run as any).text?.format
+      const responseFormat = (typeof run.response_format === 'object' && run.response_format !== null)
+        ? run.response_format
+        : textFormat?.type === 'json_schema'
+          ? { type: 'json_schema' as const, json_schema: { name: textFormat.name, schema: textFormat.schema, strict: textFormat.strict } }
+          : textFormat?.type === 'json_object'
+            ? { type: 'json_object' as const }
+            : null
+
       const opts = {
         messages: await messages({
           run,
-          getMessages,
+          getMessages: getMessages!,
         }),
         model: run.model,
         stream: true,
-        ...(typeof run.response_format === 'object' && run.response_format !== null
-          ? { response_format: run.response_format }
-          : {}),
-        ...(isEmpty(run.tools) ? {} : { tools: run.tools }),
+        ...(responseFormat ? { response_format: responseFormat } : {}),
+        ...(isEmpty(run.tools) ? {} : {
+          tools: run.tools.map((t: any) => {
+            // Normalize Responses-format tools ({ type: 'function', name, parameters })
+            // to Completions-format tools ({ type: 'function', function: { name, parameters } })
+            if (t.type === 'function' && t.name && !t.function) {
+              return { type: 'function', function: { name: t.name, description: t.description ?? '', parameters: t.parameters ?? {} } }
+            }
+            return t
+          }),
+        }),
         ...(run.tool_choice && run.tool_choice !== 'auto' ? {
           tool_choice: typeof run.tool_choice === 'object' && (run.tool_choice as any).type === 'function' && (run.tool_choice as any).name
             ? { type: 'function' as const, function: { name: (run.tool_choice as any).name } }

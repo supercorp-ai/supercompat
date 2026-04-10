@@ -39,7 +39,7 @@ export const post = ({
         })
 
         await runAdapter.handleRun({
-          run: serializeRun({ run }),
+          body: serializeRun({ run }),
           onEvent: onEvent({
             controller: {
               ...controller,
@@ -73,7 +73,7 @@ export const post = ({
       new ReadableStream({
         async start(controller) {
           await runAdapter.handleRun({
-            run: serializeRun({ run }),
+            body: serializeRun({ run }),
             onEvent: onEvent({
               controller: {
                 ...controller,

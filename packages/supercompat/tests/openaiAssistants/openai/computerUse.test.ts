@@ -10,7 +10,7 @@ import { ProxyAgent, setGlobalDispatcher } from 'undici'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import dayjs from 'dayjs'
 import {
-  responsesRunAdapter,
+  openaiResponsesRunAdapter,
   completionsRunAdapter,
   openaiClientAdapter,
   openRouterClientAdapter,
@@ -485,7 +485,7 @@ testOrSkip('OpenAI supercompat: computer use via thread/run finds subscribe form
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => openaiAssistant,
     }),
     storage: responsesStorageAdapter(),

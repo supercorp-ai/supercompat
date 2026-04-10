@@ -17,7 +17,6 @@ export { openRouterClientAdapter } from '../adapters/client/openRouterClientAdap
 
 // Run adapters
 export { completionsRunAdapter } from '../adapters/run/completionsRunAdapter'
-export { responsesRunAdapter } from '../adapters/run/responsesRunAdapter'
 export { azureAgentsRunAdapter } from '../adapters/run/azureAgentsRunAdapter'
 export { perplexityAgentRunAdapter } from '../adapters/run/perplexityAgentRunAdapter'
 export { openaiResponsesRunAdapter } from '../adapters/run/openaiResponsesRunAdapter'

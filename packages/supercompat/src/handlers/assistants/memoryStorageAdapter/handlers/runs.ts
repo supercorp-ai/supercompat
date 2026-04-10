@@ -252,7 +252,7 @@ const createRunStream = async ({
     async start(controller) {
       try {
         await runAdapter.handleRun({
-          run: serializedRun as OpenAI.Beta.Threads.Run,
+          body: serializedRun as OpenAI.Beta.Threads.Run,
           onEvent: createOnEvent({
             store,
             controller: {

@@ -9,6 +9,7 @@
 import type { AIProjectClient } from '@azure/ai-projects'
 import { uid } from 'radash'
 import dayjs from 'dayjs'
+import { RunAdapterBody } from '@/types'
 
 export type ResponsesRunEvent = {
   type: string
@@ -16,7 +17,7 @@ export type ResponsesRunEvent = {
 }
 
 type HandleArgs = {
-  requestBody: any
+  body: RunAdapterBody
   onEvent: (event: ResponsesRunEvent) => Promise<void>
   // Optional context from storage — reuse existing agent/thread instead of creating new ones
   agentId?: string
@@ -31,7 +32,7 @@ export const azureAgentsResponsesRunAdapter = ({
   type: 'responses-azure-agents' as const,
 
   handleRun: async ({
-    requestBody,
+    body: requestBody,
     onEvent,
     agentId: existingAgentId,
     threadId: existingThreadId,

@@ -3,38 +3,51 @@
  *
  * Calls OpenAI's native Responses API directly and streams events through.
  * Supports all built-in tools (web_search, file_search, code_interpreter, computer_use).
+ *
+ * When used with responsesStorageAdapter (Assistants surface), pass getOpenaiAssistant
+ * so the storage adapter can resolve assistant data for building the request body.
  */
 import type OpenAI from 'openai'
+import { RunAdapterBody } from '@/types'
 
-export type ResponsesRunEvent = {
-  type: string
-  [key: string]: any
-}
-
-export type HandleArgs = {
-  requestBody: any
-  onEvent: (event: ResponsesRunEvent) => Promise<void>
-}
+// Fields from Assistants API Run objects that the Responses API doesn't accept
+const ASSISTANTS_ONLY_FIELDS = [
+  'id', 'object', 'created_at', 'thread_id', 'assistant_id', 'status',
+  'required_action', 'last_error', 'expires_at', 'started_at', 'cancelled_at',
+  'failed_at', 'completed_at', 'incomplete_details', 'max_completion_tokens',
+  'max_prompt_tokens', 'usage', 'response_format', 'truncation_strategy',
+  'parallel_tool_calls',
+]
 
 export const openaiResponsesRunAdapter = ({
-  openai,
+  getOpenaiAssistant,
+  waitUntil,
 }: {
-  openai: OpenAI
-}) => ({
+  getOpenaiAssistant?: (...args: any[]) => any
+  waitUntil?: <T>(p: Promise<T>) => void | Promise<void>
+} = {}) => ({
   type: 'responses-openai' as const,
 
+  ...(getOpenaiAssistant ? { getOpenaiAssistant } : {}),
+
   handleRun: async ({
-    requestBody,
+    client,
+    body,
     onEvent,
-  }: HandleArgs) => {
-    const response = await openai.responses.create({
-      ...requestBody,
-      stream: true,
-    }) as any
+  }: {
+    client: OpenAI
+    body: RunAdapterBody
+    onEvent: (event: any) => Promise<void>
+  }) => {
+    const requestBody = { ...body, stream: true }
+    for (const key of ASSISTANTS_ONLY_FIELDS) {
+      delete requestBody[key]
+    }
+
+    const response = await client.responses.create(requestBody) as any
 
     for await (const event of response) {
-      await onEvent(event as ResponsesRunEvent)
+      await onEvent(event)
     }
   },
-
 })

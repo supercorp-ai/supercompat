@@ -20,7 +20,7 @@ import { models } from './models'
  * const client = supercompat({
  *   client: azureAiProjectClientAdapter({ azureAiProject }),
  *   storage: azureResponsesStorageAdapter(),
- *   runAdapter: responsesRunAdapter({ ... })
+ *   runAdapter: azureResponsesRunAdapter({ ... })
  * })
  * ```
  */

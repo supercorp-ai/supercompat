@@ -5,7 +5,7 @@ import { serializeItemAsFunctionCallRunStep } from '@/lib/items/serializeItemAsF
 import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsComputerCallRunStep'
 import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
 import { enqueueSSE } from '@/lib/sse/enqueueSSE'
-import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
+import { createResponseToAssistantEventTranslator } from '@/lib/responses/createResponseToAssistantEventTranslator'
 import { getToolCallOutputItems, serializeTools, truncation } from '@/handlers/assistants/responsesStorageAdapter/threads/runs/submitToolOutputs/shared'
 
 export const post = ({
@@ -77,27 +77,10 @@ export const post = ({
     responseBody.instructions = openaiAssistant.instructions
   }
 
-  const response = await client.responses.create(responseBody)
-
-  // Non-streaming: return the Run as JSON (used by submitToolOutputsAndPoll)
-  if (!stream) {
-    const completedResponse = response as OpenAI.Responses.Response
-
-    const run = serializeResponseAsRun({
-      response: completedResponse,
-      assistantId: openaiAssistant.id,
-    })
-
-    return new Response(JSON.stringify({ ...run, id: runId }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
   // Streaming: return SSE events
   const readableStream = new ReadableStream({
     async start(controller) {
-      toolCallOutputItems.functionCallOutputItems.forEach((item) => {
+      toolCallOutputItems.functionCallOutputItems.forEach((item: any) => {
         const toolCallItem = previousResponse.output.find((i) => (
           i.type === 'function_call' &&
             i.call_id === item.call_id
@@ -116,7 +99,7 @@ export const post = ({
           }))
       })
 
-      toolCallOutputItems.computerCallOutputItems.forEach((item) => {
+      toolCallOutputItems.computerCallOutputItems.forEach((item: any) => {
         const toolCallItem = previousResponse.output.find((i) => (
           i.type === 'computer_call' &&
             i.call_id === item.call_id
@@ -135,17 +118,47 @@ export const post = ({
           }))
       })
 
-      await runAdapter.handleRun({
+      const translator = createResponseToAssistantEventTranslator({
+        getOpenaiAssistant: runAdapter.getOpenaiAssistant,
         threadId,
-        response,
+        client,
         onEvent: async (event: any) => (
           enqueueSSE(controller, event.event, event.data)
         ),
       })
 
+      try {
+        await runAdapter.handleRun({
+          body: responseBody,
+          onEvent: async (event: any) => {
+            await translator.handleEvent(event)
+          },
+        })
+        await translator.finalize()
+      } catch (error: any) {
+        console.error(error)
+        await translator.handleError(error)
+      } finally {
+        translator.cleanup()
+      }
+
       controller.close()
     },
   })
+
+  if (!stream) {
+    // Non-streaming: consume the stream and return a Run-shaped response
+    await new Promise<void>((resolve, reject) => {
+      const reader = readableStream.getReader()
+      const pump = (): Promise<void> => reader.read().then(({ done }) => done ? resolve() : pump()).catch(reject)
+      pump()
+    })
+
+    return new Response(JSON.stringify({ id: runId }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
 
   return new Response(readableStream, {
     headers: {

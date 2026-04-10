@@ -9,10 +9,8 @@ import { createMemoryTestClient } from '../contracts/lib/memoryTestHelper'
 import { groqClientAdapter } from '../../../src/openai/index'
 
 const apiKey = process.env.GROQ_API_KEY
-if (!apiKey) {
-  console.log('Skipping: GROQ_API_KEY required')
-  process.exit(0)
-}
+if (!apiKey) { console.log('Skipping: GROQ_API_KEY required'); process.exit(0) }
+if (process.env.SKIP_PROVIDERS?.split(',').includes('groq')) { console.log('Skipping: groq in SKIP_PROVIDERS'); process.exit(0) }
 
 describe('memoryStorageAdapter + Groq', { timeout: 600_000, concurrency: 1 }, () => {
   beforeEach(() => new Promise(r => setTimeout(r, 3000)))

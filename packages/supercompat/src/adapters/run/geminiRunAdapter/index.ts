@@ -9,6 +9,7 @@
 import type { GoogleGenAI } from '@google/genai'
 import { uid } from 'radash'
 import dayjs from 'dayjs'
+import { RunAdapterBody } from '@/types'
 
 export type ResponsesRunEvent = {
   type: string
@@ -16,7 +17,7 @@ export type ResponsesRunEvent = {
 }
 
 type HandleArgs = {
-  requestBody: any
+  body: RunAdapterBody
   onEvent: (event: ResponsesRunEvent) => Promise<void>
 }
 
@@ -94,7 +95,7 @@ export const geminiRunAdapter = ({
   type: 'responses-gemini' as const,
 
   handleRun: async ({
-    requestBody,
+    body: requestBody,
     onEvent,
   }: HandleArgs) => {
     const responseId = `resp_${uid(24)}`

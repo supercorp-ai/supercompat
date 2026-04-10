@@ -15,27 +15,54 @@ interface GetOpenaiAssistantFn {
     | Promise<OpenAI.Beta.Assistants.Assistant>
 }
 
-type RunAdapterHandleArgsThreadRun = {
-  client: OpenAI
-  run: OpenAI.Beta.Threads.Run
-  onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
-  getMessages: () => Promise<MessageWithRun[]>
-  threadId?: never
-  response?: never
+/**
+ * Body shape from Assistants surface storage adapters (prismaStorageAdapter, memoryStorageAdapter).
+ * This is a serialized OpenAI Run object — contains both API params and event metadata.
+ */
+export type AssistantsRunBody = OpenAI.Beta.Threads.Run
+
+/**
+ * Body shape from Responses surface storage adapters (prismaStorageAdapter, responsesStorageAdapter).
+ * These are Responses API params — passed directly to client.responses.create() by native adapters,
+ * or used by completionsRunAdapter to build a /chat/completions request.
+ */
+export type ResponsesRunBody = {
+  model: string
+  input: any
+  status?: string
+  instructions?: string
+  tools?: any[]
+  tool_choice?: any
+  metadata?: any
+  temperature?: number
+  top_p?: number
+  max_output_tokens?: number
+  text?: { format?: any }
+  truncation?: string
+  conversation?: string
+  parallel_tool_calls?: boolean
+  // Azure agent reference
+  agent?: { name: string; type: string }
 }
 
-type RunAdapterHandleArgsResponse = {
-  client: OpenAI
+/**
+ * Body shape from Azure Agents storage adapter.
+ */
+export type AzureAgentsRunBody = {
   threadId: string
-  response: unknown
-  onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
-  run?: never
-  getMessages?: never
+  assistantId: string
+  instructions?: string
+  tools?: any[]
 }
 
-export type RunAdapterHandleArgs =
-  | RunAdapterHandleArgsThreadRun
-  | RunAdapterHandleArgsResponse
+export type RunAdapterBody = AssistantsRunBody | ResponsesRunBody | AzureAgentsRunBody
+
+export type RunAdapterHandleArgs = {
+  client: OpenAI
+  body: RunAdapterBody
+  onEvent: (event: any) => Promise<any>
+  getMessages?: () => Promise<MessageWithRun[]>
+}
 
 export type RunAdapterHandle = (
   args: RunAdapterHandleArgs,
@@ -48,7 +75,7 @@ export type RunAdapter = {
 
 export type RunAdapterPartobClient = Omit<RunAdapter, 'handleRun'> & {
   handleRun: (
-    args: Omit<Parameters<RunAdapterHandle>[0], 'client'>,
+    args: Omit<RunAdapterHandleArgs, 'client'>,
   ) => ReturnType<RunAdapterHandle>
 }
 

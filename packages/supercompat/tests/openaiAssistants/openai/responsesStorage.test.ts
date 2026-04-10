@@ -37,7 +37,7 @@ const coreContracts = Object.fromEntries(
 import {
   supercompat,
   openaiClientAdapter,
-  responsesRunAdapter,
+  openaiResponsesRunAdapter,
   responsesStorageAdapter,
 } from '../../../src/openai/index'
 
@@ -70,7 +70,7 @@ function createClient(): OpenAI {
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => currentAssistant,
     }),
     storage: responsesStorageAdapter(),
@@ -163,7 +163,7 @@ function createImmediateClient(): OpenAI {
 
   return supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => currentAssistant,
     }),
     storage: responsesStorageAdapter({ deferItemCreationUntilRun: false }),

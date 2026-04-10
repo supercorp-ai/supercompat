@@ -266,43 +266,6 @@ const createResponsesOnEvent = ({
   }
 }
 
-// ── Build virtual run for completionsRunAdapter ──────────────────
-
-const buildVirtualRun = (opts: {
-  responseId: string; model: string; instructions: string | null;
-  tools: any[]; threadId: string; responseFormat?: any; toolChoice?: any;
-}) => ({
-  id: opts.responseId,
-  object: 'thread.run' as 'thread.run',
-  created_at: dayjs().unix(),
-  thread_id: opts.threadId,
-  assistant_id: opts.responseId,
-  status: 'queued' as const,
-  required_action: null,
-  last_error: null,
-  expires_at: dayjs().add(1, 'hour').unix(),
-  started_at: null, cancelled_at: null, failed_at: null, completed_at: null,
-  model: opts.model,
-  instructions: opts.instructions ?? '',
-  tools: opts.tools.map((t: any) => {
-    if (t.type === 'function') {
-      return { type: 'function' as const, function: { name: t.name, description: t.description ?? '', parameters: t.parameters ?? {}, strict: t.strict ?? false } }
-    }
-    return t
-  }),
-  metadata: {},
-  usage: null,
-  truncation_strategy: { type: 'auto' as const, last_messages: null },
-  response_format: opts.responseFormat ?? ('auto' as 'auto'),
-  incomplete_details: null,
-  max_completion_tokens: null,
-  max_prompt_tokens: null,
-  temperature: null,
-  top_p: null,
-  tool_choice: opts.toolChoice ?? ('auto' as 'auto'),
-  parallel_tool_calls: true,
-})
-
 // ── Create a fake PrismaClient for getMessages (reuses existing code) ──
 
 const createFakePrisma = (store: MemoryStore) => ({
@@ -477,18 +440,6 @@ export const responsesHandlers = ({
 
       if (tools.length > 0) createTools(store, response.id, tools)
 
-      const threadId = conversationId ?? response.id
-
-      const responseFormat = text?.format?.type === 'json_schema'
-        ? { type: 'json_schema' as const, json_schema: { name: text.format.name, schema: text.format.schema, strict: text.format.strict } }
-        : text?.format?.type === 'json_object' ? { type: 'json_object' as const } : undefined
-
-      const virtualRun = buildVirtualRun({
-        responseId: response.id, model, instructions, tools, threadId,
-        ...(responseFormat ? { responseFormat } : {}),
-        ...(body.tool_choice ? { toolChoice: body.tool_choice } : {}),
-      })
-
       const fakePrisma = createFakePrisma(store)
 
       const readableStream = new ReadableStream({
@@ -505,8 +456,7 @@ export const responsesHandlers = ({
 
           try {
             await (runAdapter.handleRun as any)({
-              requestBody: { model, input, ...(instructions ? { instructions } : {}), ...(tools.length ? { tools } : {}), ...(conversationId ? { conversation: conversationId } : {}), ...(temperature != null ? { temperature } : {}), ...(body.tool_choice ? { tool_choice: body.tool_choice } : {}) },
-              run: virtualRun,
+              body: { model, input, status: 'queued', ...(instructions ? { instructions } : {}), ...(tools.length ? { tools } : {}), ...(conversationId ? { conversation: conversationId } : {}), ...(temperature != null ? { temperature } : {}), ...(body.tool_choice ? { tool_choice: body.tool_choice } : {}), ...(text ? { text } : {}) },
               onEvent: unifiedOnEvent,
               getMessages: createGetMessagesFactory({ prisma: fakePrisma as any, conversationId, input, truncationLastMessagesCount }),
             })

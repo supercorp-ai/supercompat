@@ -14,6 +14,8 @@ import {
 } from '../../../src/openai/index'
 
 const groqKey = process.env.GROQ_API_KEY!
+if (!groqKey) { console.log('Skipping: GROQ_API_KEY required'); process.exit(0) }
+if (process.env.SKIP_PROVIDERS?.split(',').includes('groq')) { console.log('Skipping: groq in SKIP_PROVIDERS'); process.exit(0) }
 
 dns.setDefaultResultOrder('ipv4first')
 

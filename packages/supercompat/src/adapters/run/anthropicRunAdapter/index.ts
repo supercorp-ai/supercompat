@@ -10,6 +10,7 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import { uid } from 'radash'
 import dayjs from 'dayjs'
+import { RunAdapterBody } from '@/types'
 
 export type ResponsesRunEvent = {
   type: string
@@ -17,7 +18,7 @@ export type ResponsesRunEvent = {
 }
 
 type HandleArgs = {
-  requestBody: any
+  body: RunAdapterBody
   onEvent: (event: ResponsesRunEvent) => Promise<void>
 }
 
@@ -213,7 +214,7 @@ export const anthropicRunAdapter = ({
   type: 'responses-anthropic' as const,
 
   handleRun: async ({
-    requestBody,
+    body: requestBody,
     onEvent,
   }: HandleArgs) => {
     const { tools: anthropicTools, betas, computerToolNames } = serializeTools(requestBody.tools || [], requestBody.model || '')

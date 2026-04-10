@@ -3,11 +3,10 @@ import { uid } from 'radash'
 import dayjs from 'dayjs'
 import { assign } from 'radash'
 import { runsRegexp } from '@/lib/runs/runsRegexp'
-import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
 import { RunAdapterWithAssistant } from '@/types'
-import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveResponseItemsToConversationMetadata'
 import { enqueueSSE } from '@/lib/sse/enqueueSSE'
 import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
+import { createResponseToAssistantEventTranslator } from '@/lib/responses/createResponseToAssistantEventTranslator'
 import { defaultAssistant, serializeTools, textConfig, truncation } from './shared'
 
 type RunCreateResponse = Response & {
@@ -41,7 +40,6 @@ export const post = ({
   const {
     model,
     instructions,
-    // additional_instructions,
     tools,
     metadata,
     response_format,
@@ -60,15 +58,11 @@ export const post = ({
     input: [...createResponseItems],
   }
 
-  // Clear deferred items so subsequent runs in this thread don't re-send them
   createResponseItems.length = 0
 
   responseBody.model = model
   responseBody.metadata = metadata
 
-  // Files attached to messages are passed as input_file content blocks —
-  // the model reads them directly without needing file_search or vector stores.
-  // Only pass file_search tool when vector_store_ids are explicitly configured.
   Object.assign(responseBody, serializeTools({
     tools,
     useOpenaiComputerTool: isOpenaiComputerUseModel({ model }),
@@ -85,29 +79,35 @@ export const post = ({
     responseBody.instructions = instructions
   }
 
-  const response = await client.responses.create(responseBody)
+  let completedRunData: any = null
 
   const readableStream = new ReadableStream({
     async start(controller) {
+      const translator = createResponseToAssistantEventTranslator({
+        getOpenaiAssistant: runAdapter.getOpenaiAssistant,
+        threadId,
+        client,
+        onEvent: async (event: any) => {
+          if (event.event === 'thread.run.completed' || event.event === 'thread.run.requires_action') {
+            completedRunData = event.data
+          }
+          enqueueSSE(controller, event.event, event.data)
+        },
+      })
+
       try {
         await runAdapter.handleRun({
-          threadId,
-          response,
-          onEvent: async (event: any) => (
-            enqueueSSE(controller, event.event, event.data)
-          ),
-        })
-      } catch (error: any) {
-        console.error(error)
-
-        enqueueSSE(controller, 'thread.run.failed', {
-          id: uid(24),
-          failed_at: dayjs().unix(),
-          last_error: {
-            code: 'server_error',
-            message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
+          body: responseBody,
+          onEvent: async (event: any) => {
+            await translator.handleEvent(event)
           },
         })
+        await translator.finalize()
+      } catch (error: any) {
+        console.error(error)
+        await translator.handleError(error)
+      } finally {
+        translator.cleanup()
       }
 
       controller.close()
@@ -121,28 +121,13 @@ export const post = ({
       },
     })
   } else {
-    const nonStreamResponse = response as OpenAI.Responses.Response
-    const itemIds = (nonStreamResponse.output ?? [])
-      .filter((o: OpenAI.Responses.ResponseOutputItem) => o.id)
-      .map((o: OpenAI.Responses.ResponseOutputItem) => o.id!)
-
-    if (itemIds.length > 0) {
-      await saveResponseItemsToConversationMetadata({
-        client,
-        threadId,
-        responseId: nonStreamResponse.id,
-        itemIds,
-      })
+    const reader = readableStream.getReader()
+    while (true) {
+      const { done } = await reader.read()
+      if (done) break
     }
 
-    const data = serializeResponseAsRun({
-      response: nonStreamResponse,
-      assistantId: assistant_id,
-    })
-
-    return new Response(JSON.stringify(
-      data
-    ), {
+    return new Response(JSON.stringify(completedRunData ?? {}), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',

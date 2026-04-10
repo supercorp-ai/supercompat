@@ -42,7 +42,7 @@ type AzureResponsesStorageAdapterArgs = StorageAdapterArgs & {
  * const client = supercompat({
  *   client: azureAiProjectClientAdapter({ azureAiProject }),
  *   storage: azureResponsesStorageAdapter(),
- *   runAdapter: responsesRunAdapter({ getOpenaiAssistant: () => assistant }),
+ *   runAdapter: azureResponsesRunAdapter({ getOpenaiAssistant: () => assistant }),
  * })
  * ```
  */

@@ -2,6 +2,7 @@ import { test, describe } from 'node:test'
 import OpenAI from 'openai'
 import { responsesContracts as _all } from '../contracts'
 import { config } from '../contracts/lib/config'
+import { withRetry } from '../contracts/lib/withRetry'
 import { supercompat, perplexityClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
 
@@ -28,6 +29,6 @@ function createClient() {
 
 describe('Responses API: prisma + Perplexity', { timeout: 600_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { timeout: 120_000 }, () => contract(createClient()))
+    test(name, { timeout: 120_000 }, () => withRetry(() => contract(createClient()), { label: name }))
   }
 })

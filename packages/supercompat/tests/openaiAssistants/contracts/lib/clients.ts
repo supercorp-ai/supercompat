@@ -13,7 +13,7 @@ export function createBaselineClient(): OpenAI {
 
 export function createResponsesClient(): OpenAI {
   // Lazy imports to avoid pulling in supercompat when only running baseline
-  const { supercompat, openaiClientAdapter, responsesRunAdapter, responsesStorageAdapter } =
+  const { supercompat, openaiClientAdapter, openaiResponsesRunAdapter, responsesStorageAdapter } =
     require('../../../../src/index')
   const dayjs = require('dayjs')
 
@@ -35,7 +35,7 @@ export function createResponsesClient(): OpenAI {
 
   const client = supercompat({
     client: openaiClientAdapter({ openai }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => currentAssistant,
     }),
     storage: responsesStorageAdapter(),

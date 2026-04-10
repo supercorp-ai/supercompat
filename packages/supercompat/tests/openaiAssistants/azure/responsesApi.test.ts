@@ -6,7 +6,7 @@ import { ClientSecretCredential } from '@azure/identity'
 import dayjs from 'dayjs'
 import {
   supercompat,
-  responsesRunAdapter,
+  openaiResponsesRunAdapter,
   azureResponsesStorageAdapter,
   azureAiProjectClientAdapter,
 } from '../../../src/openai/index'
@@ -77,7 +77,7 @@ testOrSkip('Azure Responses API - basic conversation', async (t) => {
     // Use supercompat with responses adapters
     const client = supercompat({
       client: azureAiProjectClientAdapter({ azureAiProject }),
-      runAdapter: responsesRunAdapter({
+      runAdapter: openaiResponsesRunAdapter({
         getOpenaiAssistant: () => openaiAssistant,
       }),
       storage: azureResponsesStorageAdapter(),
@@ -142,7 +142,7 @@ testOrSkip('Azure Responses API - maintains conversation across runs', async (t)
 
     const client = supercompat({
       client: azureAiProjectClientAdapter({ azureAiProject }),
-      runAdapter: responsesRunAdapter({
+      runAdapter: openaiResponsesRunAdapter({
         getOpenaiAssistant: () => openaiAssistant,
       }),
       storage: azureResponsesStorageAdapter(),
@@ -216,7 +216,7 @@ test('Azure Responses API - streaming', async (t) => {
 
     const client = supercompat({
       client: azureAiProjectClientAdapter({ azureAiProject }),
-      runAdapter: responsesRunAdapter({
+      runAdapter: openaiResponsesRunAdapter({
         getOpenaiAssistant: () => openaiAssistant,
       }),
       storage: azureResponsesStorageAdapter(),
