@@ -1,5 +1,5 @@
 /**
- * Conformance: runs core contracts against supercompat + responsesStorageAdapter.
+ * Conformance: runs core contracts against supercompat + openaiResponsesStorageAdapter.
  *
  * The Responses API doesn't have a native assistants concept, so assistant CRUD
  * contracts are skipped. Assistant create/retrieve/update/delete are handled
@@ -38,7 +38,7 @@ import {
   supercompat,
   openaiClientAdapter,
   openaiResponsesRunAdapter,
-  responsesStorageAdapter,
+  openaiResponsesStorageAdapter,
 } from '../../../src/openai/index'
 
 const apiKey = process.env.TEST_OPENAI_API_KEY
@@ -73,7 +73,7 @@ function createClient(): OpenAI {
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => currentAssistant,
     }),
-    storage: responsesStorageAdapter(),
+    storage: openaiResponsesStorageAdapter(),
   })
 
   // Override assistant CRUD to work in-memory
@@ -138,7 +138,7 @@ function createClient(): OpenAI {
   return client
 }
 
-describe('responsesStorageAdapter (deferItemCreationUntilRun: true)', { timeout: 300_000 }, () => {
+describe('openaiResponsesStorageAdapter (deferItemCreationUntilRun: true)', { timeout: 300_000 }, () => {
   for (const [name, contract] of Object.entries(coreContracts)) {
     test(name, { timeout: 120_000 }, () => contract(createClient()))
   }
@@ -166,10 +166,10 @@ function createImmediateClient(): OpenAI {
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => currentAssistant,
     }),
-    storage: responsesStorageAdapter({ deferItemCreationUntilRun: false }),
+    storage: openaiResponsesStorageAdapter({ deferItemCreationUntilRun: false }),
   })
 }
 
-describe('responsesStorageAdapter (deferItemCreationUntilRun: false)', { timeout: 120_000 }, () => {
+describe('openaiResponsesStorageAdapter (deferItemCreationUntilRun: false)', { timeout: 120_000 }, () => {
   test('crud: retrieve message', { timeout: 60_000 }, () => retrieveMessage(createImmediateClient()))
 })

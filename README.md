@@ -298,7 +298,7 @@ const client = supercompat({
 |---|---|---|---|
 | `memoryStorageAdapter` | In-memory | No | Zero setup, state lost on restart. Great for development, testing, and stateless workloads. |
 | `prismaStorageAdapter` | PostgreSQL (Prisma) | Yes | Full persistence for threads, messages, runs, responses, and conversations. |
-| `responsesStorageAdapter` | OpenAI Responses API | No | No database needed; uses OpenAI for storage. Assistants API only. |
+| `openaiResponsesStorageAdapter` | OpenAI Responses API | No | No database needed; uses OpenAI for storage. Assistants API only. |
 | `azureAgentsStorageAdapter` | Azure AI Agents | No | Manages agents, threads, messages, files, vector stores. |
 | `azureResponsesStorageAdapter` | Azure AI + Responses API | No | Hybrid: Azure for threads/files, Responses for runs. |
 
@@ -320,12 +320,12 @@ const client = supercompat({
 
 See [Database Setup](#database-setup) for the required Prisma schema.
 
-### `responsesStorageAdapter` options
+### `openaiResponsesStorageAdapter` options
 
 ```typescript
-import { responsesStorageAdapter } from 'supercompat/openai'
+import { openaiResponsesStorageAdapter } from 'supercompat/openai'
 
-responsesStorageAdapter({
+openaiResponsesStorageAdapter({
   deferItemCreationUntilRun: true,  // default: false
 })
 ```

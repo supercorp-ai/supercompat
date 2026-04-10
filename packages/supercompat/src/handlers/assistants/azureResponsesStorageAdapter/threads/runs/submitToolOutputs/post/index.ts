@@ -6,7 +6,7 @@ import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsC
 import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
 import { enqueueSSE } from '@/lib/sse/enqueueSSE'
 import { createResponseToAssistantEventTranslator } from '@/lib/responses/createResponseToAssistantEventTranslator'
-import { getToolCallOutputItems, serializeTools, truncation } from '@/handlers/assistants/responsesStorageAdapter/threads/runs/submitToolOutputs/shared'
+import { getToolCallOutputItems, serializeTools, truncation } from '@/handlers/assistants/openaiResponsesStorageAdapter/threads/runs/submitToolOutputs/shared'
 
 export const post = ({
   client,

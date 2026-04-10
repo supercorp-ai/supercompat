@@ -4,7 +4,7 @@
  * Calls OpenAI's native Responses API directly and streams events through.
  * Supports all built-in tools (web_search, file_search, code_interpreter, computer_use).
  *
- * When used with responsesStorageAdapter (Assistants surface), pass getOpenaiAssistant
+ * When used with openaiResponsesStorageAdapter (Assistants surface), pass getOpenaiAssistant
  * so the storage adapter can resolve assistant data for building the request body.
  */
 import type OpenAI from 'openai'

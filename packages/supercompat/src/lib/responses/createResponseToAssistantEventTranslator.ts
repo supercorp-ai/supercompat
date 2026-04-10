@@ -2,7 +2,7 @@
  * Creates a stateful event translator that converts Responses API events (response.*)
  * into Assistants API events (thread.*).
  *
- * Used by responsesStorageAdapter to translate events from run adapters that emit
+ * Used by openaiResponsesStorageAdapter to translate events from run adapters that emit
  * native Responses API events (openaiResponsesRunAdapter, azureResponsesRunAdapter).
  *
  * Returns an onEvent wrapper: call it with each response.* event, and it will

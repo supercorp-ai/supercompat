@@ -12,7 +12,7 @@ import {
   serializeTools,
   textConfig,
   truncation,
-} from '@/handlers/assistants/responsesStorageAdapter/threads/runs/shared'
+} from '@/handlers/assistants/openaiResponsesStorageAdapter/threads/runs/shared'
 
 type RunCreateResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Run>

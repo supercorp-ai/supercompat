@@ -28,7 +28,7 @@ export { geminiRunAdapter } from '../adapters/run/geminiRunAdapter'
 // Storage adapters
 export { prismaStorageAdapter } from './prismaStorageAdapter'
 export { memoryStorageAdapter } from '../handlers/assistants/memoryStorageAdapter'
-export { responsesStorageAdapter } from '../handlers/assistants/responsesStorageAdapter'
+export { openaiResponsesStorageAdapter } from '../handlers/assistants/openaiResponsesStorageAdapter'
 export { azureAgentsStorageAdapter } from '../handlers/assistants/azureAgentsStorageAdapter'
 export { azureResponsesStorageAdapter } from '../handlers/assistants/azureResponsesStorageAdapter'
 

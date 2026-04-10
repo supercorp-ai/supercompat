@@ -8,7 +8,7 @@ import {
   openaiResponsesRunAdapter,
   openaiClientAdapter,
   supercompat,
-  responsesStorageAdapter,
+  openaiResponsesStorageAdapter,
 } from '../../../src/openai/index'
 import { serializeItemAsMessage } from '../../../src/lib/items/serializeItemAsMessage'
 
@@ -137,7 +137,7 @@ test('code interpreter file annotations preserved through supercompat messages.l
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter(),
+    storage: openaiResponsesStorageAdapter(),
   })
 
   // Use supercompat to list messages from the same conversation

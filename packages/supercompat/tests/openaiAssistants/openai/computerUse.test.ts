@@ -15,7 +15,7 @@ import {
   openaiClientAdapter,
   openRouterClientAdapter,
   supercompat,
-  responsesStorageAdapter,
+  openaiResponsesStorageAdapter,
   prismaStorageAdapter,
 } from '../../../src/openai/index'
 
@@ -488,7 +488,7 @@ testOrSkip('OpenAI supercompat: computer use via thread/run finds subscribe form
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter(),
+    storage: openaiResponsesStorageAdapter(),
   })
 
   // Initialize MCP

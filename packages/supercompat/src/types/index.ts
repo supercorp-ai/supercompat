@@ -22,7 +22,7 @@ interface GetOpenaiAssistantFn {
 export type AssistantsRunBody = OpenAI.Beta.Threads.Run
 
 /**
- * Body shape from Responses surface storage adapters (prismaStorageAdapter, responsesStorageAdapter).
+ * Body shape from Responses surface storage adapters (prismaStorageAdapter, openaiResponsesStorageAdapter).
  * These are Responses API params — passed directly to client.responses.create() by native adapters,
  * or used by completionsRunAdapter to build a /chat/completions request.
  */
