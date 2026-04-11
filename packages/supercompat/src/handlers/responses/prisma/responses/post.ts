@@ -2,7 +2,7 @@ import type { PrismaClient, Prisma } from '@prisma/client'
 import { onEvent } from '../onEvent'
 import { getMessages } from '../getMessages'
 import { serializeResponse } from '../../serializers/serializeResponse'
-import { RunAdapterPartobClient } from '@/types'
+import { RunAdapterPartobClient, ResponsesRunBody } from '@/types'
 
 const createTools = async ({
   prisma,
@@ -169,7 +169,7 @@ export const post = ({
   }
 
   // Build request body from user params — passed directly to the run adapter
-  const requestBody: any = {
+  const requestBody: ResponsesRunBody = {
     model,
     input,
     // status: 'queued' signals completionsRunAdapter to execute

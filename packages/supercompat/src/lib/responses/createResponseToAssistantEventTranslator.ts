@@ -56,12 +56,14 @@ export const createResponseToAssistantEventTranslator = ({
   getOpenaiAssistant,
   threadId,
   client,
+  fallbackRunId,
   waitUntil = <T>(p: Promise<T>) => { p.catch(() => {}) },
   onEvent,
 }: {
   getOpenaiAssistant: GetOpenaiAssistantFn
   threadId: string
   client: OpenAI
+  fallbackRunId?: string
   waitUntil?: <T>(p: Promise<T>) => void | Promise<void>
   onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
 }) => {
@@ -419,7 +421,7 @@ export const createResponseToAssistantEventTranslator = ({
     await onEvent({
       event: 'thread.run.failed',
       data: {
-        id: responseCreatedResponse?.id || `run_${uid(18)}`,
+        id: responseCreatedResponse?.id || fallbackRunId || `resp_${uid(18)}`,
         object: 'thread.run',
         thread_id: threadId,
         assistant_id: (await getOpenaiAssistant({ select: { id: true } })).id,

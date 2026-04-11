@@ -77,7 +77,7 @@ export const serializeMessage = ({
   const messageToolCalls = (message.metadata?.toolCalls || []) as OpenAI.Beta.Threads.Runs.Steps.ToolCall[]
 
   messageToolCalls.forEach((tc: OpenAI.Beta.Threads.Runs.Steps.ToolCall) => {
-    const runStep = run.runSteps.find((rs) => {
+    const runStep = run.runSteps.find((rs: OpenAI.Beta.Threads.Runs.RunStep) => {
       if (rs.type !== 'tool_calls') return false
       const stepDetails = rs.step_details as { tool_calls?: ToolCall[] }
       if (!Array.isArray(stepDetails.tool_calls)) return false

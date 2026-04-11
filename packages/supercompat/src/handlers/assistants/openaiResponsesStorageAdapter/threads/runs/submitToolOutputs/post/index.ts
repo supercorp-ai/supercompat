@@ -54,6 +54,8 @@ export const post = ({
     responseBody.instructions = openaiAssistant.instructions
   }
 
+  let completedRunData: OpenAI.Beta.Threads.Run | null = null
+
   // Streaming: return SSE events
   const readableStream = new ReadableStream({
     async start(controller) {
@@ -99,9 +101,13 @@ export const post = ({
         getOpenaiAssistant: runAdapter.getOpenaiAssistant,
         threadId,
         client,
-        onEvent: async (event: any) => (
+        fallbackRunId: runId,
+        onEvent: async (event: OpenAI.Beta.AssistantStreamEvent) => {
+          if (event.event === 'thread.run.completed' || event.event === 'thread.run.requires_action' || event.event === 'thread.run.failed') {
+            completedRunData = event.data as OpenAI.Beta.Threads.Run
+          }
           enqueueSSE(controller, event.event, event.data)
-        ),
+        },
       })
 
       try {
@@ -131,7 +137,14 @@ export const post = ({
       pump()
     })
 
-    return new Response(JSON.stringify({ id: runId }), {
+    if (!completedRunData) {
+      return new Response(JSON.stringify({ error: { message: 'Run failed to produce a result', type: 'server_error' } }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    return new Response(JSON.stringify(completedRunData), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     })

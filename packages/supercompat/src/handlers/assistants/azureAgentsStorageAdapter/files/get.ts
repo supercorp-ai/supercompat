@@ -8,7 +8,7 @@ export const file = ({
 }: {
   azureAiProject: AIProjectClient
 }): { get: RequestHandler } => ({
-  get: async (url) => {
+  get: async (url: string) => {
     const { pathname } = new URL(url)
     const match = pathname.match(new RegExp(fileRegexp))
 

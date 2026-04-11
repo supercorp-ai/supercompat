@@ -6,7 +6,7 @@ export type MessageWithRun = OpenAI.Beta.Threads.Message & {
   }) | null
 }
 
-interface GetOpenaiAssistantFn {
+export interface GetOpenaiAssistantFn {
   (args: { select: { id: true } }):
     | Pick<OpenAI.Beta.Assistants.Assistant, 'id'>
     | Promise<Pick<OpenAI.Beta.Assistants.Assistant, 'id'>>
@@ -28,17 +28,17 @@ export type AssistantsRunBody = OpenAI.Beta.Threads.Run
  */
 export type ResponsesRunBody = {
   model: string
-  input: any
+  input: OpenAI.Responses.ResponseInput
   status?: string
   instructions?: string
-  tools?: any[]
-  tool_choice?: any
-  metadata?: any
+  tools?: OpenAI.Responses.Tool[]
+  tool_choice?: OpenAI.Responses.ResponseCreateParams['tool_choice']
+  metadata?: Record<string, string> | null
   temperature?: number
   top_p?: number
   max_output_tokens?: number
-  text?: { format?: any }
-  truncation?: string
+  text?: OpenAI.Responses.ResponseTextConfig
+  truncation?: OpenAI.Responses.ResponseCreateParams['truncation']
   conversation?: string
   parallel_tool_calls?: boolean
   // Azure agent reference
@@ -52,7 +52,7 @@ export type AzureAgentsRunBody = {
   threadId: string
   assistantId: string
   instructions?: string
-  tools?: any[]
+  tools?: OpenAI.Beta.Threads.Runs.RunCreateParams['tools']
 }
 
 export type RunAdapterBody = AssistantsRunBody | ResponsesRunBody | AzureAgentsRunBody
@@ -60,7 +60,7 @@ export type RunAdapterBody = AssistantsRunBody | ResponsesRunBody | AzureAgentsR
 export type RunAdapterHandleArgs = {
   client: OpenAI
   body: RunAdapterBody
-  onEvent: (event: any) => Promise<any>
+  onEvent: (event: OpenAI.Beta.AssistantStreamEvent | OpenAI.Responses.ResponseStreamEvent) => Promise<void>
   getMessages?: () => Promise<MessageWithRun[]>
 }
 

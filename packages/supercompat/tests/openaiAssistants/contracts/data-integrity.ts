@@ -509,13 +509,13 @@ export const fileSearchAnnotationIndexes: Contract = async (client) => {
     file_ids: [file.id],
   })
 
-  // Wait for indexing
+  // Wait for indexing — poll until complete, then extra buffer for propagation
   for (let i = 0; i < 60; i++) {
     const vs = await client.vectorStores.retrieve(vectorStore.id)
     if (vs.file_counts.completed > 0 && vs.file_counts.in_progress === 0) break
     await new Promise(r => setTimeout(r, 1000))
   }
-  await new Promise(r => setTimeout(r, 5000))
+  await new Promise(r => setTimeout(r, 10000))
 
   const assistant = await client.beta.assistants.create({
     model: config.model,

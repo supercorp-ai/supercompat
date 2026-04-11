@@ -8,7 +8,7 @@
  * so the storage adapter can resolve assistant data for building the request body.
  */
 import type OpenAI from 'openai'
-import { RunAdapterBody } from '@/types'
+import { RunAdapterBody, GetOpenaiAssistantFn } from '@/types'
 
 // Fields from Assistants API Run objects that the Responses API doesn't accept
 const ASSISTANTS_ONLY_FIELDS = [
@@ -23,7 +23,7 @@ export const openaiResponsesRunAdapter = ({
   getOpenaiAssistant,
   waitUntil,
 }: {
-  getOpenaiAssistant?: (...args: any[]) => any
+  getOpenaiAssistant?: GetOpenaiAssistantFn
   waitUntil?: <T>(p: Promise<T>) => void | Promise<void>
 } = {}) => ({
   type: 'responses-openai' as const,
@@ -37,14 +37,14 @@ export const openaiResponsesRunAdapter = ({
   }: {
     client: OpenAI
     body: RunAdapterBody
-    onEvent: (event: any) => Promise<void>
+    onEvent: (event: OpenAI.Responses.ResponseStreamEvent) => Promise<void>
   }) => {
     const requestBody = { ...body, stream: true }
     for (const key of ASSISTANTS_ONLY_FIELDS) {
       delete requestBody[key]
     }
 
-    const response = await client.responses.create(requestBody) as any
+    const response = await client.responses.create(requestBody) as unknown as AsyncIterable<OpenAI.Responses.ResponseStreamEvent>
 
     for await (const event of response) {
       await onEvent(event)

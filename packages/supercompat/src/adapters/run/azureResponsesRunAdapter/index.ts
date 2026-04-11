@@ -7,7 +7,7 @@
  */
 import type OpenAI from 'openai'
 import type { AIProjectClient } from '@azure/ai-projects'
-import { RunAdapterBody } from '@/types'
+import { RunAdapterBody, GetOpenaiAssistantFn } from '@/types'
 
 // Fields from Assistants API Run objects that the Responses API doesn't accept
 const ASSISTANTS_ONLY_FIELDS = [
@@ -23,7 +23,7 @@ export const azureResponsesRunAdapter = ({
   getOpenaiAssistant,
 }: {
   azureAiProject: AIProjectClient
-  getOpenaiAssistant?: (...args: any[]) => any
+  getOpenaiAssistant?: GetOpenaiAssistantFn
 }) => ({
   type: 'responses-azure' as const,
 
@@ -35,7 +35,7 @@ export const azureResponsesRunAdapter = ({
   }: {
     client?: OpenAI
     body: RunAdapterBody
-    onEvent: (event: any) => Promise<void>
+    onEvent: (event: OpenAI.Responses.ResponseStreamEvent) => Promise<void>
   }) => {
     const azureClient: OpenAI = await (azureAiProject as any).getOpenAIClient()
 
@@ -44,7 +44,7 @@ export const azureResponsesRunAdapter = ({
       delete requestBody[key]
     }
 
-    const response = await azureClient.responses.create(requestBody) as any
+    const response = await azureClient.responses.create(requestBody) as unknown as AsyncIterable<OpenAI.Responses.ResponseStreamEvent>
 
     for await (const event of response) {
       await onEvent(event)
