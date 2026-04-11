@@ -1,0 +1,61 @@
+---
+title: Getting Started
+index: 1
+---
+
+# Getting Started
+
+Install supercompat and your preferred provider SDK.
+
+## Installation
+
+```bash
+npm install supercompat openai
+```
+
+For other providers, install their SDK:
+
+```bash
+# Anthropic
+npm install supercompat @anthropic-ai/sdk
+
+# Google
+npm install supercompat @google/genai
+
+# Groq
+npm install supercompat groq-sdk
+```
+
+## Basic Usage
+
+```typescript
+import { supercompat, openaiClientAdapter, completionsRunAdapter, memoryStorageAdapter } from 'supercompat/openai'
+import OpenAI from 'openai'
+
+const client = supercompat({
+  client: openaiClientAdapter({ openai: new OpenAI() }),
+  runAdapter: completionsRunAdapter(),
+  storage: memoryStorageAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'gpt-4.1-mini',
+  input: 'What is TypeScript?',
+})
+
+console.log(response.output)
+```
+
+## With Prisma Storage
+
+For persistent conversations, use `prismaStorageAdapter`:
+
+```typescript
+import { PrismaClient } from '@prisma/client'
+
+const client = supercompat({
+  client: openaiClientAdapter({ openai: new OpenAI() }),
+  runAdapter: completionsRunAdapter(),
+  storage: prismaStorageAdapter({ prisma: new PrismaClient() }),
+})
+```

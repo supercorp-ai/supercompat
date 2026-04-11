@@ -1,0 +1,49 @@
+---
+title: Adapters
+index: 2
+---
+
+# Adapters
+
+Supercompat uses three types of adapters to separate concerns. Each adapter handles a specific responsibility, and they can be mixed and matched.
+
+## Client Adapters
+
+Determine which LLM provider to call.
+
+| Adapter | Provider |
+|---|---|
+| `openaiClientAdapter` | OpenAI |
+| `anthropicClientAdapter` | Anthropic |
+| `googleClientAdapter` | Google (Gemini) |
+| `azureOpenaiClientAdapter` | Azure OpenAI |
+| `azureAiProjectClientAdapter` | Azure AI Project |
+| `mistralClientAdapter` | Mistral |
+| `groqClientAdapter` | Groq |
+| `openRouterClientAdapter` | OpenRouter |
+| `togetherClientAdapter` | Together |
+| `perplexityClientAdapter` | Perplexity |
+| `ollamaClientAdapter` | Ollama |
+
+## Run Adapters
+
+Determine which API to call on the provider.
+
+| Adapter | API | Notes |
+|---|---|---|
+| `completionsRunAdapter` | `/chat/completions` | Works with any provider |
+| `openaiResponsesRunAdapter` | OpenAI `/responses` | Native OpenAI Responses API |
+| `azureResponsesRunAdapter` | Azure `/responses` | Native Azure Responses API |
+| `anthropicRunAdapter` | Anthropic Messages | Native web search, computer use |
+| `geminiRunAdapter` | Gemini `generateContent` | Native Google tools |
+
+## Storage Adapters
+
+Determine where conversation state is stored.
+
+| Adapter | Backend | Notes |
+|---|---|---|
+| `memoryStorageAdapter` | In-memory | Development, testing |
+| `prismaStorageAdapter` | PostgreSQL (via Prisma) | Production |
+| `openaiResponsesStorageAdapter` | OpenAI API | Uses OpenAI for state |
+| `azureResponsesStorageAdapter` | Azure API | Uses Azure for state |
