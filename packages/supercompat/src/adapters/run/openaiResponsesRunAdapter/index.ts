@@ -8,7 +8,7 @@
  * so the storage adapter can resolve assistant data for building the request body.
  */
 import type OpenAI from 'openai'
-import { RunAdapterBody, GetOpenaiAssistantFn } from '@/types'
+import { RunAdapterBody } from '@/types'
 
 // Fields from Assistants API Run objects that the Responses API doesn't accept
 const ASSISTANTS_ONLY_FIELDS = [
@@ -23,7 +23,7 @@ export const openaiResponsesRunAdapter = ({
   getOpenaiAssistant,
   waitUntil,
 }: {
-  getOpenaiAssistant?: GetOpenaiAssistantFn
+  getOpenaiAssistant?: (args?: { select?: { id?: boolean } }) => Promise<OpenAI.Beta.Assistants.Assistant> | OpenAI.Beta.Assistants.Assistant | Pick<OpenAI.Beta.Assistants.Assistant, 'id'> | Promise<Pick<OpenAI.Beta.Assistants.Assistant, 'id'>>
   waitUntil?: <T>(p: Promise<T>) => void | Promise<void>
 } = {}) => ({
   type: 'responses-openai' as const,

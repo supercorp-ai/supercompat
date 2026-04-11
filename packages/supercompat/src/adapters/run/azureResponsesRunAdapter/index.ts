@@ -7,7 +7,7 @@
  */
 import type OpenAI from 'openai'
 import type { AIProjectClient } from '@azure/ai-projects'
-import { RunAdapterBody, GetOpenaiAssistantFn } from '@/types'
+import { RunAdapterBody } from '@/types'
 
 // Fields from Assistants API Run objects that the Responses API doesn't accept
 const ASSISTANTS_ONLY_FIELDS = [
@@ -23,7 +23,7 @@ export const azureResponsesRunAdapter = ({
   getOpenaiAssistant,
 }: {
   azureAiProject: AIProjectClient
-  getOpenaiAssistant?: GetOpenaiAssistantFn
+  getOpenaiAssistant?: (args?: { select?: { id?: boolean } }) => Promise<OpenAI.Beta.Assistants.Assistant> | OpenAI.Beta.Assistants.Assistant | Pick<OpenAI.Beta.Assistants.Assistant, 'id'> | Promise<Pick<OpenAI.Beta.Assistants.Assistant, 'id'>>
 }) => ({
   type: 'responses-azure' as const,
 
