@@ -46,7 +46,7 @@ function createClient() {
 
   return supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: openaiResponsesRunAdapter({ openai: realOpenAI }),
+    runAdapter: openaiResponsesRunAdapter(),
     storage: prismaStorageAdapter({ prisma: new PrismaClient() }),
   })
 }

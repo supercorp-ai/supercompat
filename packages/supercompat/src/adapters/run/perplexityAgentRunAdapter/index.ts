@@ -11,7 +11,7 @@
 import { uid, isEmpty } from 'radash'
 import dayjs from 'dayjs'
 import type OpenAI from 'openai'
-import { MessageWithRun } from '@/types'
+import { MessageWithRun, RunAdapterBody } from '@/types'
 import { messages as getCompletionsMessages } from '../completionsRunAdapter/messages'
 
 const serializeTool = (tool: any) => {
@@ -111,15 +111,16 @@ export const perplexityAgentRunAdapter = ({
 }) => {
   return {
     handleRun: async ({
-      run,
+      body,
       onEvent,
       getMessages,
     }: {
       client: OpenAI
-      run: OpenAI.Beta.Threads.Run
+      body: RunAdapterBody
       onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
       getMessages: () => Promise<MessageWithRun[]>
     }) => {
+      const run = body as OpenAI.Beta.Threads.Run & Record<string, any>
       if (run.status !== 'queued') return
 
       await onEvent({

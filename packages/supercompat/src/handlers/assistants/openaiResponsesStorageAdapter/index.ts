@@ -26,7 +26,7 @@ type ResponsesStorageAdapterArgs = StorageAdapterArgs & {
   runAdapter: RunAdapterWithAssistant
 }
 
-export const responsesStorageAdapter = ({
+export const openaiResponsesStorageAdapter = ({
   deferItemCreationUntilRun = false,
 }: {
   deferItemCreationUntilRun?: boolean

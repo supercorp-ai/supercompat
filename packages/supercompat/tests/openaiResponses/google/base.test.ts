@@ -4,6 +4,7 @@ import { responsesContracts as _allContracts } from '../contracts'
 const exclude = new Set(['builtin-tools: web search', 'builtin-tools: file search', 'builtin-tools: code interpreter', 'builtin-tools: computer use', 'builtin-tools: file input inline'])
 const responsesContracts = Object.fromEntries(Object.entries(_allContracts).filter(([n]) => !exclude.has(n)))
 import { config } from '../contracts/lib/config'
+import { withRetry } from '../contracts/lib/withRetry'
 import { supercompat, googleClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
 
@@ -32,6 +33,6 @@ function createClient() {
 
 describe('Responses API: prisma + google', { timeout: 600_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { timeout: 120_000 }, () => contract(createClient()))
+    test(name, { timeout: 120_000 }, () => withRetry(() => contract(createClient()), { label: name }))
   }
 })

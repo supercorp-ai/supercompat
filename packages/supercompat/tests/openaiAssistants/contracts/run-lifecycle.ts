@@ -38,6 +38,9 @@ export const simpleRunPoll: Contract = async (client) => {
   assert.ok(run.completed_at, 'should have completed_at')
   assert.ok(run.usage, 'completed run should have usage')
 
+  // Allow async metadata saves (waitUntil) to settle before reading messages
+  await new Promise(r => setTimeout(r, 1000))
+
   // Messages after run
   const messages = await client.beta.threads.messages.list(thread.id)
   assert.ok(messages.data.length >= 2, `Should have user + assistant messages, got ${messages.data.length}`)

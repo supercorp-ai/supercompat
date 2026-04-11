@@ -118,7 +118,7 @@ const handleRunWithAnthropic = async ({
 
   await adapter.handleRun({
     client,
-    run,
+    body: run,
     onEvent,
     getMessages: async () => createUserMessage(userContent),
   })

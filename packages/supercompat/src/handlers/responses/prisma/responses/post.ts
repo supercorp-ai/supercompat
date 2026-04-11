@@ -1,9 +1,8 @@
 import type { PrismaClient, Prisma } from '@prisma/client'
-import dayjs from 'dayjs'
 import { onEvent } from '../onEvent'
 import { getMessages } from '../getMessages'
 import { serializeResponse } from '../../serializers/serializeResponse'
-import { RunAdapterPartobClient } from '@/types'
+import { RunAdapterPartobClient, ResponsesRunBody } from '@/types'
 
 const createTools = async ({
   prisma,
@@ -47,65 +46,6 @@ const createTools = async ({
     }
   }
 }
-
-const buildVirtualRun = ({
-  responseId,
-  model,
-  instructions,
-  tools,
-  threadId,
-  responseFormat,
-  toolChoice,
-}: {
-  responseId: string
-  model: string
-  instructions: string | null
-  tools: any[]
-  threadId: string
-  responseFormat?: any
-  toolChoice?: any
-}) => ({
-  id: responseId,
-  object: 'thread.run' as 'thread.run',
-  created_at: dayjs().unix(),
-  thread_id: threadId,
-  assistant_id: responseId,
-  status: 'queued' as const,
-  required_action: null,
-  last_error: null,
-  expires_at: dayjs().add(1, 'hour').unix(),
-  started_at: null,
-  cancelled_at: null,
-  failed_at: null,
-  completed_at: null,
-  model,
-  instructions: instructions ?? '',
-  tools: tools.map((t: any) => {
-    if (t.type === 'function') {
-      return {
-        type: 'function' as const,
-        function: {
-          name: t.name,
-          description: t.description ?? '',
-          parameters: t.parameters ?? {},
-          strict: t.strict ?? false,
-        },
-      }
-    }
-    return t
-  }),
-  metadata: {},
-  usage: null,
-  truncation_strategy: { type: 'auto' as const, last_messages: null },
-  response_format: responseFormat ?? ('auto' as 'auto'),
-  incomplete_details: null,
-  max_completion_tokens: null,
-  max_prompt_tokens: null,
-  temperature: null,
-  top_p: null,
-  tool_choice: toolChoice ?? ('auto' as 'auto'),
-  parallel_tool_calls: true,
-})
 
 export const post = ({
   prisma,
@@ -228,29 +168,13 @@ export const post = ({
     await createTools({ prisma, responseId: response.id, tools })
   }
 
-  // Build virtual thread ID for the run adapter
-  const threadId = conversationId ?? response.id
-
-  // Build virtual run for completionsRunAdapter
-  // Map Responses API text.format to Assistants API response_format
-  const responseFormat = text?.format?.type === 'json_schema'
-    ? { type: 'json_schema' as const, json_schema: { name: text.format.name, schema: text.format.schema, strict: text.format.strict } }
-    : text?.format?.type === 'json_object'
-      ? { type: 'json_object' as const }
-      : undefined
-
-  const virtualRun = buildVirtualRun({
-    responseId: response.id,
+  // Build request body from user params — passed directly to the run adapter
+  const requestBody: ResponsesRunBody = {
     model,
-    instructions,
-    tools,
-    threadId,
-    ...(responseFormat ? { responseFormat } : {}),
-    ...(body.tool_choice ? { toolChoice: body.tool_choice } : {}),
-  })
-
-  // Build Responses API request body for native adapters
-  const requestBody: any = { model, input }
+    input,
+    // status: 'queued' signals completionsRunAdapter to execute
+    status: 'queued',
+  }
   if (instructions) requestBody.instructions = instructions
   if (tools.length > 0) requestBody.tools = tools
   if (metadata) requestBody.metadata = metadata
@@ -301,10 +225,7 @@ export const post = ({
 
       try {
         await (runAdapter.handleRun as any)({
-          // Native adapters use requestBody + onEvent
-          requestBody,
-          // Completions adapter uses run + onEvent + getMessages
-          run: virtualRun,
+          body: requestBody,
           onEvent: unifiedOnEvent,
           getMessages: getMessages({
             prisma,

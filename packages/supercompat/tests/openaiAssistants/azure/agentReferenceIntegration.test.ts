@@ -6,7 +6,7 @@ import { AIProjectClient } from '@azure/ai-projects-v2'
 import { ClientSecretCredential } from '@azure/identity'
 import { supercompat } from '../../../src/openai/index'
 import { azureResponsesStorageAdapter } from '../../../src/handlers/assistants/azureResponsesStorageAdapter'
-import { responsesRunAdapter } from '../../../src/adapters/run/responsesRunAdapter'
+import { openaiResponsesRunAdapter } from '../../../src/openai/index'
 import { azureAiProjectClientAdapter } from '../../../src/adapters/client/azureAiProjectClientAdapter'
 
 const azureEndpoint = process.env.AZURE_PROJECT_ENDPOINT
@@ -107,7 +107,7 @@ test('Azure agent reference integration: agent instructions are used when extern
     const client = supercompat({
       client: azureAiProjectClientAdapter({ azureAiProject }),
       storage: azureResponsesStorageAdapter(),
-      runAdapter: responsesRunAdapter({
+      runAdapter: openaiResponsesRunAdapter({
         getOpenaiAssistant: () => Promise.resolve(openaiAssistant),
       }),
     }) as unknown as OpenAI
@@ -165,7 +165,7 @@ test('Azure agent reference integration: local instructions are ignored for exte
     const client = supercompat({
       client: azureAiProjectClientAdapter({ azureAiProject }),
       storage: azureResponsesStorageAdapter(),
-      runAdapter: responsesRunAdapter({
+      runAdapter: openaiResponsesRunAdapter({
         getOpenaiAssistant: () => Promise.resolve(openaiAssistant),
       }),
     }) as unknown as OpenAI

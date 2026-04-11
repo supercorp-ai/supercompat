@@ -9,6 +9,7 @@
 import type { GoogleGenAI } from '@google/genai'
 import { uid } from 'radash'
 import dayjs from 'dayjs'
+import { ResponsesRunBody } from '@/types'
 
 export type ResponsesRunEvent = {
   type: string
@@ -16,7 +17,7 @@ export type ResponsesRunEvent = {
 }
 
 type HandleArgs = {
-  requestBody: any
+  body: ResponsesRunBody
   onEvent: (event: ResponsesRunEvent) => Promise<void>
 }
 
@@ -94,7 +95,7 @@ export const geminiRunAdapter = ({
   type: 'responses-gemini' as const,
 
   handleRun: async ({
-    requestBody,
+    body: requestBody,
     onEvent,
   }: HandleArgs) => {
     const responseId = `resp_${uid(24)}`
@@ -133,11 +134,12 @@ export const geminiRunAdapter = ({
       contents.push({ role: 'user', parts: [{ text: input }] })
     } else if (Array.isArray(input)) {
       for (const item of input) {
-        if (item.type === 'message' || item.role) {
-          const text = typeof item.content === 'string' ? item.content
-            : Array.isArray(item.content) ? item.content.map((c: any) => c.text || '').join('')
-            : String(item.content)
-          contents.push({ role: item.role === 'assistant' ? 'model' : 'user', parts: [{ text }] })
+        if (item.type === 'message' || 'role' in item) {
+          const msg = item as Record<string, any>
+          const text = typeof msg.content === 'string' ? msg.content
+            : Array.isArray(msg.content) ? msg.content.map((c: Record<string, string>) => c.text || '').join('')
+            : String(msg.content)
+          contents.push({ role: msg.role === 'assistant' ? 'model' : 'user', parts: [{ text }] })
         } else if (item.type === 'computer_call_output') {
           // Translate computer_call_output → Gemini functionResponse
           const screenshotUrl = item.output?.image_url || ''
@@ -147,7 +149,7 @@ export const geminiRunAdapter = ({
               functionResponse: {
                 name: 'computer_call',
                 response: {
-                  current_url: item.current_url || '',
+                  current_url: ('current_url' in item ? String(item.current_url) : ''),
                   screenshot: screenshotUrl,
                 },
               },
@@ -177,7 +179,7 @@ export const geminiRunAdapter = ({
 
     // Call Gemini
     const response = await google.models.generateContentStream({
-      model: requestBody.model,
+      model: requestBody.model!,
       contents,
       config: {
         systemInstruction: requestBody.instructions || undefined,

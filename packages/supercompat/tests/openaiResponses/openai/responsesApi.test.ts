@@ -5,13 +5,13 @@ import dayjs from 'dayjs'
 import { ProxyAgent, setGlobalDispatcher } from 'undici'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import {
-  responsesRunAdapter,
+  openaiResponsesRunAdapter,
   openaiClientAdapter,
   supercompat,
-  responsesStorageAdapter,
+  openaiResponsesStorageAdapter,
 } from '../../../src/openai/index'
 
-// The responsesStorageAdapter SSE stream wraps events as:
+// The openaiResponsesStorageAdapter SSE stream wraps events as:
 //   { event: null, data: { event: 'thread.run.created', data: {...} } }
 // This helper extracts the event name from either format.
 const getEventName = (event: any): string | null =>
@@ -31,7 +31,7 @@ if (process.env.HTTPS_PROXY) {
   setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY))
 }
 
-testOrSkip('responsesRunAdapter can create thread message and run via OpenAI', async (t) => {
+testOrSkip('openaiResponsesRunAdapter can create thread message and run via OpenAI', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -53,10 +53,10 @@ testOrSkip('responsesRunAdapter can create thread message and run via OpenAI', a
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter(),
+    storage: openaiResponsesStorageAdapter(),
   })
 
   // const assistant = await client.beta.assistants.create({
@@ -85,7 +85,7 @@ testOrSkip('responsesRunAdapter can create thread message and run via OpenAI', a
   assert.equal(text, '4')
 })
 
-testOrSkip('responsesRunAdapter maintains conversation across runs', async (t) => {
+testOrSkip('openaiResponsesRunAdapter maintains conversation across runs', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -107,10 +107,10 @@ testOrSkip('responsesRunAdapter maintains conversation across runs', async (t) =
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter(),
+    storage: openaiResponsesStorageAdapter(),
   })
 
   const thread = await client.beta.threads.create()
@@ -145,7 +145,7 @@ testOrSkip('responsesRunAdapter maintains conversation across runs', async (t) =
   assert.ok(text.includes('blue'))
 })
 
-test('responsesRunAdapter streams tool calls via OpenAI', async () => {
+test('openaiResponsesRunAdapter streams tool calls via OpenAI', async () => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -188,10 +188,10 @@ test('responsesRunAdapter streams tool calls via OpenAI', async () => {
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter(),
+    storage: openaiResponsesStorageAdapter(),
   })
 
   const thread = await client.beta.threads.create()
@@ -276,7 +276,7 @@ test('responsesRunAdapter streams tool calls via OpenAI', async () => {
   // assert.ok(finalText.includes('70'))
 })
 
-testOrSkip('responsesRunAdapter handles multiple simultaneous tool calls', async (t) => {
+testOrSkip('openaiResponsesRunAdapter handles multiple simultaneous tool calls', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -316,10 +316,10 @@ testOrSkip('responsesRunAdapter handles multiple simultaneous tool calls', async
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter(),
+    storage: openaiResponsesStorageAdapter(),
   })
 
   const thread = await client.beta.threads.create()
@@ -391,7 +391,7 @@ testOrSkip('responsesRunAdapter handles multiple simultaneous tool calls', async
   )
 })
 
-testOrSkip('responsesStorageAdapter works with polling', async (t) => {
+testOrSkip('openaiResponsesStorageAdapter works with polling', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -413,10 +413,10 @@ testOrSkip('responsesStorageAdapter works with polling', async (t) => {
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter(),
+    storage: openaiResponsesStorageAdapter(),
   })
 
   const thread = await client.beta.threads.create()
@@ -440,7 +440,7 @@ testOrSkip('responsesStorageAdapter works with polling', async (t) => {
   assert.equal(text, '4')
 })
 
-test('responsesStorageAdapter streams without tool', async (t) => {
+test('openaiResponsesStorageAdapter streams without tool', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -462,10 +462,10 @@ test('responsesStorageAdapter streams without tool', async (t) => {
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter(),
+    storage: openaiResponsesStorageAdapter(),
   })
 
   const thread = await client.beta.threads.create()
@@ -518,7 +518,7 @@ test('responsesStorageAdapter streams without tool', async (t) => {
 })
 
 
-test('responsesStorageAdapter streams with tool', async (t) => {
+test('openaiResponsesStorageAdapter streams with tool', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -540,10 +540,10 @@ test('responsesStorageAdapter streams with tool', async (t) => {
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter(),
+    storage: openaiResponsesStorageAdapter(),
   })
 
   const tools = [
@@ -637,7 +637,7 @@ test('responsesStorageAdapter streams with tool', async (t) => {
   assert.ok(responseText.length > 0, `Assistant should have non-empty response, got: "${responseText}"`)
 })
 
-testOrSkip('responsesStorageAdapter exposes run steps with tools', async (t) => {
+testOrSkip('openaiResponsesStorageAdapter exposes run steps with tools', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -676,10 +676,10 @@ testOrSkip('responsesStorageAdapter exposes run steps with tools', async (t) => 
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter(),
+    storage: openaiResponsesStorageAdapter(),
   })
 
   const thread = await client.beta.threads.create()
@@ -704,7 +704,7 @@ testOrSkip('responsesStorageAdapter exposes run steps with tools', async (t) => 
   )
   assert.equal(toolStep?.step_details?.tool_calls[0]?.type, 'function')
 })
-test('responsesStorageAdapter saves metadata during streaming', async (t) => {
+test('openaiResponsesStorageAdapter saves metadata during streaming', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -726,10 +726,10 @@ test('responsesStorageAdapter saves metadata during streaming', async (t) => {
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter(),
+    storage: openaiResponsesStorageAdapter(),
   })
 
   const thread = await client.beta.threads.create()
@@ -772,7 +772,7 @@ test('responsesStorageAdapter saves metadata during streaming', async (t) => {
   console.log('✅ Metadata saved during streaming:', metadataKeys)
 })
 
-test('responsesStorageAdapter handles thread creation with array content', async (t) => {
+test('openaiResponsesStorageAdapter handles thread creation with array content', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -794,10 +794,10 @@ test('responsesStorageAdapter handles thread creation with array content', async
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter(),
+    storage: openaiResponsesStorageAdapter(),
   })
 
   // Create thread with array content (multiple text parts)
@@ -817,7 +817,7 @@ test('responsesStorageAdapter handles thread creation with array content', async
   console.log('✅ Thread created with array text content')
 })
 
-test('responsesStorageAdapter handles thread creation with multi-part array content', async (t) => {
+test('openaiResponsesStorageAdapter handles thread creation with multi-part array content', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -839,10 +839,10 @@ test('responsesStorageAdapter handles thread creation with multi-part array cont
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter(),
+    storage: openaiResponsesStorageAdapter(),
   })
 
   // Create thread with text content only (testing content format handling)
@@ -863,7 +863,7 @@ test('responsesStorageAdapter handles thread creation with multi-part array cont
   console.log('✅ Thread created with multi-part array content')
 })
 
-test('responsesStorageAdapter handles thread creation with image_url content', async (t) => {
+test('openaiResponsesStorageAdapter handles thread creation with image_url content', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -885,10 +885,10 @@ test('responsesStorageAdapter handles thread creation with image_url content', a
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter(),
+    storage: openaiResponsesStorageAdapter(),
   })
 
   // Use a small, reliable image URL that OpenAI can access
@@ -915,7 +915,7 @@ test('responsesStorageAdapter handles thread creation with image_url content', a
   console.log('✅ Thread created with image_url content')
 })
 
-test('responsesStorageAdapter handles thread creation with mixed text and image content', async (t) => {
+test('openaiResponsesStorageAdapter handles thread creation with mixed text and image content', async (t) => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -937,10 +937,10 @@ test('responsesStorageAdapter handles thread creation with mixed text and image 
 
   const client = supercompat({
     client: openaiClientAdapter({ openai: realOpenAI }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => openaiAssistant,
     }),
-    storage: responsesStorageAdapter(),
+    storage: openaiResponsesStorageAdapter(),
   })
 
   // Test with multiple content parts including image

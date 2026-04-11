@@ -67,6 +67,9 @@ export const runIdOnMessage: Contract = async (client) => {
     assistant_id: assistant.id,
   })
 
+  // Allow async metadata saves (waitUntil) to settle before reading messages
+  await new Promise(r => setTimeout(r, 1000))
+
   const messages = await client.beta.threads.messages.list(thread.id)
   const assistantMsg = messages.data.find(m => m.role === 'assistant')
 
@@ -367,6 +370,10 @@ export const specialCharsInToolOutput: Contract = async (client) => {
     tools: [fixtures.weatherTool],
   })
 
+  assert.ok(
+    run.required_action?.submit_tool_outputs?.tool_calls?.length,
+    `Run should require tool outputs (status: ${run.status}). Model may not have called the tool.`,
+  )
   const tc = run.required_action!.submit_tool_outputs.tool_calls[0]
   const specialOutput = JSON.stringify({
     description: 'Sunny with unicode: 你好 🌞\nTemperature: 72°F\tHumidity: "60%"',
@@ -502,13 +509,13 @@ export const fileSearchAnnotationIndexes: Contract = async (client) => {
     file_ids: [file.id],
   })
 
-  // Wait for indexing
+  // Wait for indexing — poll until complete, then extra buffer for propagation
   for (let i = 0; i < 60; i++) {
     const vs = await client.vectorStores.retrieve(vectorStore.id)
     if (vs.file_counts.completed > 0 && vs.file_counts.in_progress === 0) break
     await new Promise(r => setTimeout(r, 1000))
   }
-  await new Promise(r => setTimeout(r, 5000))
+  await new Promise(r => setTimeout(r, 10000))
 
   const assistant = await client.beta.assistants.create({
     model: config.model,

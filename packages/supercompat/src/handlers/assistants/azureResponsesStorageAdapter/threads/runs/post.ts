@@ -3,17 +3,16 @@ import { uid } from 'radash'
 import dayjs from 'dayjs'
 import { assign } from 'radash'
 import { runsRegexp } from '@/lib/runs/runsRegexp'
-import { serializeResponseAsRun } from '@/lib/responses/serializeResponseAsRun'
-import { RunAdapterWithAssistant } from '@/types'
-import { saveResponseItemsToConversationMetadata } from '@/lib/responses/saveResponseItemsToConversationMetadata'
+import { RunAdapterWithAssistant, ResponsesRunBody } from '@/types'
 import { enqueueSSE } from '@/lib/sse/enqueueSSE'
 import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
+import { createResponseToAssistantEventTranslator } from '@/lib/responses/createResponseToAssistantEventTranslator'
 import {
   defaultAssistant,
   serializeTools,
   textConfig,
   truncation,
-} from '@/handlers/assistants/responsesStorageAdapter/threads/runs/shared'
+} from '@/handlers/assistants/openaiResponsesStorageAdapter/threads/runs/shared'
 
 type RunCreateResponse = Response & {
   json: () => Promise<OpenAI.Beta.Threads.Run>
@@ -116,29 +115,35 @@ export const post = ({
     responseBody.instructions = instructions
   }
 
-  const response = await client.responses.create(responseBody)
+  let completedRunData: OpenAI.Beta.Threads.Run | null = null
 
   const readableStream = new ReadableStream({
     async start(controller) {
+      const translator = createResponseToAssistantEventTranslator({
+        getOpenaiAssistant: runAdapter.getOpenaiAssistant,
+        threadId,
+        client,
+        onEvent: async (event: OpenAI.Beta.AssistantStreamEvent) => {
+          if (event.event === 'thread.run.completed' || event.event === 'thread.run.requires_action' || event.event === 'thread.run.failed') {
+            completedRunData = event.data as OpenAI.Beta.Threads.Run
+          }
+          enqueueSSE(controller, event.event, event.data)
+        },
+      })
+
       try {
         await runAdapter.handleRun({
-          threadId,
-          response,
-          onEvent: async (event: any) => (
-            enqueueSSE(controller, event.event, event.data)
-          ),
-        })
-      } catch (error: any) {
-        console.error(error)
-
-        enqueueSSE(controller, 'thread.run.failed', {
-          id: uid(24),
-          failed_at: dayjs().unix(),
-          last_error: {
-            code: 'server_error',
-            message: `${error?.message ?? ''} ${error?.cause?.message ?? ''}`,
+          body: responseBody as ResponsesRunBody,
+          onEvent: async (event: any) => {
+            await translator.handleEvent(event)
           },
         })
+        await translator.finalize()
+      } catch (error: any) {
+        console.error(error)
+        await translator.handleError(error)
+      } finally {
+        translator.cleanup()
       }
 
       controller.close()
@@ -152,32 +157,23 @@ export const post = ({
       },
     })
   } else {
-    const nonStreamResponse = response as OpenAI.Responses.Response
-    const itemIds = (nonStreamResponse.output ?? [])
-      .filter((o: OpenAI.Responses.ResponseOutputItem) => o.id)
-      .map((o: OpenAI.Responses.ResponseOutputItem) => o.id!)
+    // Consume the stream to trigger the run adapter
+    const reader = readableStream.getReader()
+    while (true) {
+      const { done } = await reader.read()
+      if (done) break
+    }
 
-    if (itemIds.length > 0) {
-      await saveResponseItemsToConversationMetadata({
-        client,
-        threadId,
-        responseId: nonStreamResponse.id,
-        itemIds,
+    if (!completedRunData) {
+      return new Response(JSON.stringify({ error: { message: 'Run failed to produce a result', type: 'server_error' } }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
       })
     }
 
-    const data = serializeResponseAsRun({
-      response: nonStreamResponse,
-      assistantId: assistant_id,
-    })
-
-    return new Response(JSON.stringify(
-      data
-    ), {
+    return new Response(JSON.stringify(completedRunData), {
       status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     })
   }
 }

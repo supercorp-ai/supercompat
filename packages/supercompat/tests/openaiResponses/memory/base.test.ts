@@ -13,6 +13,7 @@ const exclude = new Set([
 ])
 const responsesContracts = Object.fromEntries(Object.entries(_all).filter(([n]) => !exclude.has(n)))
 import { config } from '../contracts/lib/config'
+import { withRetry } from '../contracts/lib/withRetry'
 
 const apiKey = process.env.TEST_OPENAI_API_KEY
 if (!apiKey) {
@@ -43,6 +44,6 @@ function createClient() {
 
 describe('Responses API: memoryStorageAdapter + OpenAI', { timeout: 600_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { timeout: 120_000 }, () => contract(createClient()))
+    test(name, { timeout: 120_000 }, () => withRetry(() => contract(createClient()), { label: name }))
   }
 })

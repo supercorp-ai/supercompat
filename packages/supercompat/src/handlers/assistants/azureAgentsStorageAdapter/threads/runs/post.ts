@@ -49,10 +49,7 @@ export const post =
         async start(controller) {
           try {
             await runAdapter.handleRun({
-              threadId,
-              assistantId: azureAgentId,
-              instructions,
-              tools,
+              body: { threadId, assistantId: azureAgentId, instructions, tools },
               onEvent: async (event: any) => {
                 enqueueSSE(controller, event.event, event.data)
               },

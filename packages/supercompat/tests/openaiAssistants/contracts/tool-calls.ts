@@ -266,8 +266,8 @@ export const fileSearchCall: Contract = async (client) => {
     if (vs.file_counts.completed > 0 && vs.file_counts.in_progress === 0) break
     await new Promise(r => setTimeout(r, 1000))
   }
-  // Extra buffer for search index propagation
-  await new Promise(r => setTimeout(r, 5000))
+  // Extra buffer for search index propagation (Azure needs longer)
+  await new Promise(r => setTimeout(r, 10000))
 
   const assistant = await client.beta.assistants.create({
     model: config.model,
@@ -615,8 +615,15 @@ export const multipleToolCallRounds: Contract = async (client) => {
 
   assert.equal(run.status, 'completed')
 
-  const steps = await client.beta.threads.runs.steps.list(run.id, { thread_id: thread.id })
-  const toolSteps = steps.data.filter(s => s.type === 'tool_calls')
+  // Steps may lag behind the run status on some providers (e.g. Azure Agents).
+  // Poll briefly until all tool_calls steps reach 'completed'.
+  let toolSteps: any[] = []
+  for (let i = 0; i < 5; i++) {
+    const steps = await client.beta.threads.runs.steps.list(run.id, { thread_id: thread.id })
+    toolSteps = steps.data.filter(s => s.type === 'tool_calls')
+    if (toolSteps.length >= 1 && toolSteps.every(s => s.status === 'completed')) break
+    await new Promise(r => setTimeout(r, 1000))
+  }
   assert.ok(toolSteps.length >= 1, 'Should have at least 1 tool_calls step')
 
   for (const step of toolSteps) {

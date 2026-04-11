@@ -17,7 +17,6 @@ export { openRouterClientAdapter } from '../adapters/client/openRouterClientAdap
 
 // Run adapters
 export { completionsRunAdapter } from '../adapters/run/completionsRunAdapter'
-export { responsesRunAdapter } from '../adapters/run/responsesRunAdapter'
 export { azureAgentsRunAdapter } from '../adapters/run/azureAgentsRunAdapter'
 export { perplexityAgentRunAdapter } from '../adapters/run/perplexityAgentRunAdapter'
 export { openaiResponsesRunAdapter } from '../adapters/run/openaiResponsesRunAdapter'
@@ -29,7 +28,7 @@ export { geminiRunAdapter } from '../adapters/run/geminiRunAdapter'
 // Storage adapters
 export { prismaStorageAdapter } from './prismaStorageAdapter'
 export { memoryStorageAdapter } from '../handlers/assistants/memoryStorageAdapter'
-export { responsesStorageAdapter } from '../handlers/assistants/responsesStorageAdapter'
+export { openaiResponsesStorageAdapter } from '../handlers/assistants/openaiResponsesStorageAdapter'
 export { azureAgentsStorageAdapter } from '../handlers/assistants/azureAgentsStorageAdapter'
 export { azureResponsesStorageAdapter } from '../handlers/assistants/azureResponsesStorageAdapter'
 

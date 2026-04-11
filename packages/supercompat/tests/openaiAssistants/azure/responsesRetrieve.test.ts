@@ -5,7 +5,7 @@ import { ClientSecretCredential } from '@azure/identity'
 import {
   azureAiProjectClientAdapter,
   azureResponsesStorageAdapter,
-  responsesRunAdapter,
+  openaiResponsesRunAdapter,
   supercompat,
 } from '../../../src/openai/index'
 
@@ -65,7 +65,7 @@ test('azureResponses: responses.retrieve() is intercepted and works', async () =
       azureAiProject,
     }),
     storage: azureResponsesStorageAdapter(),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => ({
         id: 'local-assistant',
         object: 'assistant' as const,
@@ -147,7 +147,7 @@ test('azureResponses: direct responses.retrieve() call works', async () => {
       azureAiProject,
     }),
     storage: azureResponsesStorageAdapter(),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => ({
         id: 'local-assistant',
         object: 'assistant' as const,

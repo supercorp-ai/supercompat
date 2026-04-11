@@ -48,8 +48,8 @@ export const fileSearch: ResponsesContract = async (client) => {
     if (vs.file_counts.completed > 0 && vs.file_counts.in_progress === 0) break
     await new Promise(r => setTimeout(r, 1000))
   }
-  // Extra buffer for index propagation
-  await new Promise(r => setTimeout(r, 5000))
+  // Extra buffer for index propagation (Azure needs longer)
+  await new Promise(r => setTimeout(r, 10000))
 
   const response = await client.responses.create({
     model: config.model,

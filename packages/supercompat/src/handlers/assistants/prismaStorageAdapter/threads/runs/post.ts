@@ -92,7 +92,7 @@ export const post = ({
     async start(controller) {
       try {
         await runAdapter.handleRun({
-          run: data,
+          body: data,
           onEvent: onEvent({
             controller: {
               ...controller,

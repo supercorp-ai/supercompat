@@ -1,5 +1,5 @@
 /**
- * Conformance: azureResponsesStorageAdapter + responsesRunAdapter + Azure AI Project
+ * Conformance: azureResponsesStorageAdapter + openaiResponsesRunAdapter + Azure AI Project
  *
  * Uses v2 SDK for conversations + responses, v1 for the run adapter.
  * Assistant CRUD is in-memory (Azure Responses doesn't have native assistants).
@@ -34,7 +34,7 @@ const coreContracts = Object.fromEntries(
 import {
   supercompat,
   azureAiProjectClientAdapter,
-  responsesRunAdapter,
+  openaiResponsesRunAdapter,
   azureResponsesStorageAdapter,
 } from '../../../src/openai/index'
 
@@ -67,7 +67,7 @@ function createClient(): OpenAI {
 
   const client = supercompat({
     client: azureAiProjectClientAdapter({ azureAiProject }),
-    runAdapter: responsesRunAdapter({
+    runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => currentAssistant,
     }),
     storage: azureResponsesStorageAdapter(),

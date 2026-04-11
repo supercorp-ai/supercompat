@@ -6,6 +6,7 @@
 import { test, describe } from 'node:test'
 import { contracts } from '../contracts'
 import { createBaselineClient } from '../contracts/lib/clients'
+import { withRetry } from '../contracts/lib/withRetry'
 
 const apiKey = process.env.TEST_OPENAI_API_KEY
 if (!apiKey) {
@@ -17,6 +18,7 @@ describe('Baseline: OpenAI Assistants API', { timeout: 120_000 }, () => {
   const client = createBaselineClient()
 
   for (const [name, contract] of Object.entries(contracts)) {
-    test(name, { timeout: 120_000 }, () => contract(client))
+    test(name, { timeout: 120_000 }, () =>
+      withRetry(() => contract(client), { label: name }))
   }
 })
