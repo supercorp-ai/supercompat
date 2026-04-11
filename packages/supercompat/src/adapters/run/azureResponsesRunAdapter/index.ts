@@ -39,12 +39,12 @@ export const azureResponsesRunAdapter = ({
   }) => {
     const azureClient: OpenAI = await (azureAiProject as any).getOpenAIClient()
 
-    const requestBody = { ...body, stream: true }
+    const requestBody: Record<string, unknown> = { ...body, stream: true }
     for (const key of ASSISTANTS_ONLY_FIELDS) {
       delete requestBody[key]
     }
 
-    const response = await azureClient.responses.create(requestBody) as unknown as AsyncIterable<OpenAI.Responses.ResponseStreamEvent>
+    const response = await azureClient.responses.create(requestBody as OpenAI.Responses.ResponseCreateParams) as unknown as AsyncIterable<OpenAI.Responses.ResponseStreamEvent>
 
     for await (const event of response) {
       await onEvent(event)

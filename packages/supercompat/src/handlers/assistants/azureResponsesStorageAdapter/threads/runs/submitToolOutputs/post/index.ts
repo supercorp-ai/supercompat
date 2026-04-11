@@ -1,5 +1,5 @@
 import type { OpenAI } from 'openai'
-import type { RunAdapterWithAssistant } from '@/types'
+import type { RunAdapterWithAssistant, ResponsesRunBody } from '@/types'
 import { submitToolOutputsRegexp } from '@/lib/runs/submitToolOutputsRegexp'
 import { serializeItemAsFunctionCallRunStep } from '@/lib/items/serializeItemAsFunctionCallRunStep'
 import { serializeItemAsComputerCallRunStep } from '@/lib/items/serializeItemAsComputerCallRunStep'
@@ -135,7 +135,7 @@ export const post = ({
 
       try {
         await runAdapter.handleRun({
-          body: responseBody,
+          body: responseBody as ResponsesRunBody,
           onEvent: async (event: any) => {
             await translator.handleEvent(event)
           },

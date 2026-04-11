@@ -431,7 +431,7 @@ export const createResponseToAssistantEventTranslator = ({
           code: 'server_error',
           message: String(e?.message || e || 'Unknown error'),
         },
-      } as any,
+      } as unknown as OpenAI.Beta.Threads.Run,
     })
   }
 

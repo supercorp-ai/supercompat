@@ -3,7 +3,7 @@ import { uid } from 'radash'
 import dayjs from 'dayjs'
 import { assign } from 'radash'
 import { runsRegexp } from '@/lib/runs/runsRegexp'
-import { RunAdapterWithAssistant } from '@/types'
+import { RunAdapterWithAssistant, ResponsesRunBody } from '@/types'
 import { enqueueSSE } from '@/lib/sse/enqueueSSE'
 import { isOpenaiComputerUseModel } from '@/lib/openaiComputerUse'
 import { createResponseToAssistantEventTranslator } from '@/lib/responses/createResponseToAssistantEventTranslator'
@@ -133,7 +133,7 @@ export const post = ({
 
       try {
         await runAdapter.handleRun({
-          body: responseBody,
+          body: responseBody as ResponsesRunBody,
           onEvent: async (event: any) => {
             await translator.handleEvent(event)
           },

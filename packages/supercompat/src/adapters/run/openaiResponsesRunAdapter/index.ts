@@ -39,12 +39,12 @@ export const openaiResponsesRunAdapter = ({
     body: RunAdapterBody
     onEvent: (event: OpenAI.Responses.ResponseStreamEvent) => Promise<void>
   }) => {
-    const requestBody = { ...body, stream: true }
+    const requestBody: Record<string, unknown> = { ...body, stream: true }
     for (const key of ASSISTANTS_ONLY_FIELDS) {
       delete requestBody[key]
     }
 
-    const response = await client.responses.create(requestBody) as unknown as AsyncIterable<OpenAI.Responses.ResponseStreamEvent>
+    const response = await client.responses.create(requestBody as OpenAI.Responses.ResponseCreateParams) as unknown as AsyncIterable<OpenAI.Responses.ResponseStreamEvent>
 
     for await (const event of response) {
       await onEvent(event)

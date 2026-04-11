@@ -2,7 +2,7 @@ import _ from 'lodash'
 import { uid, omit, isEmpty } from 'radash'
 import dayjs from 'dayjs'
 import OpenAI from 'openai'
-import { MessageWithRun, RunAdapterBody } from '@/types'
+import { MessageWithRun, AssistantsRunBody, ResponsesRunBody } from '@/types'
 import { messages } from './messages'
 
 const updatedToolCall = ({
@@ -57,15 +57,17 @@ export const completionsRunAdapter = () => {
   return {
     handleRun: async ({
       client,
-      body: run,
+      body,
       onEvent,
       getMessages,
     }: {
       client: OpenAI
-      body: RunAdapterBody
+      body: AssistantsRunBody | ResponsesRunBody
       onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
       getMessages?: () => Promise<MessageWithRun[]>
     }) => {
+      // Body can be either an Assistants Run or Responses params — treat as Run shape internally
+      const run = body as OpenAI.Beta.Threads.Run & Record<string, any>
       if (run.status !== 'queued') return
 
       onEvent({
@@ -85,7 +87,7 @@ export const completionsRunAdapter = () => {
       })
 
       // Resolve response_format: prefer explicit response_format, fall back to text.format (Responses API)
-      const textFormat = (run as any).text?.format
+      const textFormat = run.text?.format
       const responseFormat = (typeof run.response_format === 'object' && run.response_format !== null)
         ? run.response_format
         : textFormat?.type === 'json_schema'

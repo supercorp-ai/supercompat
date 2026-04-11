@@ -111,7 +111,7 @@ export const perplexityAgentRunAdapter = ({
 }) => {
   return {
     handleRun: async ({
-      body: run,
+      body,
       onEvent,
       getMessages,
     }: {
@@ -120,6 +120,7 @@ export const perplexityAgentRunAdapter = ({
       onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
       getMessages: () => Promise<MessageWithRun[]>
     }) => {
+      const run = body as OpenAI.Beta.Threads.Run & Record<string, any>
       if (run.status !== 'queued') return
 
       await onEvent({

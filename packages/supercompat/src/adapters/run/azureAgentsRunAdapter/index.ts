@@ -2,7 +2,7 @@ import dayjs from 'dayjs'
 import type OpenAI from 'openai'
 import type { AIProjectClient } from '@azure/ai-projects'
 import { uid } from 'radash'
-import { RunAdapterBody } from '@/types'
+import { RunAdapterBody, AzureAgentsRunBody } from '@/types'
 
 // Helper function to transform annotations from Azure's camelCase to OpenAI's snake_case
 function transformAnnotations(annotations: any[]): any[] {
@@ -412,7 +412,7 @@ export const azureAgentsRunAdapter = ({
     body: RunAdapterBody
     onEvent: (event: OpenAI.Beta.AssistantStreamEvent) => Promise<any>
   }) => {
-    const { threadId, assistantId, instructions, tools } = body
+    const { threadId, assistantId, instructions, tools } = body as AzureAgentsRunBody
     try {
       // assistantId from OpenAI API maps to azureAgentId
       const azureAgentId = assistantId

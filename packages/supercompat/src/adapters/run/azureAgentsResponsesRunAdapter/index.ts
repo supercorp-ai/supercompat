@@ -9,7 +9,7 @@
 import type { AIProjectClient } from '@azure/ai-projects'
 import { uid } from 'radash'
 import dayjs from 'dayjs'
-import { RunAdapterBody } from '@/types'
+import { ResponsesRunBody } from '@/types'
 
 export type ResponsesRunEvent = {
   type: string
@@ -17,7 +17,7 @@ export type ResponsesRunEvent = {
 }
 
 type HandleArgs = {
-  body: RunAdapterBody
+  body: ResponsesRunBody
   onEvent: (event: ResponsesRunEvent) => Promise<void>
   // Optional context from storage — reuse existing agent/thread instead of creating new ones
   agentId?: string
@@ -68,7 +68,7 @@ export const azureAgentsResponsesRunAdapter = ({
 
     let agentId = existingAgentId
     if (!agentId) {
-      const agent = await azureAiProject.agents.createAgent(requestBody.model, {
+      const agent = await azureAiProject.agents.createAgent(requestBody.model!, {
         name: `temp_${uid(8)}`,
         instructions: requestBody.instructions || '',
         tools,
@@ -100,7 +100,7 @@ export const azureAgentsResponsesRunAdapter = ({
       for (const item of input) {
         if (item.type === 'function_call_output') {
           toolOutputItems.push(item)
-        } else if (item.type === 'message' || item.role) {
+        } else if (item.type === 'message' || 'role' in item) {
           messageItems.push(item)
         }
       }

@@ -27,8 +27,8 @@ export type AssistantsRunBody = OpenAI.Beta.Threads.Run
  * or used by completionsRunAdapter to build a /chat/completions request.
  */
 export type ResponsesRunBody = {
-  model: string
-  input: OpenAI.Responses.ResponseInput
+  model?: string
+  input?: OpenAI.Responses.ResponseInput
   status?: string
   instructions?: string
   tools?: OpenAI.Responses.Tool[]
@@ -60,7 +60,7 @@ export type RunAdapterBody = AssistantsRunBody | ResponsesRunBody | AzureAgentsR
 export type RunAdapterHandleArgs = {
   client: OpenAI
   body: RunAdapterBody
-  onEvent: (event: OpenAI.Beta.AssistantStreamEvent | OpenAI.Responses.ResponseStreamEvent) => Promise<void>
+  onEvent: (event: any) => Promise<any>
   getMessages?: () => Promise<MessageWithRun[]>
 }
 
