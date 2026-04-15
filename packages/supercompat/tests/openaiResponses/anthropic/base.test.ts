@@ -22,9 +22,9 @@ function createClient() {
   })
 }
 
-describe('Responses API: prismaStorageAdapter + Anthropic', { timeout: 300_000 }, () => {
+describe('Responses API: prismaStorageAdapter + Anthropic', { concurrency: true, timeout: 300_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { timeout: 120_000 }, () =>
+    test(name, { concurrency: true, timeout: 120_000 }, () =>
       withRetry(() => contract(createClient()), { label: name }))
   }
 })

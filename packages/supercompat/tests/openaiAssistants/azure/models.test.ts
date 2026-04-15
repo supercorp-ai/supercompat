@@ -1,4 +1,4 @@
-import { test, after } from 'node:test'
+import { test, describe, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { AIProjectClient } from '@azure/ai-projects'
 import { ClientSecretCredential } from '@azure/identity'
@@ -31,6 +31,7 @@ after(async () => {
   }
 })
 
+describe('tests', { concurrency: true }, () => {
 test('azureAiProject: list models via deployments', async () => {
   console.log('Testing Azure AI Project models.list() endpoint...')
 
@@ -107,4 +108,5 @@ test('azureAiProject: models endpoint returns correct format', async () => {
   }
 
   console.log(`Verified ${models.length} model deployments have correct format`)
+})
 })

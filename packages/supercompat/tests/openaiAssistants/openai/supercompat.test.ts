@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import OpenAI from "openai";
 import { HttpsProxyAgent } from "https-proxy-agent";
@@ -10,6 +10,7 @@ if (!apiKey) {
   throw new Error("TEST_OPENAI_API_KEY is required to run this test");
 }
 
+describe('tests', { concurrency: true }, () => {
 test("supercompat can call OpenAI completions", async () => {
   const realOpenAI = new OpenAI({
     apiKey,
@@ -56,3 +57,4 @@ test("supercompat can list models via OpenAI", async () => {
 
   assert.ok(models.length > 0);
 });
+})

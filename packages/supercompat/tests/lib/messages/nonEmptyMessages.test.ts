@@ -1,8 +1,9 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import assert from 'node:assert/strict'
 import type OpenAI from 'openai'
 import { nonEmptyMessages } from '../../../src/lib/messages/nonEmptyMessages.ts'
 
+describe('tests', { concurrency: true }, () => {
 test('replaces empty string content with dash', () => {
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: 'user', content: '   ' },
@@ -12,4 +13,5 @@ test('replaces empty string content with dash', () => {
   const result = nonEmptyMessages({ messages })
   assert.equal(result[0].content, '-')
   assert.equal(result[1].content, 'hello')
+})
 })

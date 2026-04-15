@@ -70,8 +70,8 @@ function createClient() {
   })
 }
 
-describe('Responses API: Azure Agents native', { timeout: 600_000 }, () => {
+describe('Responses API: Azure Agents native', { concurrency: true, timeout: 600_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { timeout: 120_000 }, () => contract(createClient()))
+    test(name, { concurrency: true, timeout: 120_000 }, () => contract(createClient()))
   }
 })

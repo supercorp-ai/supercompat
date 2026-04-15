@@ -22,9 +22,9 @@ const proxyOpts = process.env.HTTPS_PROXY
   ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) as any }
   : {}
 
-describe('prismaStorageAdapter + OpenAI', { timeout: 600_000 }, () => {
+describe('prismaStorageAdapter + OpenAI', { concurrency: true, timeout: 600_000 }, () => {
   for (const [name, contract] of Object.entries(completionsContracts)) {
-    test(name, { timeout: 120_000 }, async () => contract(await createPrismaTestClient({
+    test(name, { concurrency: true, timeout: 120_000 }, async () => contract(await createPrismaTestClient({
       clientAdapter: openaiClientAdapter({ openai: new OpenAI({ apiKey, ...proxyOpts }) }),
       model: 'gpt-4.1-mini',
     })))

@@ -1,4 +1,4 @@
-import { test, before, after } from 'node:test'
+import { test, describe, before, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { execSync, spawn, type ChildProcess } from 'node:child_process'
 import path from 'node:path'
@@ -345,6 +345,7 @@ after(async () => {
 // =========================================================================
 // Test 1: Screenshot + describe (basic tool-use validation)
 // =========================================================================
+describe('tests', () => {
 test('openRouter Kimi K2.5: full e2e with real MCP computer use server', { timeout: 300_000 }, async () => {
   const prisma = new PrismaClient()
   const mcpClient = new McpClient(MCP_SERVER_URL)
@@ -471,4 +472,5 @@ test('openRouter Kimi K2.5: click Subscribe at 720x500 and describe modal fields
   assert.ok(seesFields, `Model should mention name and email fields in the modal (got: "${text.slice(0, 300)}")`)
 
   await prisma.$disconnect()
+})
 })

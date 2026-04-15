@@ -76,7 +76,7 @@ export const listAssistants: Contract = async (client) => {
   const a1 = await client.beta.assistants.create({ model: config.model, name: 'List A' })
   const a2 = await client.beta.assistants.create({ model: config.model, name: 'List B' })
 
-  const list = await client.beta.assistants.list({ limit: 10 })
+  const list = await client.beta.assistants.list({ limit: 100 })
 
   assertPaginatedList(list, 'list')
   assert.ok(list.data.length >= 2, `Should have at least 2 assistants, got ${list.data.length}`)

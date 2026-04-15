@@ -1,4 +1,4 @@
-import { test, before, after } from 'node:test'
+import { test, describe, before, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { spawn, execSync } from 'node:child_process'
 import OpenAI from 'openai'
@@ -335,6 +335,7 @@ after(async () => {
 // ===========================================================================
 // Test 1: OpenAI direct (Responses API)
 // ===========================================================================
+describe('tests', () => {
 testOrSkip('OpenAI direct: computer use finds subscribe form fields', { timeout: 180_000 }, async () => {
   assert.ok(openaiApiKey, 'TEST_OPENAI_API_KEY must be set')
   const totalBench = bench('OpenAI direct total')
@@ -1707,4 +1708,5 @@ testOrSkip('Gemini 3 Flash (OpenRouter): adapter-based computer use finds subscr
     assert.ok(finalAnswer.includes('name') || finalAnswer.includes('email'), `Expected "Name" or "Email" in answer, got: "${finalAnswer}"`)
   }
   console.log(`[gemini-flash] PASS. ${computerCallCount} actions, ${totalMs.toFixed(0)}ms total`)
+})
 })

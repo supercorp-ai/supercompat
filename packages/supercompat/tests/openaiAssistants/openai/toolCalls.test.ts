@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
 import { PrismaClient } from '@prisma/client'
@@ -20,6 +20,7 @@ if (process.env.HTTPS_PROXY) {
 
 const apiKey = process.env.TEST_OPENAI_API_KEY!
 
+describe('tests', { concurrency: true }, () => {
 test('completions run adapter surfaces tool calls', async () => {
   const prisma = new PrismaClient()
   const realOpenAI = new OpenAI({
@@ -99,4 +100,5 @@ test('completions run adapter surfaces tool calls', async () => {
   assert.ok(assistantMessage?.metadata?.toolCalls?.[0])
 
   await prisma.$disconnect()
+})
 })

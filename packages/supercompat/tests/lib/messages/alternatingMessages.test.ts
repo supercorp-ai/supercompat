@@ -1,8 +1,9 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import assert from 'node:assert/strict'
 import type OpenAI from 'openai'
 import { alternatingMessages } from '../../../src/lib/messages/alternatingMessages.ts'
 
+describe('tests', { concurrency: true }, () => {
 test('inserts placeholder messages to alternate roles', () => {
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: 'user', content: 'one' },
@@ -20,4 +21,5 @@ test('inserts placeholder messages to alternate roles', () => {
     'user',
     'assistant',
   ])
+})
 })

@@ -43,13 +43,11 @@ export const fileSearch: ResponsesContract = async (client) => {
   })
 
   // Wait for indexing — poll until file is fully indexed
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 90; i++) {
     const vs = await client.vectorStores.retrieve(vectorStore.id)
     if (vs.file_counts.completed > 0 && vs.file_counts.in_progress === 0) break
     await new Promise(r => setTimeout(r, 1000))
   }
-  // Extra buffer for index propagation (Azure needs longer)
-  await new Promise(r => setTimeout(r, 10000))
 
   const response = await client.responses.create({
     model: config.model,

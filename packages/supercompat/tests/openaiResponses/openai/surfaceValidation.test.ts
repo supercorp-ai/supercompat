@@ -57,7 +57,7 @@ after(async () => {
 
 // ── Response Surface ───────────────────────────────────────────────
 
-describe('Response Surface Validation', () => {
+describe('Response Surface Validation', { concurrency: true }, () => {
   test('non-streaming response has correct shape', async () => {
     const client = makeResponsesClient()
     const response = await client.responses.create({
@@ -110,7 +110,7 @@ describe('Response Surface Validation', () => {
 
 // ── Streaming Events Surface ───────────────────────────────────────
 
-describe('Streaming Events Surface', () => {
+describe('Streaming Events Surface', { concurrency: true }, () => {
   test('stream has response.created with response object', async () => {
     const client = makeResponsesClient()
     const events: any[] = []
@@ -325,7 +325,7 @@ describe('Streaming Events Surface', () => {
 
 // ── Retrieve Surface ───────────────────────────────────────────────
 
-describe('Retrieve Surface', () => {
+describe('Retrieve Surface', { concurrency: true }, () => {
   test('retrieve has correct shape', async () => {
     const client = makeResponsesClient()
     const created = await client.responses.create({
@@ -381,7 +381,7 @@ describe('Retrieve Surface', () => {
 
 // ── Field Values ───────────────────────────────────────────────────
 
-describe('Field Values', () => {
+describe('Field Values', { concurrency: true }, () => {
   test('status values are valid', async () => {
     const client = makeResponsesClient()
     const response = await client.responses.create({
@@ -454,7 +454,7 @@ describe('Field Values', () => {
 
 // ── Backward Compatibility ─────────────────────────────────────────
 
-describe('Backward Compatibility', () => {
+describe('Backward Compatibility', { concurrency: true }, () => {
   test('old import path still works', () => {
     assert.ok(supercompat)
     assert.ok(openaiClientAdapter)

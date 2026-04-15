@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import assert from 'node:assert/strict'
 import type OpenAI from 'openai'
 import { alternatingMessages } from '../../../src/lib/messages/alternatingMessages.ts'
@@ -12,6 +12,7 @@ const pipeline = (messages: OpenAI.Chat.ChatCompletionMessageParam[]) =>
     })
   })
 
+describe('tests', { concurrency: true }, () => {
 test('combines message utilities end to end', () => {
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: 'system', content: '' },
@@ -29,4 +30,5 @@ test('combines message utilities end to end', () => {
     'user'
   ])
   assert.ok(result.every(m => typeof m.content === 'string' && m.content.trim() !== ''))
+})
 })

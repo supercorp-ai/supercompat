@@ -13,9 +13,9 @@ if (!apiKey) {
   process.exit(0)
 }
 
-describe('memoryStorageAdapter + Mistral', { timeout: 600_000 }, () => {
+describe('memoryStorageAdapter + Mistral', { concurrency: true, timeout: 600_000 }, () => {
   for (const [name, contract] of Object.entries(completionsContracts)) {
-    test(name, { timeout: 120_000 }, async () => contract(await createMemoryTestClient({
+    test(name, { concurrency: true, timeout: 120_000 }, async () => contract(await createMemoryTestClient({
       clientAdapter: mistralClientAdapter({ mistral: new Mistral({ apiKey }) }),
       model: 'mistral-small-latest',
     })))

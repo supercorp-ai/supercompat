@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { GoogleGenAI } from "@google/genai";
 import { supercompat, googleClientAdapter } from '../../../src/openai/index';
@@ -9,6 +9,7 @@ if (!apiKey) {
   throw new Error("GOOGLE_API_KEY is required to run this test");
 }
 
+describe('tests', { concurrency: true }, () => {
 test("supercompat can list models via Google", async () => {
   const google = new GoogleGenAI({ apiKey });
 
@@ -32,3 +33,4 @@ test("supercompat can list models via Google", async () => {
   const geminiModels = models.filter(id => id.includes('gemini'));
   assert.ok(geminiModels.length > 0, "Expected at least one Gemini model");
 });
+})

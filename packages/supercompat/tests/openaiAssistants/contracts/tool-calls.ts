@@ -227,7 +227,7 @@ export const continueAfterToolCall: Contract = async (client) => {
   // Turn 2: simple follow-up (no tools needed)
   await client.beta.threads.messages.create(thread.id, {
     role: 'user',
-    content: 'Thanks! Now just say goodbye.',
+    content: 'Thanks! Summarize the weather you reported in one sentence.',
   })
   const run2 = await client.beta.threads.runs.createAndPoll(thread.id, {
     assistant_id: assistant.id,
@@ -261,13 +261,11 @@ export const fileSearchCall: Contract = async (client) => {
   })
 
   // Wait for file to be fully indexed
-  for (let i = 0; i < 60; i++) {
+  for (let i = 0; i < 90; i++) {
     const vs = await client.vectorStores.retrieve(vectorStore.id)
     if (vs.file_counts.completed > 0 && vs.file_counts.in_progress === 0) break
     await new Promise(r => setTimeout(r, 1000))
   }
-  // Extra buffer for search index propagation (Azure needs longer)
-  await new Promise(r => setTimeout(r, 10000))
 
   const assistant = await client.beta.assistants.create({
     model: config.model,

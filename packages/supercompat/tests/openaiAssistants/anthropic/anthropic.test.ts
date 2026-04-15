@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import Anthropic from '@anthropic-ai/sdk'
 import type OpenAI from 'openai'
@@ -21,6 +21,7 @@ if (process.env.HTTPS_PROXY) {
   setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY))
 }
 
+describe('tests', { concurrency: true }, () => {
 test('supercompat can run via Anthropic', async () => {
   const prisma = new PrismaClient()
   const anthropic = new Anthropic({
@@ -64,4 +65,5 @@ test('supercompat can run via Anthropic', async () => {
   assert.equal(text, '4')
 
   await prisma.$disconnect()
+})
 })

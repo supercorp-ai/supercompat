@@ -1,4 +1,4 @@
-import { test, after } from 'node:test'
+import { test, describe, before, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
 import { AIProjectClient } from '@azure/ai-projects'
@@ -43,7 +43,8 @@ const azureAiProject = new AIProjectClient(azureEndpoint, cred)
 const prisma = new PrismaClient()
 
 // Create agents for testing
-test('setup: create agents', async (t) => {
+describe('tests', () => {
+before(async () => {
   console.log('Creating test agents...')
 
   // Create simple agent
@@ -1916,4 +1917,5 @@ testOrSkip('Azure function outputs match OpenAI format exactly', async (t) => {
   }
 
   console.log('\n✅ All output formats match between Azure and OpenAI\n')
+})
 })

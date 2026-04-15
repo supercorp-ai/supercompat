@@ -1,4 +1,4 @@
-import { test, after } from 'node:test'
+import { test, describe, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
 import { AIProjectClient } from '@azure/ai-projects-v2'
@@ -188,6 +188,7 @@ testOrSkip('Azure Responses API - maintains conversation across runs', async (t)
   }
 })
 
+describe('tests', { concurrency: true }, () => {
 test('Azure Responses API - streaming', async (t) => {
   console.log('Testing Azure Responses API with streaming...')
 
@@ -273,4 +274,5 @@ test('Azure Responses API - streaming', async (t) => {
     await azureAiProject.agents.deleteVersion(agent.name, agent.version)
     console.log(`Deleted agent: ${agent.name}`)
   }
+})
 })

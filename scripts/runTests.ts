@@ -2,7 +2,7 @@ import { execSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 
 const dbName = `supercompat_test_${randomUUID().replace(/-/g, '_')}`
-const dbUrl = `postgresql://postgres:postgres@localhost:5432/${dbName}?connection_limit=2`
+const dbUrl = `postgresql://postgres:postgres@localhost:5432/${dbName}?connection_limit=1`
 
 console.log(`Creating database ${dbName}`)
 execSync(`createdb -h localhost -U postgres ${dbName}`, {
@@ -19,7 +19,7 @@ try {
   })
 
   execSync(
-    'npx tsx --tsconfig tsconfig.test.json --test --test-isolation=process --test-concurrency=8 --test-force-exit "packages/supercompat/tests/**/*.test.ts"',
+    'npx tsx --tsconfig tsconfig.test.json --test --test-isolation=process --test-concurrency=256 --test-force-exit "packages/supercompat/tests/**/*.test.ts"',
     {
       stdio: 'inherit',
       env: { ...commonEnv, NODE_ENV: 'test' },

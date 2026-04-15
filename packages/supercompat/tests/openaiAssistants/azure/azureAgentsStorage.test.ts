@@ -139,8 +139,8 @@ function createClient(): OpenAI {
   return client
 }
 
-describe('azureAgentsStorageAdapter', { timeout: 600_000 }, () => {
+describe('azureAgentsStorageAdapter', { concurrency: true, timeout: 600_000 }, () => {
   for (const [name, contract] of Object.entries(contracts)) {
-    test(name, { timeout: 120_000 }, () => contract(createClient()))
+    test(name, { concurrency: true, timeout: 120_000 }, () => contract(createClient()))
   }
 })

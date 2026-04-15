@@ -18,9 +18,9 @@ const filtered = Object.fromEntries(
   Object.entries(completionsContracts).filter(([name]) => name !== 'tools: parallel tool calls')
 )
 
-describe('memoryStorageAdapter + Together', { timeout: 600_000 }, () => {
+describe('memoryStorageAdapter + Together', { concurrency: 1, timeout: 600_000 }, () => {
   for (const [name, contract] of Object.entries(filtered)) {
-    test(name, { timeout: 120_000 }, async () => contract(await createMemoryTestClient({
+    test(name, { concurrency: 1, timeout: 120_000 }, async () => contract(await createMemoryTestClient({
       clientAdapter: togetherClientAdapter({
         together: new OpenAI({ apiKey, baseURL: 'https://api.together.xyz/v1' }),
       }),

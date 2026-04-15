@@ -33,7 +33,7 @@ after(async () => {
 
 // ── Group 1: Response Creation ─────────────────────────────────────
 
-describe('Response Creation', () => {
+describe('Response Creation', { concurrency: true }, () => {
   test('create response with string input', async () => {
     const client = makeClient()
     const response = await client.responses.create({
@@ -132,7 +132,7 @@ describe('Response Creation', () => {
 
 // ── Group 2: Response Shape ────────────────────────────────────────
 
-describe('Response Shape', () => {
+describe('Response Shape', { concurrency: true }, () => {
   test('response has all top-level fields', async () => {
     const client = makeClient()
     const response = await client.responses.create({
@@ -209,7 +209,7 @@ describe('Response Shape', () => {
 
 // ── Group 3: Streaming ─────────────────────────────────────────────
 
-describe('Streaming', () => {
+describe('Streaming', { concurrency: true }, () => {
   test('stream emits response.created event', async () => {
     const client = makeClient()
     const events: any[] = []
@@ -352,7 +352,7 @@ describe('Streaming', () => {
 
 // ── Group 4: Tool Calls ────────────────────────────────────────────
 
-describe('Tool Calls', () => {
+describe('Tool Calls', { concurrency: true }, () => {
   const tools: any[] = [
     {
       type: 'function',
@@ -568,7 +568,7 @@ describe('Tool Calls', () => {
 
 // ── Group 5: Conversation ──────────────────────────────────────────
 
-describe('Conversation', () => {
+describe('Conversation', { concurrency: true }, () => {
   test('multi-turn maintains context', async () => {
     const client = makeClient()
     const conv = await prisma.conversation.create({ data: {} })
@@ -661,7 +661,7 @@ describe('Conversation', () => {
 
 // ── Group 6: Retrieve / Delete ─────────────────────────────────────
 
-describe('Retrieve and Delete', () => {
+describe('Retrieve and Delete', { concurrency: true }, () => {
   test('retrieve response by ID', async () => {
     const client = makeClient()
     const created = await client.responses.create({
@@ -741,7 +741,7 @@ describe('Retrieve and Delete', () => {
 
 // ── Group 7: Non-streaming specifics ───────────────────────────────
 
-describe('Non-streaming specifics', () => {
+describe('Non-streaming specifics', { concurrency: true }, () => {
   test('non-streaming returns complete object', async () => {
     const client = makeClient()
     const response = await client.responses.create({
@@ -800,7 +800,7 @@ describe('Non-streaming specifics', () => {
 
 // ── Group 8: Edge Cases ────────────────────────────────────────────
 
-describe('Edge Cases', () => {
+describe('Edge Cases', { concurrency: true }, () => {
   test('response with metadata', async () => {
     const client = makeClient()
     const response = await client.responses.create({

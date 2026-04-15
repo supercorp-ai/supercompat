@@ -51,8 +51,8 @@ function createClient() {
   })
 }
 
-describe('Responses API: openaiResponsesRunAdapter + OpenAI', { timeout: 300_000 }, () => {
+describe('Responses API: openaiResponsesRunAdapter + OpenAI', { concurrency: true, timeout: 300_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { timeout: 120_000 }, () => contract(createClient()))
+    test(name, { concurrency: true, timeout: 240_000 }, () => contract(createClient()))
   }
 })

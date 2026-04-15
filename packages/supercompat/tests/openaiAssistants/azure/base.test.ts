@@ -18,9 +18,9 @@ if (!process.env.DATABASE_URL) {
   process.exit(0)
 }
 
-describe('prismaStorageAdapter + Azure OpenAI', { timeout: 600_000 }, () => {
+describe('prismaStorageAdapter + Azure OpenAI', { concurrency: true, timeout: 600_000 }, () => {
   for (const [name, contract] of Object.entries(completionsContracts)) {
-    test(name, { timeout: 120_000 }, async () => contract(await createPrismaTestClient({
+    test(name, { concurrency: true, timeout: 120_000 }, async () => contract(await createPrismaTestClient({
       clientAdapter: azureOpenaiClientAdapter({
         azureOpenai: new AzureOpenAI({ apiKey, endpoint, apiVersion: '2024-10-21' }),
       }),

@@ -1,4 +1,4 @@
-import { test, after } from 'node:test'
+import { test, describe, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import dayjs from 'dayjs'
 import OpenAI from 'openai'
@@ -86,6 +86,7 @@ const getLatestAssistantText = async ({
   return ''
 }
 
+describe('tests', { concurrency: true }, () => {
 test('Azure agent reference integration: agent instructions are used when external agent name is passed', async () => {
   console.log('Testing Azure agent reference with agent-stored instructions...')
 
@@ -200,4 +201,5 @@ test('Azure agent reference integration: local instructions are ignored for exte
     await azureAiProject.agents.deleteVersion(agent.name, agent.version)
     console.log('Cleaned up agent')
   }
+})
 })

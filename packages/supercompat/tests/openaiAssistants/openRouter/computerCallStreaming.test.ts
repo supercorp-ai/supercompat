@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { post } from '../../../src/adapters/client/openRouterClientAdapter/completions/post.ts'
 
@@ -70,6 +70,7 @@ const collectComputerCallArgs = async (response: Response): Promise<string> => {
   return args
 }
 
+describe('tests', { concurrency: true }, () => {
 test('streaming: complete arguments in the same chunk as name', async () => {
   const mockOpenRouter = createMockOpenRouter([
     {
@@ -240,4 +241,5 @@ test('streaming: standard OpenAI format (name first, arguments separate) still w
 
   const parsed = JSON.parse(args)
   assert.equal(parsed.action.type, 'screenshot')
+})
 })

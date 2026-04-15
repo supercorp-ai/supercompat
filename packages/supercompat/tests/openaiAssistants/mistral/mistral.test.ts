@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import type OpenAI from 'openai'
 import { Mistral } from '@mistralai/mistralai'
@@ -18,6 +18,7 @@ if (process.env.HTTPS_PROXY) {
   setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY))
 }
 
+describe('tests', { concurrency: true }, () => {
 test('supercompat can run via Mistral', async () => {
   const prisma = new PrismaClient()
   const mistral = new Mistral({
@@ -138,4 +139,5 @@ test('prismaStorageAdapter exposes run steps with tools via Mistral', async () =
   assert.equal(toolStep?.step_details?.tool_calls[0]?.type, 'function')
 
   await prisma.$disconnect()
+})
 })

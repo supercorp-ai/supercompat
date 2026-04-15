@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import {
   appendItemIdsToConversationMetadata,
@@ -25,6 +25,7 @@ function metadataValuesWithinLimits(metadata: Meta) {
   })
 }
 
+describe('tests', { concurrency: true }, () => {
 test('appendItemIdsToConversationMetadata respects metadata limits when non-map keys fill most slots', () => {
   const metadata: Meta = {}
   for (let i = 0; i < 12; i += 1) {
@@ -326,4 +327,5 @@ test('saveResponseItemsToConversationMetadata updates when metadata changes', as
   assert.ok(metadataPayload)
   const bucketKeys = Object.keys(metadataPayload!).filter((key) => key.startsWith('responseItemsMap'))
   assert.ok(bucketKeys.length > 0)
+})
 })

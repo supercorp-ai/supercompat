@@ -18,7 +18,7 @@ if (!apiKey) {
 
 const client = new OpenAI({ apiKey })
 
-describe('Responses API: computer_call with previous_response_id', { timeout: 60_000 }, () => {
+describe('Responses API: computer_call with previous_response_id', { concurrency: true, timeout: 60_000 }, () => {
   test('full computer use cycle: call → output → follow-up message', async () => {
     // 1. Create response that triggers computer_call
     const r1 = await client.responses.create({

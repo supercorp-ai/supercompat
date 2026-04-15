@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { serializeMessage } from '../../../src/adapters/run/completionsRunAdapter/messages/serializeMessage.ts'
 
@@ -24,6 +24,7 @@ const makeMessage = ({
   },
 })
 
+describe('tests', { concurrency: true }, () => {
 test('computer_screenshot: passed through as raw JSON string', () => {
   const screenshotOutput = JSON.stringify({
     type: 'computer_screenshot',
@@ -107,4 +108,5 @@ test('image_url array output passes through via validToolCallContentTypes', () =
   const toolMsg = messages[1] as any
   assert.ok(Array.isArray(toolMsg.content))
   assert.equal(toolMsg.content[0].type, 'image_url')
+})
 })

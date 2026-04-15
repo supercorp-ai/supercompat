@@ -13,9 +13,9 @@ if (!apiKey) {
   process.exit(0)
 }
 
-describe('memoryStorageAdapter + OpenRouter', { timeout: 600_000 }, () => {
+describe('memoryStorageAdapter + OpenRouter', { concurrency: true, timeout: 600_000 }, () => {
   for (const [name, contract] of Object.entries(completionsContracts)) {
-    test(name, { timeout: 120_000 }, async () => contract(await createMemoryTestClient({
+    test(name, { concurrency: true, timeout: 120_000 }, async () => contract(await createMemoryTestClient({
       clientAdapter: openRouterClientAdapter({ openRouter: new OpenRouter({ apiKey }) }),
       model: 'anthropic/claude-sonnet-4',
     })))

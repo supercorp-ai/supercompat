@@ -1,4 +1,4 @@
-import { test, type TestContext } from 'node:test'
+import { test, describe, type TestContext } from 'node:test'
 import { strict as assert } from 'node:assert'
 import Anthropic from '@anthropic-ai/sdk'
 import type OpenAI from 'openai'
@@ -21,6 +21,7 @@ if (process.env.HTTPS_PROXY) {
 
 const anthropicKey = process.env.ANTHROPIC_API_KEY!
 
+describe('tests', { concurrency: true }, () => {
 test('completions run adapter handles anthropic function tool calls with empty arguments', async () => {
   const prisma = new PrismaClient()
   const anthropic = new Anthropic({
@@ -760,3 +761,4 @@ test(
     await prisma.$disconnect()
   }
 )
+})

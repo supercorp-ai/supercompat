@@ -23,9 +23,9 @@ function createClient() {
   })
 }
 
-describe('Responses API: prisma + Together', { timeout: 600_000 }, () => {
+describe('Responses API: prisma + Together', { concurrency: true, timeout: 600_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { timeout: 120_000 }, () =>
+    test(name, { concurrency: true, timeout: 120_000 }, () =>
       withRetry(() => contract(createClient()), { label: name }))
   }
 })

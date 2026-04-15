@@ -14,11 +14,11 @@ if (!apiKey) {
   process.exit(0)
 }
 
-describe('Baseline: OpenAI Assistants API', { timeout: 120_000 }, () => {
+describe('Baseline: OpenAI Assistants API', { concurrency: true, timeout: 240_000 }, () => {
   const client = createBaselineClient()
 
   for (const [name, contract] of Object.entries(contracts)) {
-    test(name, { timeout: 120_000 }, () =>
+    test(name, { concurrency: true, timeout: 240_000 }, () =>
       withRetry(() => contract(client), { label: name }))
   }
 })

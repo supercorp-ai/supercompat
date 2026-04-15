@@ -22,9 +22,9 @@ function createClient(): OpenAI {
   return new OpenAI({ apiKey, ...proxyOpts })
 }
 
-describe('Responses API Baseline', { timeout: 300_000 }, () => {
+describe('Responses API Baseline', { concurrency: true, timeout: 300_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { timeout: 120_000 }, () =>
+    test(name, { concurrency: true, timeout: 240_000 }, () =>
       withRetry(() => contract(createClient()), { label: name }))
   }
 })

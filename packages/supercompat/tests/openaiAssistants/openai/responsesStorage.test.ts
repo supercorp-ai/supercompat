@@ -138,9 +138,9 @@ function createClient(): OpenAI {
   return client
 }
 
-describe('openaiResponsesStorageAdapter (deferItemCreationUntilRun: true)', { timeout: 300_000 }, () => {
+describe('openaiResponsesStorageAdapter (deferItemCreationUntilRun: true)', { concurrency: true, timeout: 300_000 }, () => {
   for (const [name, contract] of Object.entries(coreContracts)) {
-    test(name, { timeout: 120_000 }, () => contract(createClient()))
+    test(name, { concurrency: true, timeout: 240_000 }, () => contract(createClient()))
   }
 })
 
@@ -170,6 +170,6 @@ function createImmediateClient(): OpenAI {
   })
 }
 
-describe('openaiResponsesStorageAdapter (deferItemCreationUntilRun: false)', { timeout: 120_000 }, () => {
-  test('crud: retrieve message', { timeout: 60_000 }, () => retrieveMessage(createImmediateClient()))
+describe('openaiResponsesStorageAdapter (deferItemCreationUntilRun: false)', { concurrency: true, timeout: 240_000 }, () => {
+  test('crud: retrieve message', { concurrency: true, timeout: 60_000 }, () => retrieveMessage(createImmediateClient()))
 })

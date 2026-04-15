@@ -69,8 +69,8 @@ function createClient() {
   })
 }
 
-describe('Responses API: azureResponsesRunAdapter + Azure', { timeout: 600_000 }, () => {
+describe('Responses API: azureResponsesRunAdapter + Azure', { concurrency: true, timeout: 600_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { timeout: 120_000 }, () => contract(createClient()))
+    test(name, { concurrency: true, timeout: 120_000 }, () => contract(createClient()))
   }
 })

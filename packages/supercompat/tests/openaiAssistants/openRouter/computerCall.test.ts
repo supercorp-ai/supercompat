@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { denormalizeComputerCallArguments } from '../../../src/adapters/client/openRouterClientAdapter/completions/normalizeComputerCall.ts'
 
@@ -7,6 +7,7 @@ const DISPLAY_HEIGHT = 720
 
 // --- GLM model (normalized coordinates + artifact cleanup) ---
 
+describe('tests', { concurrency: true }, () => {
 test('GLM: normalized coordinates are denormalized to pixels', () => {
   const result = denormalizeComputerCallArguments({
     argumentsText: JSON.stringify({
@@ -70,4 +71,5 @@ test('Generic model: flat type format is normalized to nested', () => {
 
   const parsed = JSON.parse(result)
   assert.equal(parsed.action.type, 'screenshot')
+})
 })

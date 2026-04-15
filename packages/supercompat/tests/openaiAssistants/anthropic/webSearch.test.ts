@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import Anthropic from '@anthropic-ai/sdk'
 import { HttpsProxyAgent } from 'https-proxy-agent'
@@ -130,7 +130,7 @@ if (!anthropicKey) {
   test.skip('completions run adapter still requires outputs for web_search function on real Anthropics', () => {})
   test.skip('completions run adapter still requires outputs for code_execution function on real Anthropics', () => {})
   test.skip('completions run adapter still requires outputs for computer function on real Anthropics', () => {})
-} else {
+} else { describe('tests', { concurrency: true }, () => {
   test(
     'completions run adapter still requires outputs for web_search function on real Anthropics',
     { timeout: 120_000 },
@@ -210,4 +210,5 @@ if (!anthropicKey) {
       assert.equal(typeof toolCalls[0].computer_call?.action, 'object')
     }
   )
+})
 }

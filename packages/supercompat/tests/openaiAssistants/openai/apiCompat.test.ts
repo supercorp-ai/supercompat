@@ -39,7 +39,7 @@ after(async () => {
 
 // ── Group 1: Assistants CRUD ──────────────────────────────────────
 
-describe('Assistants CRUD', () => {
+describe('Assistants CRUD', { concurrency: true }, () => {
   test('create assistant with all fields', async () => {
     const client = createClient()
     const assistant = await client.beta.assistants.create({
@@ -131,7 +131,7 @@ describe('Assistants CRUD', () => {
 
 // ── Group 2: Threads CRUD ─────────────────────────────────────────
 
-describe('Threads CRUD', () => {
+describe('Threads CRUD', { concurrency: true }, () => {
   let assistantId: string
 
   before(async () => {
@@ -211,7 +211,7 @@ describe('Threads CRUD', () => {
 
 // ── Group 3: Messages CRUD ────────────────────────────────────────
 
-describe('Messages CRUD', () => {
+describe('Messages CRUD', { concurrency: true }, () => {
   let assistantId: string
   let threadId: string
 
@@ -330,7 +330,7 @@ describe('Messages CRUD', () => {
 
 // ── Group 4: Runs ─────────────────────────────────────────────────
 
-describe('Runs', () => {
+describe('Runs', { concurrency: true }, () => {
   test('create and poll run (basic completion)', async () => {
     const client = createClient()
     const assistant = await client.beta.assistants.create({
@@ -495,7 +495,7 @@ describe('Runs', () => {
 
 // ── Group 5: Run Steps ────────────────────────────────────────────
 
-describe('Run Steps', () => {
+describe('Run Steps', { concurrency: true }, () => {
   test('list run steps after completed run', async () => {
     const client = createClient()
     const assistant = await client.beta.assistants.create({
@@ -570,7 +570,7 @@ describe('Run Steps', () => {
 
 // ── Group 6: Tool Calls Flow ──────────────────────────────────────
 
-describe('Tool Calls Flow', () => {
+describe('Tool Calls Flow', { concurrency: true }, () => {
   const tools: OpenAI.Beta.Threads.Runs.RunCreateParams['tools'] = [
     {
       type: 'function',
@@ -642,7 +642,7 @@ describe('Tool Calls Flow', () => {
 
 // ── Group 7: Pagination ───────────────────────────────────────────
 
-describe('Pagination', () => {
+describe('Pagination', { concurrency: true }, () => {
   test('message pagination with limit and has_more', async () => {
     const client = createClient()
     const assistant = await prisma.assistant.create({
@@ -703,7 +703,7 @@ describe('Pagination', () => {
 
 // ── Group 8: List response shape ──────────────────────────────────
 
-describe('List response shape', () => {
+describe('List response shape', { concurrency: true }, () => {
   test('assistants list returns data array with has_more', async () => {
     const client = createClient()
     const a = await client.beta.assistants.create({ model: 'gpt-4o-mini' })
@@ -720,7 +720,7 @@ describe('List response shape', () => {
 
 // ── Group 9: Assistant edge cases ─────────────────────────────────
 
-describe('Assistant edge cases', () => {
+describe('Assistant edge cases', { concurrency: true }, () => {
   test('create assistant with minimal fields', async () => {
     const client = createClient()
     const assistant = await client.beta.assistants.create({
@@ -788,7 +788,7 @@ describe('Assistant edge cases', () => {
 
 // ── Group 10: Thread with initial messages ────────────────────────
 
-describe('Thread with initial messages', () => {
+describe('Thread with initial messages', { concurrency: true }, () => {
   test('create thread with initial messages', async () => {
     const client = createClient()
     const assistant = await client.beta.assistants.create({ model: 'gpt-4o-mini' })
@@ -822,7 +822,7 @@ describe('Thread with initial messages', () => {
 
 // ── Group 11: Message content and metadata ────────────────────────
 
-describe('Message content and metadata', () => {
+describe('Message content and metadata', { concurrency: true }, () => {
   let assistantId: string
   let threadId: string
 
@@ -896,7 +896,7 @@ describe('Message content and metadata', () => {
 
 // ── Group 12: Run response shape ──────────────────────────────────
 
-describe('Run response shape', () => {
+describe('Run response shape', { concurrency: true }, () => {
   test('completed run has all expected fields', async () => {
     const client = createClient()
     const assistant = await client.beta.assistants.create({
@@ -944,7 +944,7 @@ describe('Run response shape', () => {
 
 // ── Group 13: Run step details ────────────────────────────────────
 
-describe('Run step details', () => {
+describe('Run step details', { concurrency: true }, () => {
   test('message_creation step has correct shape', async () => {
     const client = createClient()
     const assistant = await client.beta.assistants.create({
@@ -1048,7 +1048,7 @@ describe('Run step details', () => {
 
 // ── Group 14: Runs pagination ─────────────────────────────────────
 
-describe('Runs pagination', () => {
+describe('Runs pagination', { concurrency: true }, () => {
   test('list runs respects limit', async () => {
     const client = createClient()
     const assistant = await client.beta.assistants.create({
@@ -1092,7 +1092,7 @@ describe('Runs pagination', () => {
 
 // ── Group 15: Empty list responses ────────────────────────────────
 
-describe('Empty list responses', () => {
+describe('Empty list responses', { concurrency: true }, () => {
   test('empty messages list', async () => {
     const client = createClient()
     const assistant = await prisma.assistant.create({

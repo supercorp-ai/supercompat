@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
 import dayjs from 'dayjs'
@@ -145,6 +145,7 @@ testOrSkip('openaiResponsesRunAdapter maintains conversation across runs', async
   assert.ok(text.includes('blue'))
 })
 
+describe('tests', { concurrency: true }, () => {
 test('openaiResponsesRunAdapter streams tool calls via OpenAI', async () => {
   const realOpenAI = new OpenAI({
     apiKey,
@@ -966,4 +967,5 @@ test('openaiResponsesStorageAdapter handles thread creation with mixed text and 
 
   assert.ok(thread.id, 'Thread should be created with mixed text and image content')
   console.log('✅ Thread created with mixed text and image content')
+})
 })

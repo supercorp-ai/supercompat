@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
 import dayjs from 'dayjs'
@@ -19,6 +19,7 @@ if (process.env.HTTPS_PROXY) {
 }
 
 // Unit test: verify serializeItemAsMessage preserves output_text annotations
+describe('tests', { concurrency: true }, () => {
 test('serializeItemAsMessage preserves output_text annotations', async () => {
   // Simulate a Responses API message item with container_file_citation annotations
   // This is exactly what the Responses API returns when code interpreter creates a file
@@ -175,4 +176,5 @@ test('code interpreter file annotations preserved through supercompat messages.l
   assert.ok(typeof annotation.end_index === 'number', 'should have end_index')
 
   console.log('✅ Annotation preserved through supercompat:', annotation)
+})
 })

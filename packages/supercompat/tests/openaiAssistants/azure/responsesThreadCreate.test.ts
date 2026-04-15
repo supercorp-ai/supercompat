@@ -1,4 +1,4 @@
-import { test, after } from 'node:test'
+import { test, describe, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { AIProjectClient } from '@azure/ai-projects-v2'
 import { ClientSecretCredential } from '@azure/identity'
@@ -36,6 +36,7 @@ after(() => {
   }
 })
 
+describe('tests', { concurrency: true }, () => {
 test('azureResponses: create thread with array content', async () => {
   console.log('Testing Azure Responses thread creation with array content...')
 
@@ -338,4 +339,5 @@ test('azureResponses: retrieve messages from thread', async () => {
   } catch (error) {
     console.log('Note: Could not delete thread (expected if delete not implemented)')
   }
+})
 })

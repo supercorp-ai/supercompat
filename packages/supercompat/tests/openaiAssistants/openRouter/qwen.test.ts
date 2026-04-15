@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
 import { OpenRouter, HTTPClient } from '@openrouter/sdk'
@@ -32,6 +32,7 @@ function makeOpenRouter() {
 // =========================================================================
 // 1. Basic chat completion (non-streaming)
 // =========================================================================
+describe('tests', { concurrency: true }, () => {
 test('openRouter Qwen: basic chat completion', async () => {
   const client = supercompat({
     client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
@@ -263,4 +264,5 @@ test('openRouter Qwen: models list', async () => {
   }
 
   assert.ok(models.length > 0)
+})
 })

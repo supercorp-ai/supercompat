@@ -1,10 +1,11 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { normalizeComputerToolCallPayload } from '../../../src/adapters/client/anthropicClientAdapter/normalizeComputerToolCallPayload'
 import { normalizeGeminiAction } from '../../../src/adapters/client/googleClientAdapter/normalizeGeminiAction'
 import { post } from '../../../src/adapters/client/googleClientAdapter/completions/post'
 import { serializeMessages } from '../../../src/adapters/client/googleClientAdapter/completions/post'
 
+describe('tests', { concurrency: true }, () => {
 test('normalizeComputerToolCallPayload converts screenshot action', () => {
   const result = normalizeComputerToolCallPayload({
     action: 'screenshot',
@@ -514,4 +515,5 @@ test('serializeMessages collapses compound sub-actions into single functionCall'
   const fr = userParts[0].functionResponse!
   assert.equal(fr.name, 'type_text_at')
   assert.deepEqual(fr.response, { output: 'screenshot from type' })
+})
 })

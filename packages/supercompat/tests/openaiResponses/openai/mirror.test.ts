@@ -44,8 +44,8 @@ after(async () => {
 
 // ── 1. Configuration (mirrors Assistants CRUD) ───────────────────
 
-describe('Configuration', () => {
-  describe('create', () => {
+describe('Configuration', { concurrency: true }, () => {
+  describe('create', { concurrency: true }, () => {
     test('with all fields', async () => {
       const client = makeClient()
       const response = await client.responses.create({
@@ -106,7 +106,7 @@ describe('Configuration', () => {
     })
   })
 
-  describe('retrieve', () => {
+  describe('retrieve', { concurrency: true }, () => {
     test('by ID', async () => {
       const client = makeClient()
       const created = await client.responses.create({
@@ -124,7 +124,7 @@ describe('Configuration', () => {
     })
   })
 
-  describe('delete', () => {
+  describe('delete', { concurrency: true }, () => {
     test('removes from DB', async () => {
       const client = makeClient()
       const created = await client.responses.create({
@@ -142,8 +142,8 @@ describe('Configuration', () => {
 
 // ── 2. Conversations (mirrors Threads CRUD) ──────────────────────
 
-describe('Conversations', () => {
-  describe('create', () => {
+describe('Conversations', { concurrency: true }, () => {
+  describe('create', { concurrency: true }, () => {
     test('with explicit conversation', async () => {
       const client = makeClient()
       const conv = await prisma.conversation.create({ data: { metadata: { purpose: 'testing' } } })
@@ -178,7 +178,7 @@ describe('Conversations', () => {
     })
   })
 
-  describe('linking', () => {
+  describe('linking', { concurrency: true }, () => {
     test('multiple responses share conversation', async () => {
       const client = makeClient()
       const conv = await prisma.conversation.create({ data: {} })
@@ -205,7 +205,7 @@ describe('Conversations', () => {
     })
   })
 
-  describe('delete', () => {
+  describe('delete', { concurrency: true }, () => {
     test('cascade deletes responses', async () => {
       const client = makeClient()
       const conv = await prisma.conversation.create({ data: {} })
@@ -226,8 +226,8 @@ describe('Conversations', () => {
 
 // ── 3. Input Items (mirrors Messages CRUD) ───────────────────────
 
-describe('Input Items', () => {
-  describe('create', () => {
+describe('Input Items', { concurrency: true }, () => {
+  describe('create', { concurrency: true }, () => {
     test('string input is stored', async () => {
       const client = makeClient()
       const response = await client.responses.create({
@@ -261,7 +261,7 @@ describe('Input Items', () => {
     })
   })
 
-  describe('list', () => {
+  describe('list', { concurrency: true }, () => {
     test('returns items with correct shape', async () => {
       const client = makeClient()
       const response = await client.responses.create({
@@ -311,7 +311,7 @@ describe('Input Items', () => {
     })
   })
 
-  describe('pagination', () => {
+  describe('pagination', { concurrency: true }, () => {
     test('limit and after cursor', async () => {
       const client = makeClient()
       const response = await client.responses.create({
@@ -360,8 +360,8 @@ describe('Input Items', () => {
 
 // ── 4. Response Lifecycle (mirrors Runs) ─────────────────────────
 
-describe('Response Lifecycle', () => {
-  describe('basic completion', () => {
+describe('Response Lifecycle', { concurrency: true }, () => {
+  describe('basic completion', { concurrency: true }, () => {
     test('non-streaming', async () => {
       const client = makeClient()
       const response = await client.responses.create({
@@ -404,7 +404,7 @@ describe('Response Lifecycle', () => {
     })
   })
 
-  describe('conversation context', () => {
+  describe('conversation context', { concurrency: true }, () => {
     test('multi-turn maintains context', async () => {
       const client = makeClient()
       const conv = await prisma.conversation.create({ data: {} })
@@ -457,7 +457,7 @@ describe('Response Lifecycle', () => {
     })
   })
 
-  describe('retrieve', () => {
+  describe('retrieve', { concurrency: true }, () => {
     test('by ID', async () => {
       const client = makeClient()
       const response = await client.responses.create({
@@ -473,7 +473,7 @@ describe('Response Lifecycle', () => {
     })
   })
 
-  describe('metadata', () => {
+  describe('metadata', { concurrency: true }, () => {
     test('persists on response', async () => {
       const client = makeClient()
       const response = await client.responses.create({
@@ -492,7 +492,7 @@ describe('Response Lifecycle', () => {
     })
   })
 
-  describe('cancel', () => {
+  describe('cancel', { concurrency: true }, () => {
     test('sets status to cancelled', async () => {
       const client = makeClient()
       const response = await client.responses.create({
@@ -511,8 +511,8 @@ describe('Response Lifecycle', () => {
 
 // ── 5. Output Items (mirrors Run Steps) ──────────────────────────
 
-describe('Output Items', () => {
-  describe('message', () => {
+describe('Output Items', { concurrency: true }, () => {
+  describe('message', { concurrency: true }, () => {
     test('has correct shape', async () => {
       const client = makeClient()
       const response = await client.responses.create({
@@ -552,7 +552,7 @@ describe('Output Items', () => {
     })
   })
 
-  describe('function_call', () => {
+  describe('function_call', { concurrency: true }, () => {
     test('has correct shape', async () => {
       const client = makeClient()
       const response = await client.responses.create({
@@ -589,7 +589,7 @@ describe('Output Items', () => {
 
 // ── 6. Tool Calls (mirrors Tool Calls Flow) ─────────────────────
 
-describe('Tool Calls', () => {
+describe('Tool Calls', { concurrency: true }, () => {
   const tools: any[] = [{
     type: 'function',
     name: 'get_weather',
@@ -601,7 +601,7 @@ describe('Tool Calls', () => {
     },
   }]
 
-  describe('non-streaming', () => {
+  describe('non-streaming', { concurrency: true }, () => {
     test('full cycle: call → output → completion', async () => {
       const client = makeClient()
       const conv = await prisma.conversation.create({ data: {} })
@@ -638,7 +638,7 @@ describe('Tool Calls', () => {
     })
   })
 
-  describe('streaming', () => {
+  describe('streaming', { concurrency: true }, () => {
     test('full cycle: stream call → output → stream completion', async () => {
       const client = makeClient()
       const conv = await prisma.conversation.create({ data: {} })
@@ -707,7 +707,7 @@ describe('Tool Calls', () => {
 
 // ── 7. Response Shape (mirrors Run response shape) ──────────────
 
-describe('Response Shape', () => {
+describe('Response Shape', { concurrency: true }, () => {
   test('all expected fields present', async () => {
     const client = makeClient()
     const response = await client.responses.create({
@@ -747,7 +747,7 @@ describe('Response Shape', () => {
 
 // ── 8. Multi-part Input (mirrors Thread with initial messages) ───
 
-describe('Multi-part Input', () => {
+describe('Multi-part Input', { concurrency: true }, () => {
   test('multiple input messages', async () => {
     const client = makeClient()
     const response = await client.responses.create({
@@ -784,7 +784,7 @@ describe('Multi-part Input', () => {
 
 // ── 9. Edge Cases ────────────────────────────────────────────────
 
-describe('Edge Cases', () => {
+describe('Edge Cases', { concurrency: true }, () => {
   test('tools defined but not called', async () => {
     const client = makeClient()
     const response = await client.responses.create({
@@ -836,7 +836,7 @@ describe('Edge Cases', () => {
 
 // ── 10. Tool Definition Storage ──────────────────────────────────
 
-describe('Tool Definition Storage', () => {
+describe('Tool Definition Storage', { concurrency: true }, () => {
   test('function tool definition stored in DB', async () => {
     const client = makeClient()
     const response = await client.responses.create({
@@ -948,8 +948,8 @@ describe('Tool Definition Storage', () => {
 
 // ── 11. Parameter Control ────────────────────────────────────────
 
-describe('Parameter Control', () => {
-  describe('temperature and top_p', () => {
+describe('Parameter Control', { concurrency: true }, () => {
+  describe('temperature and top_p', { concurrency: true }, () => {
     test('custom temperature stored and returned', async () => {
       const client = makeClient()
       const response = await client.responses.create({
@@ -1002,7 +1002,7 @@ describe('Parameter Control', () => {
     })
   })
 
-  describe('truncation', () => {
+  describe('truncation', { concurrency: true }, () => {
     test('default truncation is disabled', async () => {
       const client = makeClient()
       const response = await client.responses.create({
@@ -1034,7 +1034,7 @@ describe('Parameter Control', () => {
     })
   })
 
-  describe('instructions', () => {
+  describe('instructions', { concurrency: true }, () => {
     test('instructions stored in DB', async () => {
       const client = makeClient()
       const response = await client.responses.create({
@@ -1072,7 +1072,7 @@ describe('Parameter Control', () => {
 
 // ── 12. Streaming Event Order ────────────────────────────────────
 
-describe('Streaming Event Order', () => {
+describe('Streaming Event Order', { concurrency: true }, () => {
   test('text response events in correct order', async () => {
     const client = makeClient()
     const events: any[] = []
@@ -1165,7 +1165,7 @@ describe('Streaming Event Order', () => {
 
 // ── 13. Output Item IDs and Uniqueness ───────────────────────────
 
-describe('Output Item IDs', () => {
+describe('Output Item IDs', { concurrency: true }, () => {
   test('output items have unique IDs', async () => {
     const client = makeClient()
     const response = await client.responses.create({
@@ -1216,7 +1216,7 @@ describe('Output Item IDs', () => {
 
 // ── 14. Retrieved Response ───────────────────────────────────────
 
-describe('Retrieved Response', () => {
+describe('Retrieved Response', { concurrency: true }, () => {
   test('has populated output items', async () => {
     const client = makeClient()
     const created = await client.responses.create({
@@ -1280,7 +1280,7 @@ describe('Retrieved Response', () => {
 
 // ── 15. Multiple Tool Calls ──────────────────────────────────────
 
-describe('Multiple Tool Calls', () => {
+describe('Multiple Tool Calls', { concurrency: true }, () => {
   test('parallel function calls in single response', async () => {
     const client = makeClient()
     const response = await client.responses.create({
@@ -1429,7 +1429,7 @@ describe('Multiple Tool Calls', () => {
 
 // ── 16. Streaming Data Integrity ─────────────────────────────────
 
-describe('Streaming Data Integrity', () => {
+describe('Streaming Data Integrity', { concurrency: true }, () => {
   test('text deltas concatenate to done text', async () => {
     const client = makeClient()
     const events: any[] = []
@@ -1498,7 +1498,7 @@ describe('Streaming Data Integrity', () => {
 
 // ── 17. function_call_output in Input Items ──────────────────────
 
-describe('function_call_output in Input Items', () => {
+describe('function_call_output in Input Items', { concurrency: true }, () => {
   test('tool output appears in input_items list', async () => {
     const client = makeClient()
     const conv = await prisma.conversation.create({ data: {} })
@@ -1547,7 +1547,7 @@ describe('function_call_output in Input Items', () => {
 
 // ── 18. Cancelled Response in Conversation ───────────────────────
 
-describe('Cancelled Response in Conversation', () => {
+describe('Cancelled Response in Conversation', { concurrency: true }, () => {
   test('cancelled response skipped in conversation history', async () => {
     const client = makeClient()
     const conv = await prisma.conversation.create({ data: {} })
@@ -1585,7 +1585,7 @@ describe('Cancelled Response in Conversation', () => {
 
 // ── 19. Conversation Field in Response ───────────────────────────
 
-describe('Conversation Field in Response', () => {
+describe('Conversation Field in Response', { concurrency: true }, () => {
   test('present when conversation provided', async () => {
     const client = makeClient()
     const conv = await prisma.conversation.create({ data: {} })
@@ -1621,7 +1621,7 @@ describe('Conversation Field in Response', () => {
 
 // ── 20. Empty Arguments Tool Call ────────────────────────────────
 
-describe('Empty Arguments Tool Call', () => {
+describe('Empty Arguments Tool Call', { concurrency: true }, () => {
   test('function with no required params', async () => {
     const client = makeClient()
     const response = await client.responses.create({
@@ -1648,7 +1648,7 @@ describe('Empty Arguments Tool Call', () => {
 
 // ── 21. Strict Function Tool ─────────────────────────────────────
 
-describe('Strict Function Tool', () => {
+describe('Strict Function Tool', { concurrency: true }, () => {
   test('strict mode stored in DB', async () => {
     const client = makeClient()
     const response = await client.responses.create({
@@ -1701,7 +1701,7 @@ describe('Strict Function Tool', () => {
 
 // ── 22. Multi-step Tool Conversation ─────────────────────────────
 
-describe('Multi-step Tool Conversation', () => {
+describe('Multi-step Tool Conversation', { concurrency: true }, () => {
   test('question → tool → output → answer → new question → tool → output → answer', async () => {
     const client = makeClient()
     const conv = await prisma.conversation.create({ data: {} })

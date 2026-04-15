@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
 import { ProxyAgent, setGlobalDispatcher } from 'undici'
@@ -20,6 +20,7 @@ if (process.env.HTTPS_PROXY) {
   setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY))
 }
 
+describe('tests', { concurrency: true }, () => {
 test('createMessageResponse processes tool calls without thread id errors', async () => {
   const realOpenAI = new OpenAI({
     apiKey,
@@ -118,4 +119,5 @@ test('createMessageResponse processes tool calls without thread id errors', asyn
   const followUpList = await messagesResponse({ client, threadId: thread.id })
   const assistantMessages = followUpList.data.filter((m: any) => m.role === 'assistant')
   assert.ok(assistantMessages.length >= 2, 'missing follow-up assistant message')
+})
 })

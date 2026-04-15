@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import Groq from 'groq-sdk'
 import type OpenAI from 'openai'
@@ -23,6 +23,7 @@ if (process.env.HTTPS_PROXY) {
   setGlobalDispatcher(new ProxyAgent(process.env.HTTPS_PROXY))
 }
 
+describe('tests', { concurrency: true }, () => {
 test('supercompat can run via Groq', async () => {
   const prisma = new PrismaClient()
   const groq = new Groq({
@@ -66,4 +67,5 @@ test('supercompat can run via Groq', async () => {
   assert.equal(text, '4')
 
   await prisma.$disconnect()
+})
 })

@@ -1,4 +1,4 @@
-import { test, before, after } from 'node:test'
+import { test, describe, before, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { execSync, spawn, type ChildProcess } from 'node:child_process'
 import path from 'node:path'
@@ -216,6 +216,7 @@ after(async () => {
 // =========================================================================
 // Full e2e: GLM → real MCP server → validate model sees screen content
 // =========================================================================
+describe('tests', { concurrency: true }, () => {
 test('openRouter GLM: full e2e with real MCP computer use server', { timeout: 300_000 }, async () => {
   const prisma = new PrismaClient()
   const mcpClient = new McpClient(MCP_SERVER_URL)
@@ -304,4 +305,5 @@ test('openRouter GLM: full e2e with real MCP computer use server', { timeout: 30
   }
 
   await prisma.$disconnect()
+})
 })

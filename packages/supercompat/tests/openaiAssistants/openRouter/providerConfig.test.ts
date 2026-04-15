@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { post } from '../../../src/adapters/client/openRouterClientAdapter/completions/post.ts'
 
@@ -33,6 +33,7 @@ const createMockOpenRouter = (opts: {
   _baseURL: new URL('https://openrouter.ai/api/v1'),
 })
 
+describe('tests', { concurrency: true }, () => {
 test('non-streaming: provider config from adapter is included in request body', async () => {
   let capturedBody: Record<string, unknown> | null = null
 
@@ -138,4 +139,5 @@ test('streaming: provider config from adapter is included in request body', asyn
 
   assert.ok(capturedBody, 'Request should have been made')
   assert.deepEqual(capturedBody!.provider, { sort: 'throughput' }, 'provider config should be in streaming request body')
+})
 })

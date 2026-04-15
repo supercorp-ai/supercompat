@@ -13,9 +13,9 @@ if (!apiKey) {
   process.exit(0)
 }
 
-describe('memoryStorageAdapter + Anthropic', { timeout: 600_000 }, () => {
+describe('memoryStorageAdapter + Anthropic', { concurrency: true, timeout: 600_000 }, () => {
   for (const [name, contract] of Object.entries(completionsContracts)) {
-    test(name, { timeout: 120_000 }, async () => contract(await createMemoryTestClient({
+    test(name, { concurrency: true, timeout: 120_000 }, async () => contract(await createMemoryTestClient({
       clientAdapter: anthropicClientAdapter({ anthropic: new Anthropic({ apiKey }) }),
       model: 'claude-sonnet-4-20250514',
     })))

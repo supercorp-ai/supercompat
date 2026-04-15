@@ -1,8 +1,9 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import assert from 'node:assert/strict'
 import type OpenAI from 'openai'
 import { firstUserMessages } from '../../../src/lib/messages/firstUserMessages.ts'
 
+describe('tests', { concurrency: true }, () => {
 test('adds placeholder when first message is not user', () => {
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: 'assistant', content: 'Hi' },
@@ -15,3 +16,4 @@ test('adds placeholder when first message is not user', () => {
   assert.equal(result[2].role, 'user')
 })
 
+})

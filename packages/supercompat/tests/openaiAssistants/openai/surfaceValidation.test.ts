@@ -156,7 +156,7 @@ function assertValues(realObj: any, compatObj: any, keys: string[]) {
 
 // ── Assistant surface ─────────────────────────────────────────────
 
-describe('Surface: Assistant', () => {
+describe('Surface: Assistant', { concurrency: true }, () => {
   test('create response shape matches OpenAI', async () => {
     const c = createCompat()
     const params: OpenAI.Beta.AssistantCreateParams = {
@@ -252,13 +252,15 @@ describe('Surface: Assistant', () => {
     ])
 
     const [rList, cList] = await Promise.all([
-      real.beta.assistants.list({ limit: 1 }),
-      c.beta.assistants.list({ limit: 1 }),
+      real.beta.assistants.list({ limit: 100 }),
+      c.beta.assistants.list({ limit: 100 }),
     ])
 
-    assert.ok(rList.data.length > 0, 'real list should have items')
-    assert.ok(cList.data.length > 0, 'compat list should have items')
-    assertSurface(rList.data[0], cList.data[0], 'Assistant.list[0]')
+    const rItem = rList.data.find(a => a.id === rr.id)
+    const cItem = cList.data.find(a => a.id === cc.id)
+    assert.ok(rItem, 'real list should contain our assistant')
+    assert.ok(cItem, 'compat list should contain our assistant')
+    assertSurface(rItem, cItem, 'Assistant.list[0]')
 
     // Also compare list-level fields that the SDK exposes
     assert.equal(typeof rList.has_more, typeof cList.has_more)
@@ -288,7 +290,7 @@ describe('Surface: Assistant', () => {
 
 // ── Thread surface ────────────────────────────────────────────────
 
-describe('Surface: Thread', () => {
+describe('Surface: Thread', { concurrency: true }, () => {
   test('create response shape matches OpenAI', async () => {
     const c = createCompat()
     const ca = await c.beta.assistants.create({ model: 'gpt-4o-mini' })
@@ -389,7 +391,7 @@ describe('Surface: Thread', () => {
 
 // ── Message surface ───────────────────────────────────────────────
 
-describe('Surface: Message', () => {
+describe('Surface: Message', { concurrency: true }, () => {
   test('create response shape matches OpenAI', async () => {
     const c = createCompat()
     const ca = await c.beta.assistants.create({ model: 'gpt-4o-mini' })
@@ -595,7 +597,7 @@ describe('Surface: Message', () => {
 
 // ── Run surface ───────────────────────────────────────────────────
 
-describe('Surface: Run', () => {
+describe('Surface: Run', { concurrency: true }, () => {
   // Shared state for run tests (avoid creating multiple runs)
   let realAssistantId: string
   let compatAssistantId: string
@@ -721,7 +723,7 @@ describe('Surface: Run', () => {
 
 // ── Run Step surface ──────────────────────────────────────────────
 
-describe('Surface: Run Step', () => {
+describe('Surface: Run Step', { concurrency: true }, () => {
   let realAssistantId: string
   let compatAssistantId: string
   let realThreadId: string
@@ -859,7 +861,7 @@ describe('Surface: Run Step', () => {
 
 // ── Raw JSON surface (bypasses SDK parsing) ─────────────────────
 
-describe('Surface: Raw JSON', () => {
+describe('Surface: Raw JSON', { concurrency: true }, () => {
   test('assistant list JSON has object, first_id, last_id', async () => {
     const c = createCompat()
     const ca = await c.beta.assistants.create({ model: 'gpt-4o-mini' })
@@ -916,7 +918,7 @@ describe('Surface: Raw JSON', () => {
 
 // ── Value-level field validation ────────────────────────────────
 
-describe('Surface: Field values', () => {
+describe('Surface: Field values', { concurrency: true }, () => {
   test('assistant response_format type matches OpenAI', async () => {
     const c = createCompat()
     const [rr, cc] = await Promise.all([

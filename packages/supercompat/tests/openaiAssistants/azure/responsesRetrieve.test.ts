@@ -1,4 +1,4 @@
-import { test, after } from 'node:test'
+import { test, describe, after } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { AIProjectClient } from '@azure/ai-projects-v2'
 import { ClientSecretCredential } from '@azure/identity'
@@ -52,6 +52,7 @@ const createTestAgent = async ({
   })
 }
 
+describe('tests', { concurrency: true }, () => {
 test('azureResponses: responses.retrieve() is intercepted and works', async () => {
   console.log('Testing responses.retrieve() interception...')
 
@@ -212,4 +213,5 @@ test('azureResponses: direct responses.retrieve() call works', async () => {
   } finally {
     await azureAiProject.agents.deleteVersion(agent.name, agent.version)
   }
+})
 })

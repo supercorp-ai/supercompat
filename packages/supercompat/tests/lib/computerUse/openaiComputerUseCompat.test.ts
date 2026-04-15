@@ -1,4 +1,4 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   isOpenaiComputerUseModel,
@@ -10,6 +10,7 @@ import { serializeItemAsComputerCallRunStep } from '../../../src/lib/items/seria
 
 // -- isOpenaiComputerUseModel --
 
+describe('tests', { concurrency: true }, () => {
 test('isOpenaiComputerUseModel detects GPT-5.4 variants', () => {
   assert.equal(isOpenaiComputerUseModel({ model: 'gpt-5.4' }), true)
   assert.equal(isOpenaiComputerUseModel({ model: 'gpt-5.4-mini' }), true)
@@ -466,4 +467,5 @@ test('serializeResponseAsRun: completed computer_call_output is not pending', ()
 
   assert.equal(run.status, 'completed')
   assert.equal(run.required_action, null)
+})
 })

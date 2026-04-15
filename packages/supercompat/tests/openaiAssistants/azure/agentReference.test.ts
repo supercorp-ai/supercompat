@@ -1,7 +1,8 @@
-import { test } from 'node:test'
+import { test, describe, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import { post } from '../../../src/handlers/assistants/azureResponsesStorageAdapter/threads/runs/post'
 
+describe('tests', { concurrency: true }, () => {
 test('Azure agent reference is included when assistant_id is provided', async () => {
   let capturedBody: any = null
 
@@ -110,4 +111,5 @@ test('Azure agent reference resolves from assistant_id and omits instructions', 
   )
 
   console.log('✅ assistant_id resolves agent reference and instructions are omitted')
+})
 })
