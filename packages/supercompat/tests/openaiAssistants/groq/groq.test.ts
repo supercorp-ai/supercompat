@@ -5,6 +5,7 @@ import type OpenAI from 'openai'
 import { ProxyAgent, setGlobalDispatcher } from 'undici'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 import dns from 'node:dns'
 import {
   supercompat,
@@ -25,7 +26,7 @@ if (process.env.HTTPS_PROXY) {
 
 describe('tests', { concurrency: true }, () => {
 test('supercompat can run via Groq', async () => {
-  const prisma = new PrismaClient()
+  const prisma = createTestPrisma()
   const groq = new Groq({
     apiKey: groqKey,
     ...(process.env.HTTPS_PROXY
@@ -34,8 +35,8 @@ test('supercompat can run via Groq', async () => {
   })
 
   const client = supercompat({
-    client: groqClientAdapter({ groq }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: groqClientAdapter({ groq }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 

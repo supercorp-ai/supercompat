@@ -6,6 +6,7 @@ import { OpenRouter, HTTPClient } from '@openrouter/sdk'
 import Anthropic from '@anthropic-ai/sdk'
 import { GoogleGenAI } from '@google/genai'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 import { ProxyAgent, setGlobalDispatcher } from 'undici'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import dayjs from 'dayjs'
@@ -319,7 +320,7 @@ before(async () => {
   buildImage()
   containerProcess = startContainer()
   await waitForHealth()
-}, { timeout: 120_000 })
+}, { timeout: 60_000 })
 
 after(async () => {
   if (shouldSkipSlowTests) return
@@ -336,7 +337,7 @@ after(async () => {
 // Test 1: OpenAI direct (Responses API)
 // ===========================================================================
 describe('tests', () => {
-testOrSkip('OpenAI direct: computer use finds subscribe form fields', { timeout: 180_000 }, async () => {
+testOrSkip('OpenAI direct: computer use finds subscribe form fields', { timeout: 60_000 }, async () => {
   assert.ok(openaiApiKey, 'TEST_OPENAI_API_KEY must be set')
   const totalBench = bench('OpenAI direct total')
 
@@ -455,7 +456,7 @@ testOrSkip('OpenAI direct: computer use finds subscribe form fields', { timeout:
 // NOTE: conversation + input_image is rejected by OpenAI API for computer-use-preview.
 // The workaround (matching superinterface's approach) is to send text-only messages
 // and let the model take screenshots via the computer_use_preview tool.
-testOrSkip('OpenAI supercompat: computer use via thread/run finds subscribe form fields', { timeout: 180_000 }, async () => {
+testOrSkip('OpenAI supercompat: computer use via thread/run finds subscribe form fields', { timeout: 60_000 }, async () => {
   assert.ok(openaiApiKey, 'TEST_OPENAI_API_KEY must be set')
   const totalBench = bench('OpenAI supercompat total')
 
@@ -485,11 +486,11 @@ testOrSkip('OpenAI supercompat: computer use via thread/run finds subscribe form
   }
 
   const client = supercompat({
-    client: openaiClientAdapter({ openai: realOpenAI }),
+    clientAdapter: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: openaiResponsesStorageAdapter(),
+    storageAdapter: openaiResponsesStorageAdapter(),
   })
 
   // Initialize MCP
@@ -645,7 +646,7 @@ testOrSkip('OpenAI supercompat: computer use via thread/run finds subscribe form
 // ===========================================================================
 // Test 3: Anthropic direct (Messages API with computer_20250124)
 // ===========================================================================
-testOrSkip('Anthropic: claude-haiku-4-5 computer use finds subscribe form fields', { timeout: 180_000 }, async () => {
+testOrSkip('Anthropic: claude-haiku-4-5 computer use finds subscribe form fields', { timeout: 60_000 }, async () => {
   assert.ok(anthropicApiKey, 'ANTHROPIC_API_KEY must be set')
   const totalBench = bench('Anthropic total')
 
@@ -852,7 +853,7 @@ async function executeGeminiAction(
 }
 
 // SKIPPED: Gemini computer-use-preview requires paid tier (free tier has 0 quota)
-test.skip('Gemini: computer-use-preview finds subscribe form fields', { timeout: 180_000 }, async () => {
+test.skip('Gemini: computer-use-preview finds subscribe form fields', { timeout: 60_000 }, async () => {
   assert.ok(googleApiKey, 'GOOGLE_API_KEY must be set')
   const totalBench = bench('Gemini total')
 
@@ -1311,7 +1312,7 @@ async function runOpenRouterAdapterTest(opts: {
     },
   })
   const client = supercompat({
-    client: openRouterClientAdapter({
+    clientAdapter: openRouterClientAdapter({
       openRouter: new OpenRouter({ apiKey: openrouterApiKey!, httpClient: openRouterHttpClient }),
     }),
   })
@@ -1449,7 +1450,7 @@ async function runOpenRouterAdapterTest(opts: {
 // ===========================================================================
 // Test 5: Qwen via OpenRouter (adapter-based)
 // ===========================================================================
-testOrSkip('Qwen (OpenRouter): adapter-based computer use finds subscribe form fields', { timeout: 180_000 }, async () => {
+testOrSkip('Qwen (OpenRouter): adapter-based computer use finds subscribe form fields', { timeout: 60_000 }, async () => {
   assert.ok(openrouterApiKey, 'OPENROUTER_API_KEY must be set')
 
   const sessionId = await initializeMcpSession()
@@ -1480,11 +1481,11 @@ testOrSkip('Qwen (OpenRouter): adapter-based computer use finds subscribe form f
 // This is a fundamental limitation of the thread/run abstraction for
 // vision-based computer use with non-OpenAI providers.
 // ===========================================================================
-test.skip('Qwen supercompat (OpenRouter): vision agent via thread/run finds subscribe form fields', { timeout: 180_000 }, async () => {
+test.skip('Qwen supercompat (OpenRouter): vision agent via thread/run finds subscribe form fields', { timeout: 60_000 }, async () => {
   assert.ok(openrouterApiKey, 'OPENROUTER_API_KEY must be set')
   const totalBench = bench('Qwen supercompat total')
 
-  const prisma = new PrismaClient()
+  const prisma = createTestPrisma()
   const openRouter = new OpenAI({
     apiKey: openrouterApiKey,
     baseURL: 'https://openrouter.ai/api/v1',
@@ -1493,9 +1494,9 @@ test.skip('Qwen supercompat (OpenRouter): vision agent via thread/run finds subs
   const tools = VISION_AGENT_TOOLS as any[]
 
   const client = supercompat({
-    client: openaiClientAdapter({ openai: openRouter }),
+    clientAdapter: openaiClientAdapter({ openai: openRouter }),
     runAdapter: completionsRunAdapter(),
-    storage: prismaStorageAdapter({ prisma }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
   })
 
   const assistant = await client.beta.assistants.create({
@@ -1650,7 +1651,7 @@ test.skip('Qwen supercompat (OpenRouter): vision agent via thread/run finds subs
 // ===========================================================================
 // Test 7: GLM-4.6V via OpenRouter (adapter-based)
 // ===========================================================================
-testOrSkip('GLM-4.6V (OpenRouter): adapter-based computer use finds subscribe form fields', { timeout: 180_000 }, async () => {
+testOrSkip('GLM-4.6V (OpenRouter): adapter-based computer use finds subscribe form fields', { timeout: 60_000 }, async () => {
   assert.ok(openrouterApiKey, 'OPENROUTER_API_KEY must be set')
 
   const sessionId = await initializeMcpSession()
@@ -1686,7 +1687,7 @@ test.skip('MiniMax M2.5 (OpenRouter): no vision support — cannot do computer u
 // ===========================================================================
 // Test 9: Gemini 3 Flash Preview via OpenRouter (adapter-based)
 // ===========================================================================
-testOrSkip('Gemini 3 Flash (OpenRouter): adapter-based computer use finds subscribe form fields', { timeout: 180_000 }, async () => {
+testOrSkip('Gemini 3 Flash (OpenRouter): adapter-based computer use finds subscribe form fields', { timeout: 60_000 }, async () => {
   assert.ok(openrouterApiKey, 'OPENROUTER_API_KEY must be set')
 
   const sessionId = await initializeMcpSession()

@@ -59,10 +59,10 @@ test('azureResponses: create thread with array content', async () => {
 
   // Create supercompat client with Azure Responses storage adapter
   const client = supercompat({
-    client: azureAiProjectClientAdapter({
+    clientAdapter: azureAiProjectClientAdapter({
       azureAiProject,
     }),
-    storage: azureResponsesStorageAdapter(),
+    storageAdapter: azureResponsesStorageAdapter(),
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => mockAssistant,
     }),
@@ -120,10 +120,10 @@ test('azureResponses: create thread with string content', async () => {
   }
 
   const client = supercompat({
-    client: azureAiProjectClientAdapter({
+    clientAdapter: azureAiProjectClientAdapter({
       azureAiProject,
     }),
-    storage: azureResponsesStorageAdapter(),
+    storageAdapter: azureResponsesStorageAdapter(),
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => mockAssistant,
     }),
@@ -176,10 +176,10 @@ test('azureResponses: create thread with mixed content (text + image)', async ()
   }
 
   const client = supercompat({
-    client: azureAiProjectClientAdapter({
+    clientAdapter: azureAiProjectClientAdapter({
       azureAiProject,
     }),
-    storage: azureResponsesStorageAdapter(),
+    storageAdapter: azureResponsesStorageAdapter(),
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => mockAssistant,
     }),
@@ -243,10 +243,10 @@ test('azureResponses: create thread with multiple text parts', async () => {
   }
 
   const client = supercompat({
-    client: azureAiProjectClientAdapter({
+    clientAdapter: azureAiProjectClientAdapter({
       azureAiProject,
     }),
-    storage: azureResponsesStorageAdapter(),
+    storageAdapter: azureResponsesStorageAdapter(),
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => mockAssistant,
     }),
@@ -302,10 +302,10 @@ test('azureResponses: retrieve messages from thread', async () => {
   }
 
   const client = supercompat({
-    client: azureAiProjectClientAdapter({
+    clientAdapter: azureAiProjectClientAdapter({
       azureAiProject,
     }),
-    storage: azureResponsesStorageAdapter(),
+    storageAdapter: azureResponsesStorageAdapter(),
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => mockAssistant,
     }),

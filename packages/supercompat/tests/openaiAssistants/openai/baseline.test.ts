@@ -14,11 +14,12 @@ if (!apiKey) {
   process.exit(0)
 }
 
-describe('Baseline: OpenAI Assistants API', { concurrency: true, timeout: 240_000 }, () => {
+describe('Baseline: OpenAI Assistants API', { concurrency: true, timeout: 60_000 }, () => {
   const client = createBaselineClient()
 
   for (const [name, contract] of Object.entries(contracts)) {
-    test(name, { concurrency: true, timeout: 240_000 }, () =>
-      withRetry(() => contract(client), { label: name }))
+    const slow = name.includes('file search') || name.includes('file_search') || name.includes('annotation indexes')
+    test(name, { concurrency: true, timeout: slow ? 180_000 : 60_000 }, () =>
+      slow ? contract(client) : withRetry(() => contract(client), { label: name }))
   }
 })

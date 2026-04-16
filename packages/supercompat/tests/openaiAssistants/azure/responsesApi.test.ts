@@ -76,11 +76,11 @@ testOrSkip('Azure Responses API - basic conversation', async (t) => {
 
     // Use supercompat with responses adapters
     const client = supercompat({
-      client: azureAiProjectClientAdapter({ azureAiProject }),
+      clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
       runAdapter: openaiResponsesRunAdapter({
         getOpenaiAssistant: () => openaiAssistant,
       }),
-      storage: azureResponsesStorageAdapter(),
+      storageAdapter: azureResponsesStorageAdapter(),
     })
 
     const thread = await client.beta.threads.create()
@@ -141,11 +141,11 @@ testOrSkip('Azure Responses API - maintains conversation across runs', async (t)
     }
 
     const client = supercompat({
-      client: azureAiProjectClientAdapter({ azureAiProject }),
+      clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
       runAdapter: openaiResponsesRunAdapter({
         getOpenaiAssistant: () => openaiAssistant,
       }),
-      storage: azureResponsesStorageAdapter(),
+      storageAdapter: azureResponsesStorageAdapter(),
     })
 
     const thread = await client.beta.threads.create()
@@ -216,11 +216,11 @@ test('Azure Responses API - streaming', async (t) => {
     }
 
     const client = supercompat({
-      client: azureAiProjectClientAdapter({ azureAiProject }),
+      clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
       runAdapter: openaiResponsesRunAdapter({
         getOpenaiAssistant: () => openaiAssistant,
       }),
-      storage: azureResponsesStorageAdapter(),
+      storageAdapter: azureResponsesStorageAdapter(),
     })
 
     const thread = await client.beta.threads.create()

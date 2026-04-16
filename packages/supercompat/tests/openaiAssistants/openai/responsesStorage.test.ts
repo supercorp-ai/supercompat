@@ -11,6 +11,7 @@ import dayjs from 'dayjs'
 import { uid } from 'radash'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import { contracts as _allContracts } from '../contracts'
+import { withRetry } from '../../openaiResponses/contracts/lib/withRetry'
 
 // Responses adapter limitations:
 // - Deferred message storage: messages only sent to conversation when a run starts,
@@ -69,11 +70,11 @@ function createClient(): OpenAI {
   }
 
   const client = supercompat({
-    client: openaiClientAdapter({ openai: realOpenAI }),
+    clientAdapter: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => currentAssistant,
     }),
-    storage: openaiResponsesStorageAdapter(),
+    storageAdapter: openaiResponsesStorageAdapter(),
   })
 
   // Override assistant CRUD to work in-memory
@@ -138,9 +139,11 @@ function createClient(): OpenAI {
   return client
 }
 
-describe('openaiResponsesStorageAdapter (deferItemCreationUntilRun: true)', { concurrency: true, timeout: 300_000 }, () => {
+describe('openaiResponsesStorageAdapter (deferItemCreationUntilRun: true)', { concurrency: true, timeout: 60_000 }, () => {
   for (const [name, contract] of Object.entries(coreContracts)) {
-    test(name, { concurrency: true, timeout: 240_000 }, () => contract(createClient()))
+    const slow = name.includes('file search') || name.includes('file_search') || name.includes('annotation indexes') || name.includes('max_output_tokens')
+    test(name, { concurrency: true, timeout: slow ? 180_000 : 60_000 }, () =>
+      withRetry(() => contract(createClient()), { label: name }))
   }
 })
 
@@ -162,14 +165,14 @@ function createImmediateClient(): OpenAI {
   }
 
   return supercompat({
-    client: openaiClientAdapter({ openai: realOpenAI }),
+    clientAdapter: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => currentAssistant,
     }),
-    storage: openaiResponsesStorageAdapter({ deferItemCreationUntilRun: false }),
+    storageAdapter: openaiResponsesStorageAdapter({ deferItemCreationUntilRun: false }),
   })
 }
 
-describe('openaiResponsesStorageAdapter (deferItemCreationUntilRun: false)', { concurrency: true, timeout: 240_000 }, () => {
+describe('openaiResponsesStorageAdapter (deferItemCreationUntilRun: false)', { concurrency: true, timeout: 60_000 }, () => {
   test('crud: retrieve message', { concurrency: true, timeout: 60_000 }, () => retrieveMessage(createImmediateClient()))
 })

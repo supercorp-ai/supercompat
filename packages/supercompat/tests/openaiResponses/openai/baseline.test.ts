@@ -22,9 +22,10 @@ function createClient(): OpenAI {
   return new OpenAI({ apiKey, ...proxyOpts })
 }
 
-describe('Responses API Baseline', { concurrency: true, timeout: 300_000 }, () => {
+describe('Responses API Baseline', { concurrency: true, timeout: 60_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { concurrency: true, timeout: 240_000 }, () =>
+    const slow = name.includes('file search') || name.includes('file_search') || name.includes('annotation indexes') || name.includes('max_output_tokens')
+    test(name, { concurrency: true, timeout: slow ? 180_000 : 60_000 }, () =>
       withRetry(() => contract(createClient()), { label: name }))
   }
 })

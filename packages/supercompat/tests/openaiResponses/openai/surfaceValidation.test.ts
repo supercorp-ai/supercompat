@@ -2,21 +2,7 @@ import { test, describe, after } from 'node:test'
 import assert from 'node:assert/strict'
 import OpenAI from 'openai'
 import { PrismaClient } from '@prisma/client'
-
-// Test that both import paths work
-import {
-  supercompat as createResponsesClient,
-  openaiClientAdapter as responsesOpenaiClientAdapter,
-  prismaStorageAdapter as responsesPrismaStorageAdapter,
-  completionsRunAdapter as responsesCompletionsRunAdapter,
-} from '../../../src/openai/index'
-
-import {
-  supercompat as createAssistantsClient,
-  openaiClientAdapter as assistantsOpenaiClientAdapter,
-  prismaStorageAdapter as assistantsPrismaStorageAdapter,
-  completionsRunAdapter as assistantsCompletionsRunAdapter,
-} from '../../../src/openai/index'
+import { createTestPrisma } from '../../lib/testPrisma'
 
 import {
   supercompat,
@@ -31,23 +17,14 @@ if (!apiKey) {
   throw new Error('TEST_OPENAI_API_KEY is required')
 }
 
-const prisma = new PrismaClient()
+const prisma = createTestPrisma()
 
 const makeResponsesClient = () => {
   const realOpenAI = new OpenAI({ apiKey })
-  return createResponsesClient({
-    client: responsesOpenaiClientAdapter({ openai: realOpenAI }),
-    storage: responsesPrismaStorageAdapter({ prisma }),
-    runAdapter: responsesCompletionsRunAdapter(),
-  })
-}
-
-const makeAssistantsClient = () => {
-  const realOpenAI = new OpenAI({ apiKey })
-  return createAssistantsClient({
-    client: assistantsOpenaiClientAdapter({ openai: realOpenAI }),
-    storage: assistantsPrismaStorageAdapter({ prisma }),
-    runAdapter: assistantsCompletionsRunAdapter(),
+  return supercompat({
+    clientAdapter: openaiClientAdapter({ openai: realOpenAI }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
+    runAdapter: completionsRunAdapter(),
   })
 }
 
@@ -455,52 +432,20 @@ describe('Field Values', { concurrency: true }, () => {
 // ── Backward Compatibility ─────────────────────────────────────────
 
 describe('Backward Compatibility', { concurrency: true }, () => {
-  test('old import path still works', () => {
+  test('exports are available', () => {
     assert.ok(supercompat)
     assert.ok(openaiClientAdapter)
     assert.ok(prismaStorageAdapter)
     assert.ok(completionsRunAdapter)
   })
 
-  test('openaiAssistants exports match old exports', () => {
-    assert.ok(createAssistantsClient)
-    assert.ok(assistantsOpenaiClientAdapter)
-    assert.ok(assistantsPrismaStorageAdapter)
-    assert.ok(assistantsCompletionsRunAdapter)
-  })
-
-  test('openaiResponses exports are available', () => {
-    assert.ok(createResponsesClient)
-    assert.ok(responsesOpenaiClientAdapter)
-    assert.ok(responsesPrismaStorageAdapter)
-    assert.ok(responsesCompletionsRunAdapter)
-  })
-
-  test('both paths can coexist', () => {
+  test('supercompat creates a client', () => {
     const realOpenAI = new OpenAI({ apiKey })
-
-    // Assistants client
-    const assistantsClient = createAssistantsClient({
-      client: assistantsOpenaiClientAdapter({ openai: realOpenAI }),
-      storage: assistantsPrismaStorageAdapter({ prisma }),
-      runAdapter: assistantsCompletionsRunAdapter(),
+    const client = supercompat({
+      clientAdapter: openaiClientAdapter({ openai: realOpenAI }),
+      storageAdapter: prismaStorageAdapter({ prisma }),
+      runAdapter: completionsRunAdapter(),
     })
-    assert.ok(assistantsClient)
-
-    // Responses client
-    const responsesClient = createResponsesClient({
-      client: responsesOpenaiClientAdapter({ openai: realOpenAI }),
-      storage: responsesPrismaStorageAdapter({ prisma }),
-      runAdapter: responsesCompletionsRunAdapter(),
-    })
-    assert.ok(responsesClient)
-  })
-
-  test('client adapters are re-exported from both paths', () => {
-    // Both should export the same adapters
-    assert.ok(assistantsOpenaiClientAdapter)
-    assert.ok(responsesOpenaiClientAdapter)
-    assert.ok(assistantsCompletionsRunAdapter)
-    assert.ok(responsesCompletionsRunAdapter)
+    assert.ok(client)
   })
 })

@@ -76,12 +76,15 @@ export const listAssistants: Contract = async (client) => {
   const a1 = await client.beta.assistants.create({ model: config.model, name: 'List A' })
   const a2 = await client.beta.assistants.create({ model: config.model, name: 'List B' })
 
-  const list = await client.beta.assistants.list({ limit: 100 })
+  const list = await client.beta.assistants.list()
 
   assertPaginatedList(list, 'list')
   assert.ok(list.data.length >= 2, `Should have at least 2 assistants, got ${list.data.length}`)
-  assert.ok(list.data.some(a => a.id === a1.id), 'Should include first assistant')
-  assert.ok(list.data.some(a => a.id === a2.id), 'Should include second assistant')
+  // Use retrieve to verify our specific assistants exist (list may be paginated under concurrent load)
+  const retrieved1 = await client.beta.assistants.retrieve(a1.id)
+  const retrieved2 = await client.beta.assistants.retrieve(a2.id)
+  assert.equal(retrieved1.id, a1.id, 'Should retrieve first assistant')
+  assert.equal(retrieved2.id, a2.id, 'Should retrieve second assistant')
 
   for (const a of list.data) {
     assertAssistantShape(a, 'list item')

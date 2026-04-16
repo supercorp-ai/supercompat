@@ -32,8 +32,8 @@ test('supercompat can run via Anthropic', async () => {
   })
 
   const client = supercompat({
-    client: anthropicClientAdapter({ anthropic }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: anthropicClientAdapter({ anthropic }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 

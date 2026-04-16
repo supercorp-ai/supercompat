@@ -9,6 +9,7 @@ import { config } from '../contracts/lib/config'
 import { withRetry } from '../contracts/lib/withRetry'
 import { supercompat, openRouterClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 
 const apiKey = process.env.OPENROUTER_API_KEY
 if (!apiKey) { console.log('Skipping: OPENROUTER_API_KEY required'); process.exit(0) }
@@ -17,14 +18,14 @@ if (!process.env.DATABASE_URL) { console.log('Skipping: DATABASE_URL required');
 function createClient() {
   config.model = 'anthropic/claude-sonnet-4-6'
   return supercompat({
-    client: openRouterClientAdapter({ openRouter: new OpenRouter({ apiKey }) }),
+    clientAdapter: openRouterClientAdapter({ openRouter: new OpenRouter({ apiKey }) }),
     runAdapter: completionsRunAdapter(),
-    storage: prismaStorageAdapter({ prisma: new PrismaClient() }),
+    storageAdapter: prismaStorageAdapter({ prisma: createTestPrisma() }),
   })
 }
 
-describe('Responses API: prisma + OpenRouter', { concurrency: true, timeout: 600_000 }, () => {
+describe('Responses API: prisma + OpenRouter', { concurrency: true, timeout: 60_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { concurrency: true, timeout: 120_000 }, () => withRetry(() => contract(createClient()), { label: name }))
+    test(name, { concurrency: true, timeout: 60_000 }, () => withRetry(() => contract(createClient()), { label: name }))
   }
 })

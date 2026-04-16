@@ -22,9 +22,9 @@ export async function createMemoryTestClient({
   config.model = model
 
   const client = supercompat({
-    client: clientAdapter,
+    clientAdapter: clientAdapter,
     runAdapter: runAdapter ?? completionsRunAdapter(),
-    storage: memoryStorageAdapter(),
+    storageAdapter: memoryStorageAdapter(),
   })
 
   const beta = client.beta as any

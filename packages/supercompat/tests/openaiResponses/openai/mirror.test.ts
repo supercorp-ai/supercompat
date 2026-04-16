@@ -2,6 +2,7 @@ import { test, describe, after } from 'node:test'
 import assert from 'node:assert/strict'
 import OpenAI from 'openai'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 import {
   supercompat,
   openaiClientAdapter,
@@ -27,13 +28,13 @@ if (!apiKey) {
   throw new Error('TEST_OPENAI_API_KEY is required')
 }
 
-const prisma = new PrismaClient()
+const prisma = createTestPrisma()
 
 const makeClient = () => {
   const realOpenAI = new OpenAI({ apiKey })
   return supercompat({
-    client: openaiClientAdapter({ openai: realOpenAI }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: openaiClientAdapter({ openai: realOpenAI }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 }

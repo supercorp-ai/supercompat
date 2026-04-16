@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
 import { OpenRouter, HTTPClient } from '@openrouter/sdk'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 import {
   supercompat,
   openRouterClientAdapter,
@@ -35,7 +36,7 @@ function makeOpenRouter() {
 describe('tests', { concurrency: true }, () => {
 test('openRouter DeepSeek: basic chat completion', async () => {
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
   })
 
   const result = await client.chat.completions.create({
@@ -59,7 +60,7 @@ test('openRouter DeepSeek: basic chat completion', async () => {
 // =========================================================================
 test('openRouter DeepSeek: streaming chat completion', async () => {
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
   })
 
   const stream = await client.chat.completions.create({
@@ -88,7 +89,7 @@ test('openRouter DeepSeek: streaming chat completion', async () => {
 // =========================================================================
 test.skip('openRouter DeepSeek: tool calling', async () => {
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
   })
 
   const tools: OpenAI.ChatCompletionTool[] = [
@@ -134,11 +135,11 @@ test.skip('openRouter DeepSeek: tool calling', async () => {
 // 4. Thread/run via completionsRunAdapter
 // =========================================================================
 test('openRouter DeepSeek: thread/run via completionsRunAdapter', async () => {
-  const prisma = new PrismaClient()
+  const prisma = createTestPrisma()
 
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 
@@ -176,11 +177,11 @@ test('openRouter DeepSeek: thread/run via completionsRunAdapter', async () => {
 // 5. Thread/run with tool calling
 // =========================================================================
 test.skip('openRouter DeepSeek: thread/run with tool calling', async () => {
-  const prisma = new PrismaClient()
+  const prisma = createTestPrisma()
 
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 
@@ -255,7 +256,7 @@ test.skip('openRouter DeepSeek: thread/run with tool calling', async () => {
 // =========================================================================
 test('openRouter DeepSeek: models list', async () => {
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
   })
 
   const models = [] as string[]

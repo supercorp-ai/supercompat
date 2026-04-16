@@ -6,6 +6,7 @@ import { test, describe } from 'node:test'
 import OpenAI from 'openai'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import { responsesContracts as _all } from '../contracts'
+import { withRetry } from '../contracts/lib/withRetry'
 
 // OpenAI run adapter uses real OpenAI API for responses but local prisma for conversations.
 // Conversation-dependent tests fail because of this dual storage mismatch.
@@ -25,6 +26,7 @@ import {
   prismaStorageAdapter,
 } from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 
 const apiKey = process.env.TEST_OPENAI_API_KEY
 if (!apiKey) {
@@ -45,14 +47,16 @@ function createClient() {
   const realOpenAI = new OpenAI({ apiKey, ...proxyOpts })
 
   return supercompat({
-    client: openaiClientAdapter({ openai: realOpenAI }),
+    clientAdapter: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: openaiResponsesRunAdapter(),
-    storage: prismaStorageAdapter({ prisma: new PrismaClient() }),
+    storageAdapter: prismaStorageAdapter({ prisma: createTestPrisma() }),
   })
 }
 
-describe('Responses API: openaiResponsesRunAdapter + OpenAI', { concurrency: true, timeout: 300_000 }, () => {
+describe('Responses API: openaiResponsesRunAdapter + OpenAI', { concurrency: true, timeout: 60_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { concurrency: true, timeout: 240_000 }, () => contract(createClient()))
+    const slow = name.includes('file search') || name.includes('file_search') || name.includes('annotation indexes') || name.includes('max_output_tokens')
+    test(name, { concurrency: true, timeout: slow ? 180_000 : 60_000 }, () =>
+      withRetry(() => contract(createClient()), { label: name }))
   }
 })

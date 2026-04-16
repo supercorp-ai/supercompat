@@ -17,9 +17,9 @@ if (!process.env.DATABASE_URL) {
   process.exit(0)
 }
 
-describe('prismaStorageAdapter + Google', { concurrency: true, timeout: 600_000 }, () => {
+describe('prismaStorageAdapter + Google', { concurrency: true, timeout: 60_000 }, () => {
   for (const [name, contract] of Object.entries(completionsContracts)) {
-    test(name, { concurrency: true, timeout: 120_000 }, async () => contract(await createPrismaTestClient({
+    test(name, { concurrency: true, timeout: 60_000 }, async () => contract(await createPrismaTestClient({
       clientAdapter: googleClientAdapter({ google: new GoogleGenAI({ apiKey }) }),
       model: 'gemini-2.5-flash',
     })))

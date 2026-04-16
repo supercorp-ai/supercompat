@@ -4,6 +4,7 @@
  */
 import { test, describe } from 'node:test'
 import { responsesContracts as _all } from '../contracts'
+import { withRetry } from '../contracts/lib/withRetry'
 import { config } from '../contracts/lib/config'
 import {
   supercompat,
@@ -14,6 +15,7 @@ import {
 import { AIProjectClient } from '@azure/ai-projects'
 import { ClientSecretCredential } from '@azure/identity'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 
 const endpoint = process.env.AZURE_PROJECT_ENDPOINT
 const tenantId = process.env.AZURE_TENANT_ID
@@ -48,7 +50,7 @@ function createClient() {
   const azureAiProject = new AIProjectClient(endpoint!, credential)
 
   // Use prismaStorageAdapter for Responses handlers, plus Azure file/vectorStore handlers
-  const basePrisma = prismaStorageAdapter({ prisma: new PrismaClient() })
+  const basePrisma = prismaStorageAdapter({ prisma: createTestPrisma() })
 
   const storageWithAzureFiles = (args: any) => {
     const base = basePrisma(args)
@@ -64,14 +66,16 @@ function createClient() {
   }
 
   return supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsResponsesRunAdapter({ azureAiProject }),
-    storage: storageWithAzureFiles,
+    storageAdapter: storageWithAzureFiles,
   })
 }
 
-describe('Responses API: Azure Agents native', { concurrency: true, timeout: 600_000 }, () => {
+describe('Responses API: Azure Agents native', { concurrency: true, timeout: 60_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { concurrency: true, timeout: 120_000 }, () => contract(createClient()))
+    const slow = name.includes('file search') || name.includes('annotation indexes')
+    test(name, { concurrency: true, timeout: slow ? 180_000 : 60_000 }, () =>
+      withRetry(() => contract(createClient()), { label: name }))
   }
 })

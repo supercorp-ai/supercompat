@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert'
 import Groq from 'groq-sdk'
 import type OpenAI from 'openai'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 import { ProxyAgent, setGlobalDispatcher } from 'undici'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import dns from 'node:dns'
@@ -22,7 +23,7 @@ if (process.env.HTTPS_PROXY) {
 const groqKey = process.env.GROQ_API_KEY!
 
 test('completions run adapter surfaces groq tool calls', async () => {
-  const prisma = new PrismaClient()
+  const prisma = createTestPrisma()
   const groq = new Groq({
     apiKey: groqKey,
     ...(process.env.HTTPS_PROXY
@@ -31,8 +32,8 @@ test('completions run adapter surfaces groq tool calls', async () => {
   })
 
   const client = supercompat({
-    client: groqClientAdapter({ groq }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: groqClientAdapter({ groq }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 

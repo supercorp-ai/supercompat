@@ -40,22 +40,23 @@ import {
   prismaStorageAdapter,
 } from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 
 function createClient(): OpenAI {
   config.model = 'gpt-4.1-mini'
-  const prisma = new PrismaClient()
+  const prisma = createTestPrisma()
   const realOpenAI = new OpenAI({ apiKey, ...proxyOpts })
 
   return supercompat({
-    client: openaiClientAdapter({ openai: realOpenAI }),
+    clientAdapter: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: completionsRunAdapter(),
-    storage: prismaStorageAdapter({ prisma }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
   })
 }
 
-describe('Responses API: prismaStorageAdapter + OpenAI', { concurrency: true, timeout: 300_000 }, () => {
+describe('Responses API: prismaStorageAdapter + OpenAI', { concurrency: true, timeout: 60_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { concurrency: true, timeout: 120_000 }, () =>
+    test(name, { concurrency: true, timeout: 60_000 }, () =>
       withRetry(() => contract(createClient()), { label: name }))
   }
 })

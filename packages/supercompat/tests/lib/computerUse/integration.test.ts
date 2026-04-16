@@ -176,7 +176,7 @@ function destroyTestEnv(env: TestEnv) {
 
 // --- Tests ---
 
-describe('Computer Use Integration', { concurrency: true, timeout: 300_000 }, () => {
+describe('Computer Use Integration', { concurrency: true, timeout: 60_000 }, () => {
   before(() => {
     buildImage()
   })
@@ -207,7 +207,7 @@ describe('Computer Use Integration', { concurrency: true, timeout: 300_000 }, ()
     }
   })
 
-  test('Responses API: computer use round-trip', { timeout: 120_000 }, async () => {
+  test('Responses API: computer use round-trip', { timeout: 60_000 }, async () => {
     const env = await createTestEnv()
     try {
       const client = new OpenAI({ apiKey })
@@ -257,7 +257,7 @@ describe('Computer Use Integration', { concurrency: true, timeout: 300_000 }, ()
     }
   })
 
-  test('Assistants API: computer use via function tool', { timeout: 120_000 }, async () => {
+  test('Assistants API: computer use via function tool', { timeout: 60_000 }, async () => {
     const env = await createTestEnv()
     try {
       const client = new OpenAI({ apiKey })
@@ -333,7 +333,7 @@ describe('Computer Use Integration', { concurrency: true, timeout: 300_000 }, ()
     }
   })
 
-  test('Anthropic: computer use round-trip', { timeout: 120_000 }, async () => {
+  test('Anthropic: computer use round-trip', { timeout: 60_000 }, async () => {
     const anthropicKey = process.env.ANTHROPIC_API_KEY
     if (!anthropicKey) {
       console.log('Skipping Anthropic computer use: ANTHROPIC_API_KEY required')
@@ -570,7 +570,7 @@ describe('Computer Use Integration', { concurrency: true, timeout: 300_000 }, ()
     }
   })
 
-  test('Google Gemini: computer use round-trip', { timeout: 120_000 }, async () => {
+  test('Google Gemini: computer use round-trip', { timeout: 60_000 }, async () => {
     const googleKey = process.env.GOOGLE_API_KEY
     if (!googleKey) {
       console.log('Skipping Google computer use: GOOGLE_API_KEY required')

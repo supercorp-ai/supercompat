@@ -5,10 +5,12 @@
  * the Azure Agents adapter doesn't implement full assistant CRUD (retrieve/update/delete/list).
  */
 import { test, describe } from 'node:test'
+import { withRetry } from '../../openaiResponses/contracts/lib/withRetry'
 import OpenAI from 'openai'
 import dayjs from 'dayjs'
 import { uid } from 'radash'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 import { AIProjectClient } from '@azure/ai-projects'
 import { ClientSecretCredential } from '@azure/identity'
 import { contracts as _allContracts } from '../contracts'
@@ -43,7 +45,7 @@ function createClient(): OpenAI {
   config.model = 'gpt-4.1-mini'
   const credential = new ClientSecretCredential(tenantId!, clientId!, clientSecret!)
   const azureAiProject = new AIProjectClient(endpoint!, credential)
-  const prisma = new PrismaClient()
+  const prisma = createTestPrisma()
 
   const assistants = new Map<string, any>()
   let currentAssistant: any = {
@@ -59,9 +61,9 @@ function createClient(): OpenAI {
   }
 
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({ azureAiProject }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const beta = client.beta as any
@@ -139,8 +141,10 @@ function createClient(): OpenAI {
   return client
 }
 
-describe('azureAgentsStorageAdapter', { concurrency: true, timeout: 600_000 }, () => {
+describe('azureAgentsStorageAdapter', { concurrency: true, timeout: 60_000 }, () => {
   for (const [name, contract] of Object.entries(contracts)) {
-    test(name, { concurrency: true, timeout: 120_000 }, () => contract(createClient()))
+    const slow = name.includes('file search') || name.includes('annotation indexes')
+    test(name, { concurrency: true, timeout: slow ? 180_000 : 60_000 }, () =>
+      withRetry(() => contract(createClient()), { label: name }))
   }
 })

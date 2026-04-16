@@ -4,19 +4,19 @@ import { findRequestHandler } from './findRequestHandler'
 import { originalFetch } from './originalFetch'
 
 export type Args = {
-  client: any
-  storage?: (arg0: StorageAdapterArgs) => any
+  clientAdapter: any
+  storageAdapter?: (arg0: StorageAdapterArgs) => any
   runAdapter?: RunAdapter
 }
 
 export const supercompatFetch = ({
-  client,
-  storage,
+  clientAdapter,
+  storageAdapter,
   runAdapter,
 }: Args) => {
   const requestHandlers = getRequestHandlers({
-    client,
-    storage,
+    clientAdapter,
+    storageAdapter,
     runAdapter,
   })
 
@@ -30,7 +30,7 @@ export const supercompatFetch = ({
 
     if (!pathHandler) {
       return originalFetch({
-        client,
+        clientAdapter,
         args,
       })
     }
@@ -41,7 +41,7 @@ export const supercompatFetch = ({
 
     if (!requestHandler) {
       return originalFetch({
-        client,
+        clientAdapter,
         args,
       })
     }

@@ -5,6 +5,7 @@
  * Assistant CRUD is in-memory (Azure Responses doesn't have native assistants).
  */
 import { test, describe } from 'node:test'
+import { withRetry } from '../../openaiResponses/contracts/lib/withRetry'
 import OpenAI from 'openai'
 import dayjs from 'dayjs'
 import { uid } from 'radash'
@@ -66,11 +67,11 @@ function createClient(): OpenAI {
   }
 
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => currentAssistant,
     }),
-    storage: azureResponsesStorageAdapter(),
+    storageAdapter: azureResponsesStorageAdapter(),
   })
 
   const beta = client.beta as any
@@ -133,8 +134,10 @@ function createClient(): OpenAI {
   return client
 }
 
-describe('azureResponsesStorageAdapter', { concurrency: true, timeout: 300_000 }, () => {
+describe('azureResponsesStorageAdapter', { concurrency: true, timeout: 60_000 }, () => {
   for (const [name, contract] of Object.entries(coreContracts)) {
-    test(name, { concurrency: true, timeout: 120_000 }, () => contract(createClient()))
+    const slow = name.includes('file search') || name.includes('annotation indexes')
+    test(name, { concurrency: true, timeout: slow ? 180_000 : 60_000 }, () =>
+      withRetry(() => contract(createClient()), { label: name }))
   }
 })

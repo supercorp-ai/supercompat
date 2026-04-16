@@ -8,6 +8,7 @@ import { config } from '../contracts/lib/config'
 import { withRetry } from '../contracts/lib/withRetry'
 import { supercompat, azureOpenaiClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 
 const apiKey = process.env.TEST_AZURE_OPENAI_API_KEY
 const endpoint = process.env.TEST_AZURE_OPENAI_ENDPOINT
@@ -17,14 +18,14 @@ if (!process.env.DATABASE_URL) { console.log('Skipping: DATABASE_URL required');
 function createClient() {
   config.model = 'gpt-4.1-mini'
   return supercompat({
-    client: azureOpenaiClientAdapter({ azureOpenai: new AzureOpenAI({ apiKey, endpoint, apiVersion: '2024-10-21' }) }),
+    clientAdapter: azureOpenaiClientAdapter({ azureOpenai: new AzureOpenAI({ apiKey, endpoint, apiVersion: '2024-10-21' }) }),
     runAdapter: completionsRunAdapter(),
-    storage: prismaStorageAdapter({ prisma: new PrismaClient() }),
+    storageAdapter: prismaStorageAdapter({ prisma: createTestPrisma() }),
   })
 }
 
-describe('Responses API: prisma + Azure OpenAI', { concurrency: true, timeout: 600_000 }, () => {
+describe('Responses API: prisma + Azure OpenAI', { concurrency: true, timeout: 60_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { concurrency: true, timeout: 120_000 }, () => withRetry(() => contract(createClient()), { label: name }))
+    test(name, { concurrency: true, timeout: 60_000 }, () => withRetry(() => contract(createClient()), { label: name }))
   }
 })

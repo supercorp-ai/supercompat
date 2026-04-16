@@ -3,18 +3,18 @@ import { supercompatFetch, type Args } from './supercompatFetch'
 import { endpointFromBaseUrl } from './lib/azureOpenai/endpointFromBaseUrl'
 
 export const supercompat = ({
-  client,
-  storage,
+  clientAdapter,
+  storageAdapter,
   runAdapter,
 }: Args) => {
-  if (client.type === 'AZURE_OPENAI') {
+  if (clientAdapter.type === 'AZURE_OPENAI') {
     return new AzureOpenAI({
-      apiKey: client.client.apiKey,
-      apiVersion: client.client.apiVersion,
-      endpoint: endpointFromBaseUrl({ baseURL: client.client.baseURL }),
+      apiKey: clientAdapter.client.apiKey,
+      apiVersion: clientAdapter.client.apiVersion,
+      endpoint: endpointFromBaseUrl({ baseURL: clientAdapter.client.baseURL }),
       fetch: supercompatFetch({
-        client,
-        storage,
+        clientAdapter,
+        storageAdapter,
         runAdapter,
       }),
     })
@@ -23,8 +23,8 @@ export const supercompat = ({
   return new OpenAI({
     apiKey: 'SUPERCOMPAT_PLACEHOLDER_OPENAI_KEY',
     fetch: supercompatFetch({
-      client,
-      storage,
+      clientAdapter,
+      storageAdapter,
       runAdapter,
     }),
   })

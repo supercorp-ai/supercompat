@@ -17,9 +17,9 @@ if (!process.env.DATABASE_URL) {
   process.exit(0)
 }
 
-describe('prismaStorageAdapter + Perplexity', { concurrency: true, timeout: 600_000 }, () => {
+describe('prismaStorageAdapter + Perplexity', { concurrency: true, timeout: 60_000 }, () => {
   for (const [name, contract] of Object.entries(noToolsContracts)) {
-    test(name, { concurrency: true, timeout: 120_000 }, async () => contract(await createPrismaTestClient({
+    test(name, { concurrency: true, timeout: 60_000 }, async () => contract(await createPrismaTestClient({
       clientAdapter: perplexityClientAdapter({
         perplexity: new OpenAI({ apiKey, baseURL: 'https://api.perplexity.ai' }),
       }),

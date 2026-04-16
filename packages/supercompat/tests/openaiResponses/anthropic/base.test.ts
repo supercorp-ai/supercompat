@@ -16,9 +16,9 @@ if (!process.env.DATABASE_URL) { console.log('Skipping: DATABASE_URL required');
 function createClient() {
   config.model = 'claude-sonnet-4-6'
   return supercompat({
-    client: anthropicClientAdapter({ anthropic: new Anthropic({ apiKey }) }),
+    clientAdapter: anthropicClientAdapter({ anthropic: new Anthropic({ apiKey }) }),
     runAdapter: completionsRunAdapter(),
-    storage: prismaStorageAdapter({ prisma: new PrismaClient() }),
+    storageAdapter: prismaStorageAdapter({ prisma: new PrismaClient() }),
   })
 }
 

@@ -9,8 +9,8 @@ import { models } from './models'
  * @example Azure Agents API
  * ```typescript
  * const client = supercompat({
- *   client: azureAiProjectClientAdapter({ azureAiProject }),
- *   storage: azureAgentsStorageAdapter(),
+ *   clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
+ *   storageAdapter: azureAgentsStorageAdapter(),
  *   runAdapter: azureAgentsRunAdapter({ ... })
  * })
  * ```
@@ -18,8 +18,8 @@ import { models } from './models'
  * @example Azure Responses API
  * ```typescript
  * const client = supercompat({
- *   client: azureAiProjectClientAdapter({ azureAiProject }),
- *   storage: azureResponsesStorageAdapter(),
+ *   clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
+ *   storageAdapter: azureResponsesStorageAdapter(),
  *   runAdapter: azureResponsesRunAdapter({ ... })
  * })
  * ```

@@ -515,6 +515,8 @@ export const fileSearchAnnotationIndexes: Contract = async (client) => {
     if (vs.file_counts.completed > 0 && vs.file_counts.in_progress === 0) break
     await new Promise(r => setTimeout(r, 1000))
   }
+  // Extra buffer for search propagation
+  await new Promise(r => setTimeout(r, 5000))
 
   const assistant = await client.beta.assistants.create({
     model: config.model,

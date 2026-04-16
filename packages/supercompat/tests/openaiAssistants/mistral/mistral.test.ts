@@ -5,6 +5,7 @@ import { Mistral } from '@mistralai/mistralai'
 import { ProxyAgent, setGlobalDispatcher } from 'undici'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 import {
   supercompat,
   mistralClientAdapter,
@@ -20,7 +21,7 @@ if (process.env.HTTPS_PROXY) {
 
 describe('tests', { concurrency: true }, () => {
 test('supercompat can run via Mistral', async () => {
-  const prisma = new PrismaClient()
+  const prisma = createTestPrisma()
   const mistral = new Mistral({
     apiKey: mistralKey,
     ...(process.env.HTTPS_PROXY
@@ -29,8 +30,8 @@ test('supercompat can run via Mistral', async () => {
   })
 
   const client = supercompat({
-    client: mistralClientAdapter({ mistral }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: mistralClientAdapter({ mistral }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 
@@ -65,7 +66,7 @@ test('supercompat can run via Mistral', async () => {
 })
 
 test('prismaStorageAdapter exposes run steps with tools via Mistral', async () => {
-  const prisma = new PrismaClient()
+  const prisma = createTestPrisma()
   const mistral = new Mistral({
     apiKey: mistralKey,
     ...(process.env.HTTPS_PROXY
@@ -74,8 +75,8 @@ test('prismaStorageAdapter exposes run steps with tools via Mistral', async () =
   })
 
   const client = supercompat({
-    client: mistralClientAdapter({ mistral }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: mistralClientAdapter({ mistral }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 

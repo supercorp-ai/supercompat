@@ -36,14 +36,14 @@ function createClient() {
   config.model = 'gpt-4.1-mini'
 
   return supercompat({
-    client: openaiClientAdapter({ openai: new OpenAI({ apiKey, ...proxyOpts }) }),
+    clientAdapter: openaiClientAdapter({ openai: new OpenAI({ apiKey, ...proxyOpts }) }),
     runAdapter: completionsRunAdapter(),
-    storage: memoryStorageAdapter(),
+    storageAdapter: memoryStorageAdapter(),
   })
 }
 
-describe('Responses API: memoryStorageAdapter + OpenAI', { concurrency: true, timeout: 600_000 }, () => {
+describe('Responses API: memoryStorageAdapter + OpenAI', { concurrency: true, timeout: 60_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { concurrency: true, timeout: 120_000 }, () => withRetry(() => contract(createClient()), { label: name }))
+    test(name, { concurrency: true, timeout: 60_000 }, () => withRetry(() => contract(createClient()), { label: name }))
   }
 })

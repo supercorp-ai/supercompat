@@ -4,6 +4,7 @@ import OpenAI from 'openai'
 import { AIProjectClient } from '@azure/ai-projects'
 import { ClientSecretCredential } from '@azure/identity'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 import {
   azureAgentsRunAdapter,
   azureAiProjectClientAdapter,
@@ -40,7 +41,7 @@ const cred = new ClientSecretCredential(
 
 const azureAiProject = new AIProjectClient(azureEndpoint, cred)
 
-const prisma = new PrismaClient()
+const prisma = createTestPrisma()
 
 // Create agents for testing
 describe('tests', () => {
@@ -134,11 +135,11 @@ after(async () => {
 
 test('azureAgentsRunAdapter can create thread, message, and run with simple agent', async (t) => {
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   // In Azure Agents, the assistant is pre-configured in Azure
@@ -177,11 +178,11 @@ test('azureAgentsRunAdapter can create thread, message, and run with simple agen
 
 test('azureAgentsRunAdapter maintains conversation across runs', async (t) => {
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -220,11 +221,11 @@ test('azureAgentsRunAdapter maintains conversation across runs', async (t) => {
 
 test('azureAgentsStorageAdapter works with streaming', async (t) => {
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -278,11 +279,11 @@ test('azureAgentsStorageAdapter works with streaming', async (t) => {
 
 test('azureAgentsRunAdapter can retrieve run status', async (t) => {
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -311,11 +312,11 @@ test('azureAgentsRunAdapter can retrieve run status', async (t) => {
 
 test('azureAgentsRunAdapter handles function calls', async (t) => {
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({
+    storageAdapter: azureAgentsStorageAdapter({
       azureAiProject,
       prisma,
     }),
@@ -380,12 +381,19 @@ test('azureAgentsRunAdapter handles function calls', async (t) => {
 })
 
 test('azureAgentsRunAdapter handles code interpreter', async (t) => {
+  // Create a dedicated agent to avoid Azure rate limits from shared agents
+  const agent = await azureAiProject.agents.createAgent('gpt-4.1', {
+    name: 'Test Code Interpreter ' + Date.now(),
+    instructions: 'Execute code and reply with ONLY the final number, no explanation.',
+    tools: [{ type: 'code_interpreter' }],
+  })
+
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({
+    storageAdapter: azureAgentsStorageAdapter({
       azureAiProject,
       prisma,
     }),
@@ -399,9 +407,8 @@ test('azureAgentsRunAdapter handles code interpreter', async (t) => {
   })
 
   const run = await client.beta.threads.runs.createAndPoll(thread.id, {
-    assistant_id: CODE_INTERPRETER_AGENT_ID,
+    assistant_id: agent.id,
     tools: [{ type: 'code_interpreter' }],
-    instructions: 'Execute code and reply with ONLY the final number, no explanation.',
   })
 
   assert.equal(run.status, 'completed', 'Run should complete')
@@ -423,17 +430,19 @@ test('azureAgentsRunAdapter handles code interpreter', async (t) => {
     text.includes('5050') || text.includes('5,050'),
     `Response should include 5050, got: ${text}`,
   )
+
+  try { await azureAiProject.agents.deleteAgent(agent.id) } catch {}
 })
 
 test('azureAgentsRunAdapter uses Azure agent config when no overrides provided', async (t) => {
   // This test verifies that when we don't pass tools or instructions in createAndPoll,
   // the Azure agent's own configuration is used
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -467,11 +476,11 @@ test('azureAgentsRunAdapter allows overriding instructions in run', async (t) =>
   // This test verifies that we can override the Azure agent's instructions
   // by passing instructions in the createAndPoll call
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -509,11 +518,11 @@ test('azureAgentsRunAdapter allows overriding instructions in run', async (t) =>
 
 test('azureAgentsRunAdapter streams function call events correctly', async (t) => {
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({
+    storageAdapter: azureAgentsStorageAdapter({
       azureAiProject,
       prisma,
     }),
@@ -595,11 +604,11 @@ test('azureAgentsRunAdapter streams function call events correctly', async (t) =
 
 test('azureAgentsRunAdapter streams code interpreter events correctly', async (t) => {
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({
+    storageAdapter: azureAgentsStorageAdapter({
       azureAiProject,
       prisma,
     }),
@@ -675,11 +684,11 @@ test('azureAgentsRunAdapter streams code interpreter events correctly', async (t
 
 test('azureAgentsRunAdapter exposes run steps during streaming', async (t) => {
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({
+    storageAdapter: azureAgentsStorageAdapter({
       azureAiProject,
       prisma,
     }),
@@ -729,11 +738,11 @@ test('azureAgentsRunAdapter exposes run steps during streaming', async (t) => {
 
 test('azureAgentsRunAdapter can list run steps', async (t) => {
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({
+    storageAdapter: azureAgentsStorageAdapter({
       azureAiProject,
       prisma,
     }),
@@ -771,11 +780,11 @@ test('azureAgentsRunAdapter can list run steps', async (t) => {
 
 test('azureAgentsRunAdapter handles multiple simultaneous tool calls', async (t) => {
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({
+    storageAdapter: azureAgentsStorageAdapter({
       azureAiProject,
       prisma,
     }),
@@ -871,11 +880,11 @@ test('azureAgentsRunAdapter properly transforms step_details for code_interprete
   // This test validates that Azure's camelCase stepDetails.toolCalls
   // is properly converted to OpenAI's snake_case step_details.tool_calls
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -957,11 +966,11 @@ test('azureAgentsRunAdapter properly transforms step_details for code_interprete
 
 test('azureAgentsRunAdapter code_interpreter generates and validates image output', async (t) => {
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -1019,11 +1028,11 @@ test('azureAgentsRunAdapter code_interpreter generates and validates image outpu
 
 test('azureAgentsRunAdapter normalizes image_file content in assistant messages', async (t) => {
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const pythonCode = `import matplotlib.pyplot as plt
@@ -1092,11 +1101,11 @@ plt.show()`
 
 test('azureAgentsRunAdapter properly transforms function call step_details', async (t) => {
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -1170,11 +1179,11 @@ test('azureAgentsRunAdapter properly transforms function call step_details', asy
 
 test('azureAgentsRunAdapter code_interpreter handles multiple outputs correctly', async (t) => {
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -1233,11 +1242,11 @@ test('azureAgentsRunAdapter code_interpreter handles multiple outputs correctly'
 
 test('azureAgentsRunAdapter validates message_creation step_details transformation', async (t) => {
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -1297,11 +1306,11 @@ test('azureAgentsRunAdapter handles file_search with empty vector store without 
 
     try {
       const client = supercompat({
-        client: azureAiProjectClientAdapter({ azureAiProject }),
+        clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
         runAdapter: azureAgentsRunAdapter({
           azureAiProject,
         }),
-        storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+        storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
       })
 
       const thread = await client.beta.threads.create()
@@ -1414,11 +1423,11 @@ test.skip('azureAgentsRunAdapter properly transforms step_details for file_searc
 
       try {
         const client = supercompat({
-          client: azureAiProjectClientAdapter({ azureAiProject }),
+          clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
           runAdapter: azureAgentsRunAdapter({
             azureAiProject,
           }),
-          storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+          storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
         })
 
         const thread = await client.beta.threads.create()
@@ -1510,11 +1519,11 @@ test('azureAgentsRunAdapter preserves function tool call outputs in messages.lis
   // This test validates whether function tool call information (including outputs)
   // is available when retrieving messages via messages.list() after completion
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   const thread = await client.beta.threads.create()
@@ -1633,11 +1642,11 @@ test('azureAgentsRunAdapter preserves function tool call outputs in messages.lis
 
 test('azureAgentsRunAdapter stores and retrieves function tool outputs', async (t) => {
   const client = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({
       azureAiProject,
     }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   // Create a thread
@@ -1750,9 +1759,9 @@ testOrSkip('Azure function outputs match OpenAI format exactly', async (t) => {
 
   // Setup Azure client
   const azureClient = supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
     runAdapter: azureAgentsRunAdapter({ azureAiProject }),
-    storage: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+    storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
   })
 
   // Define the same function tool for both

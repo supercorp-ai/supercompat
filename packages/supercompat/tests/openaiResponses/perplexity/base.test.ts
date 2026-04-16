@@ -5,6 +5,7 @@ import { config } from '../contracts/lib/config'
 import { withRetry } from '../contracts/lib/withRetry'
 import { supercompat, perplexityClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 
 const apiKey = process.env.PERPLEXITY_API_KEY
 if (!apiKey) { console.log('Skipping: PERPLEXITY_API_KEY required'); process.exit(0) }
@@ -21,14 +22,14 @@ const responsesContracts = Object.fromEntries(Object.entries(_all).filter(([n]) 
 function createClient() {
   config.model = 'sonar-pro'
   return supercompat({
-    client: perplexityClientAdapter({ perplexity: new OpenAI({ apiKey, baseURL: 'https://api.perplexity.ai' }) }),
+    clientAdapter: perplexityClientAdapter({ perplexity: new OpenAI({ apiKey, baseURL: 'https://api.perplexity.ai' }) }),
     runAdapter: completionsRunAdapter(),
-    storage: prismaStorageAdapter({ prisma: new PrismaClient() }),
+    storageAdapter: prismaStorageAdapter({ prisma: createTestPrisma() }),
   })
 }
 
-describe('Responses API: prisma + Perplexity', { concurrency: true, timeout: 600_000 }, () => {
+describe('Responses API: prisma + Perplexity', { concurrency: true, timeout: 60_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { concurrency: true, timeout: 120_000 }, () => withRetry(() => contract(createClient()), { label: name }))
+    test(name, { concurrency: true, timeout: 60_000 }, () => withRetry(() => contract(createClient()), { label: name }))
   }
 })

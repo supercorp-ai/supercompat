@@ -2,6 +2,7 @@ import { test, describe, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 import { ProxyAgent, setGlobalDispatcher } from 'undici'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import dns from 'node:dns'
@@ -22,7 +23,7 @@ const apiKey = process.env.TEST_OPENAI_API_KEY!
 
 describe('tests', { concurrency: true }, () => {
 test('completions run adapter surfaces tool calls', async () => {
-  const prisma = new PrismaClient()
+  const prisma = createTestPrisma()
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -31,8 +32,8 @@ test('completions run adapter surfaces tool calls', async () => {
   })
 
   const client = supercompat({
-    client: openaiClientAdapter({ openai: realOpenAI }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: openaiClientAdapter({ openai: realOpenAI }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 

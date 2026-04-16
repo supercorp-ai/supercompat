@@ -11,6 +11,7 @@ import {
   prismaStorageAdapter,
 } from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 
 // Regression test: validates tool-call flows retain messages in storage
 
@@ -28,12 +29,12 @@ test('createMessageResponse processes tool calls without thread id errors', asyn
       ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
       : {}),
   })
-  const prisma = new PrismaClient()
+  const prisma = createTestPrisma()
 
   const client = supercompat({
-    client: openaiClientAdapter({ openai: realOpenAI }),
+    clientAdapter: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: completionsRunAdapter(),
-    storage: prismaStorageAdapter({ prisma }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
   })
 
   const tools = [

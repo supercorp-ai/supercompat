@@ -106,8 +106,8 @@ test('Azure agent reference integration: agent instructions are used when extern
     })
 
     const client = supercompat({
-      client: azureAiProjectClientAdapter({ azureAiProject }),
-      storage: azureResponsesStorageAdapter(),
+      clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
+      storageAdapter: azureResponsesStorageAdapter(),
       runAdapter: openaiResponsesRunAdapter({
         getOpenaiAssistant: () => Promise.resolve(openaiAssistant),
       }),
@@ -164,8 +164,8 @@ test('Azure agent reference integration: local instructions are ignored for exte
     })
 
     const client = supercompat({
-      client: azureAiProjectClientAdapter({ azureAiProject }),
-      storage: azureResponsesStorageAdapter(),
+      clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
+      storageAdapter: azureResponsesStorageAdapter(),
       runAdapter: openaiResponsesRunAdapter({
         getOpenaiAssistant: () => Promise.resolve(openaiAssistant),
       }),

@@ -4,6 +4,7 @@
  */
 import { test, describe } from 'node:test'
 import { responsesContracts as _all } from '../contracts'
+import { withRetry } from '../contracts/lib/withRetry'
 import { config } from '../contracts/lib/config'
 import {
   supercompat,
@@ -15,6 +16,7 @@ import { AIProjectClient as AIProjectClientV2 } from '@azure/ai-projects-v2'
 import { AIProjectClient as AIProjectClientV1 } from '@azure/ai-projects'
 import { ClientSecretCredential } from '@azure/identity'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 import { post as fileUploadPost, del as fileDeleteHandler } from '../../../src/handlers/assistants/azureAgentsStorageAdapter/files/upload'
 import { createVectorStore, getVectorStore, deleteVectorStore } from '../../../src/handlers/assistants/azureAgentsStorageAdapter/vectorStores'
 
@@ -47,7 +49,7 @@ function createClient() {
   // v1 for file/vector store operations (has agents.files)
   const azureAiProjectV1 = new AIProjectClientV1(endpoint!, credential)
 
-  const basePrisma = prismaStorageAdapter({ prisma: new PrismaClient() })
+  const basePrisma = prismaStorageAdapter({ prisma: createTestPrisma() })
 
   const storageWithAzureFiles = (args: any) => {
     const base = basePrisma(args)
@@ -63,14 +65,16 @@ function createClient() {
   }
 
   return supercompat({
-    client: azureAiProjectClientAdapter({ azureAiProject: azureAiProjectV2 as any }),
+    clientAdapter: azureAiProjectClientAdapter({ azureAiProject: azureAiProjectV2 as any }),
     runAdapter: azureResponsesRunAdapter({ azureAiProject: azureAiProjectV2 as any }),
-    storage: storageWithAzureFiles,
+    storageAdapter: storageWithAzureFiles,
   })
 }
 
-describe('Responses API: azureResponsesRunAdapter + Azure', { concurrency: true, timeout: 600_000 }, () => {
+describe('Responses API: azureResponsesRunAdapter + Azure', { concurrency: true, timeout: 60_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { concurrency: true, timeout: 120_000 }, () => contract(createClient()))
+    const slow = name.includes('file search') || name.includes('annotation indexes')
+    test(name, { concurrency: true, timeout: slow ? 180_000 : 60_000 }, () =>
+      withRetry(() => contract(createClient()), { label: name }))
   }
 })

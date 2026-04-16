@@ -17,11 +17,11 @@ if (!process.env.DATABASE_URL) {
   process.exit(0)
 }
 
-describe('prismaStorageAdapter + Groq', { timeout: 600_000, concurrency: 1 }, () => {
+describe('prismaStorageAdapter + Groq', { timeout: 60_000, concurrency: 1 }, () => {
   beforeEach(() => new Promise(r => setTimeout(r, 3000)))
 
   for (const [name, contract] of Object.entries(completionsContracts)) {
-    test(name, { timeout: 120_000 }, () =>
+    test(name, { timeout: 60_000 }, () =>
       withRetry(async () => contract(await createPrismaTestClient({
         clientAdapter: groqClientAdapter({ groq: new Groq({ apiKey }) }),
         model: 'llama-3.3-70b-versatile',

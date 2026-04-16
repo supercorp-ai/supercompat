@@ -19,7 +19,7 @@ test("supercompat can call OpenAI completions", async () => {
       : {}),
   });
   const client = supercompat({
-    client: openaiClientAdapter({ openai: realOpenAI }),
+    clientAdapter: openaiClientAdapter({ openai: realOpenAI }),
   });
 
   const result = await client.chat.completions.create({
@@ -46,7 +46,7 @@ test("supercompat can list models via OpenAI", async () => {
       : {}),
   });
   const client = supercompat({
-    client: openaiClientAdapter({ openai: realOpenAI }),
+    clientAdapter: openaiClientAdapter({ openai: realOpenAI }),
   });
 
   const models = [] as string[];

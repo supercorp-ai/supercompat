@@ -32,8 +32,8 @@ test('completions run adapter handles anthropic function tool calls with empty a
   })
 
   const client = supercompat({
-    client: anthropicClientAdapter({ anthropic }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: anthropicClientAdapter({ anthropic }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 
@@ -117,8 +117,8 @@ test('completions run adapter surfaces anthropic getComments tool call', async (
   })
 
   const client = supercompat({
-    client: anthropicClientAdapter({ anthropic }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: anthropicClientAdapter({ anthropic }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 
@@ -213,8 +213,8 @@ test(
     })
 
     const client = supercompat({
-      client: anthropicClientAdapter({ anthropic }),
-      storage: prismaStorageAdapter({ prisma }),
+      clientAdapter: anthropicClientAdapter({ anthropic }),
+      storageAdapter: prismaStorageAdapter({ prisma }),
       runAdapter: completionsRunAdapter(),
     })
 
@@ -356,8 +356,8 @@ test('completions run adapter surfaces anthropic tool calls', async () => {
   })
 
   const client = supercompat({
-    client: anthropicClientAdapter({ anthropic }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: anthropicClientAdapter({ anthropic }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 
@@ -459,8 +459,8 @@ test('completions run adapter surfaces anthropic web search tool calls', async (
   })
 
   const client = supercompat({
-    client: anthropicClientAdapter({ anthropic }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: anthropicClientAdapter({ anthropic }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 
@@ -544,8 +544,8 @@ test(
     })
 
     const client = supercompat({
-      client: anthropicClientAdapter({ anthropic }),
-      storage: prismaStorageAdapter({ prisma }),
+      clientAdapter: anthropicClientAdapter({ anthropic }),
+      storageAdapter: prismaStorageAdapter({ prisma }),
       runAdapter: completionsRunAdapter(),
     })
 
@@ -641,8 +641,8 @@ test(
     })
 
     const client = supercompat({
-      client: anthropicClientAdapter({ anthropic }),
-      storage: prismaStorageAdapter({ prisma }),
+      clientAdapter: anthropicClientAdapter({ anthropic }),
+      storageAdapter: prismaStorageAdapter({ prisma }),
       runAdapter: completionsRunAdapter(),
     })
 

@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { OpenRouter, HTTPClient } from '@openrouter/sdk'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 import {
   supercompat,
   openRouterClientAdapter,
@@ -204,7 +205,7 @@ before(async () => {
   buildImage()
   containerProcess = startContainer()
   await waitForHealth()
-}, { timeout: 120_000 })
+}, { timeout: 60_000 })
 
 after(async () => {
   try {
@@ -217,8 +218,8 @@ after(async () => {
 // Full e2e: GLM → real MCP server → validate model sees screen content
 // =========================================================================
 describe('tests', { concurrency: true }, () => {
-test('openRouter GLM: full e2e with real MCP computer use server', { timeout: 300_000 }, async () => {
-  const prisma = new PrismaClient()
+test('openRouter GLM: full e2e with real MCP computer use server', { timeout: 60_000 }, async () => {
+  const prisma = createTestPrisma()
   const mcpClient = new McpClient(MCP_SERVER_URL)
   await mcpClient.initialize()
 
@@ -226,8 +227,8 @@ test('openRouter GLM: full e2e with real MCP computer use server', { timeout: 30
   await mcpClient.warmUp()
 
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 

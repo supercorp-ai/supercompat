@@ -37,7 +37,7 @@ test('azureAiProject: list models via deployments', async () => {
 
   // Create supercompat client with Azure AI Project adapter
   const client = supercompat({
-    client: azureAiProjectClientAdapter({
+    clientAdapter: azureAiProjectClientAdapter({
       azureAiProject,
     }),
   })
@@ -71,7 +71,7 @@ test('azureAiProject: models endpoint returns correct format', async () => {
 
   // Create supercompat client
   const client = supercompat({
-    client: azureAiProjectClientAdapter({
+    clientAdapter: azureAiProjectClientAdapter({
       azureAiProject,
     }),
   })

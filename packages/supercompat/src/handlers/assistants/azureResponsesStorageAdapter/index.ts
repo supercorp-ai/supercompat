@@ -27,7 +27,7 @@ type MethodHandlers = { get?: RequestHandler; post?: RequestHandler; delete?: Re
 
 type AzureResponsesStorageAdapterArgs = StorageAdapterArgs & {
   runAdapter: RunAdapterWithAssistant
-  originalClient?: any
+  originalClientAdapter?: any
 }
 
 /**
@@ -40,8 +40,8 @@ type AzureResponsesStorageAdapterArgs = StorageAdapterArgs & {
  * const azureAiProject = new AIProjectClient(endpoint, credential)
  *
  * const client = supercompat({
- *   client: azureAiProjectClientAdapter({ azureAiProject }),
- *   storage: azureResponsesStorageAdapter(),
+ *   clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
+ *   storageAdapter: azureResponsesStorageAdapter(),
  *   runAdapter: azureResponsesRunAdapter({ getOpenaiAssistant: () => assistant }),
  * })
  * ```
@@ -52,14 +52,14 @@ export const azureResponsesStorageAdapter = (): ((
   const createResponseItems: OpenAI.Responses.ResponseInputItem[] = []
   let cachedClient: OpenAI | null = null
 
-  return ({ runAdapter, client, originalClient }: AzureResponsesStorageAdapterArgs) => {
+  return ({ runAdapter, client, originalClientAdapter }: AzureResponsesStorageAdapterArgs) => {
     // Helper to get the AIProjectClient from the original client adapter
     const getAIProjectClient = (): any => {
-      // If originalClient is provided and has a 'client' property, unwrap it
-      if (originalClient && typeof originalClient === 'object' && 'client' in originalClient) {
-        return (originalClient as any).client
+      // If originalClientAdapter is provided and has a 'client' property, unwrap it
+      if (originalClientAdapter && typeof originalClientAdapter === 'object' && 'client' in originalClientAdapter) {
+        return (originalClientAdapter as any).client
       }
-      // Fallback to client if originalClient not provided
+      // Fallback to client if originalClientAdapter not provided
       return client
     }
 

@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { OpenRouter, HTTPClient } from '@openrouter/sdk'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 import {
   supercompat,
   openRouterClientAdapter,
@@ -333,7 +334,7 @@ before(async () => {
     displayHeight: 500,
   })
   await Promise.all([waitForHealth(MCP_SERVER_URL), waitForHealth(MCP_SERVER_URL_SMALL)])
-}, { timeout: 120_000 })
+}, { timeout: 60_000 })
 
 after(async () => {
   try { execSync(`docker stop ${CONTAINER_NAME}`, { stdio: 'ignore' }) } catch {}
@@ -346,8 +347,8 @@ after(async () => {
 // Test 1: Screenshot + describe (basic tool-use validation)
 // =========================================================================
 describe('tests', () => {
-test('openRouter Kimi K2.5: full e2e with real MCP computer use server', { timeout: 300_000 }, async () => {
-  const prisma = new PrismaClient()
+test('openRouter Kimi K2.5: full e2e with real MCP computer use server', { timeout: 60_000 }, async () => {
+  const prisma = createTestPrisma()
   const mcpClient = new McpClient(MCP_SERVER_URL)
   await mcpClient.initialize()
 
@@ -355,8 +356,8 @@ test('openRouter Kimi K2.5: full e2e with real MCP computer use server', { timeo
   await mcpClient.warmUp()
 
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 
@@ -384,8 +385,8 @@ test('openRouter Kimi K2.5: full e2e with real MCP computer use server', { timeo
 // =========================================================================
 // Test 2: Click subscribe button → read modal fields (click validation)
 // =========================================================================
-test('openRouter Kimi K2.5: click Subscribe button on supercorp.ai and describe modal fields', { timeout: 300_000 }, async () => {
-  const prisma = new PrismaClient()
+test('openRouter Kimi K2.5: click Subscribe button on supercorp.ai and describe modal fields', { timeout: 60_000 }, async () => {
+  const prisma = createTestPrisma()
   const mcpClient = new McpClient(MCP_SERVER_URL)
   await mcpClient.initialize()
 
@@ -395,8 +396,8 @@ test('openRouter Kimi K2.5: click Subscribe button on supercorp.ai and describe 
   await new Promise((r) => setTimeout(r, 5000))
 
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 
@@ -428,8 +429,8 @@ test('openRouter Kimi K2.5: click Subscribe button on supercorp.ai and describe 
 // =========================================================================
 // Test 3: Click subscribe button at 720x500 resolution
 // =========================================================================
-test('openRouter Kimi K2.5: click Subscribe at 720x500 and describe modal fields', { timeout: 300_000 }, async () => {
-  const prisma = new PrismaClient()
+test('openRouter Kimi K2.5: click Subscribe at 720x500 and describe modal fields', { timeout: 60_000 }, async () => {
+  const prisma = createTestPrisma()
   const mcpClient = new McpClient(MCP_SERVER_URL_SMALL)
   await mcpClient.initialize()
 
@@ -437,8 +438,8 @@ test('openRouter Kimi K2.5: click Subscribe at 720x500 and describe modal fields
   await mcpClient.warmUp()
 
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 

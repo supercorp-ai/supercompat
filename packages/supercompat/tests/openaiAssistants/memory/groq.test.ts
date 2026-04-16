@@ -12,11 +12,11 @@ const apiKey = process.env.GROQ_API_KEY
 if (!apiKey) { console.log('Skipping: GROQ_API_KEY required'); process.exit(0) }
 if (process.env.SKIP_PROVIDERS?.split(',').includes('groq')) { console.log('Skipping: groq in SKIP_PROVIDERS'); process.exit(0) }
 
-describe('memoryStorageAdapter + Groq', { timeout: 600_000, concurrency: 1 }, () => {
+describe('memoryStorageAdapter + Groq', { timeout: 60_000, concurrency: 1 }, () => {
   beforeEach(() => new Promise(r => setTimeout(r, 3000)))
 
   for (const [name, contract] of Object.entries(completionsContracts)) {
-    test(name, { timeout: 120_000 }, async () => contract(await createMemoryTestClient({
+    test(name, { timeout: 60_000 }, async () => contract(await createMemoryTestClient({
       clientAdapter: groqClientAdapter({ groq: new Groq({ apiKey }) }),
       model: 'qwen/qwen3-32b',
     })))

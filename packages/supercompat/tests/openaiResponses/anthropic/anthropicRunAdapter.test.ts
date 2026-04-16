@@ -38,9 +38,9 @@ function createClient() {
   const anthropic = new Anthropic({ apiKey })
 
   return supercompat({
-    client: anthropicClientAdapter({ anthropic }),
+    clientAdapter: anthropicClientAdapter({ anthropic }),
     runAdapter: anthropicRunAdapter({ anthropic }),
-    storage: prismaStorageAdapter({ prisma: new PrismaClient() }),
+    storageAdapter: prismaStorageAdapter({ prisma: new PrismaClient() }),
   })
 }
 

@@ -266,10 +266,12 @@ export const fileSearchCall: Contract = async (client) => {
     if (vs.file_counts.completed > 0 && vs.file_counts.in_progress === 0) break
     await new Promise(r => setTimeout(r, 1000))
   }
+  // Extra buffer for search propagation
+  await new Promise(r => setTimeout(r, 5000))
 
   const assistant = await client.beta.assistants.create({
     model: config.model,
-    instructions: 'You are a document search assistant. You MUST ALWAYS use the file_search tool before answering ANY question. Search the uploaded files first, then answer based ONLY on what you find. Do NOT say the information is not available without searching first.',
+    instructions: 'You are a document search assistant. You MUST ALWAYS use the file_search tool before answering ANY question. Search the uploaded files first, then answer based ONLY on what you find. The file contains a sentence about a lucky number. Find it and report the number. Do NOT say the information is not available without searching first.',
     tools: [{ type: 'file_search' }],
     tool_resources: {
       file_search: {
@@ -281,7 +283,7 @@ export const fileSearchCall: Contract = async (client) => {
   const thread = await client.beta.threads.create()
   await client.beta.threads.messages.create(thread.id, {
     role: 'user',
-    content: 'Search the uploaded file and tell me: what is the lucky number? Reply with just the number.',
+    content: 'Search the uploaded file for the phrase "Lucky number" and tell me: what is the lucky number? Reply with just the number.',
   })
 
   const run = await client.beta.threads.runs.createAndPoll(thread.id, {

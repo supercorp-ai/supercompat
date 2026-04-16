@@ -48,12 +48,14 @@ export const fileSearch: ResponsesContract = async (client) => {
     if (vs.file_counts.completed > 0 && vs.file_counts.in_progress === 0) break
     await new Promise(r => setTimeout(r, 1000))
   }
+  // Extra buffer for search propagation
+  await new Promise(r => setTimeout(r, 5000))
 
   const response = await client.responses.create({
     model: config.model,
     temperature: 0,
-    input: 'What is the lucky number in the file? Reply with just the number.',
-    instructions: 'You MUST use file_search. ALWAYS search before answering.',
+    input: 'Search the uploaded file for the phrase "Lucky number" and tell me: what is the lucky number? Reply with just the number.',
+    instructions: 'You MUST use file_search. ALWAYS search before answering. The file contains a sentence about a lucky number.',
     tools: [{
       type: 'file_search',
       vector_store_ids: [vectorStore.id],

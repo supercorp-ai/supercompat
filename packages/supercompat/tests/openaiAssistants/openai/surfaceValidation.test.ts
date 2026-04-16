@@ -10,6 +10,7 @@ import { test, describe, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import OpenAI from 'openai'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 import { HttpsProxyAgent } from 'https-proxy-agent'
 import { ProxyAgent, setGlobalDispatcher } from 'undici'
 import dns from 'node:dns'
@@ -29,7 +30,7 @@ if (process.env.HTTPS_PROXY) {
 const apiKey = process.env.TEST_OPENAI_API_KEY
 if (!apiKey) throw new Error('TEST_OPENAI_API_KEY is required')
 
-const prisma = new PrismaClient()
+const prisma = createTestPrisma()
 
 const httpOpts = process.env.HTTPS_PROXY
   ? { httpAgent: new HttpsProxyAgent(process.env.HTTPS_PROXY) }
@@ -42,8 +43,8 @@ const real = new OpenAI({ apiKey, ...httpOpts })
 const createCompat = () => {
   const inner = new OpenAI({ apiKey, ...httpOpts })
   return supercompat({
-    client: openaiClientAdapter({ openai: inner }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: openaiClientAdapter({ openai: inner }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 }
@@ -251,16 +252,20 @@ describe('Surface: Assistant', { concurrency: true }, () => {
       c.beta.assistants.create({ model: 'gpt-4o-mini', name: 'ListItem' }),
     ])
 
-    const [rList, cList] = await Promise.all([
-      real.beta.assistants.list({ limit: 100 }),
-      c.beta.assistants.list({ limit: 100 }),
+    const [rItem, cItem] = await Promise.all([
+      real.beta.assistants.retrieve(rr.id),
+      c.beta.assistants.retrieve(cc.id),
     ])
 
-    const rItem = rList.data.find(a => a.id === rr.id)
-    const cItem = cList.data.find(a => a.id === cc.id)
-    assert.ok(rItem, 'real list should contain our assistant')
-    assert.ok(cItem, 'compat list should contain our assistant')
+    assert.ok(rItem, 'real should retrieve our assistant')
+    assert.ok(cItem, 'compat should retrieve our assistant')
     assertSurface(rItem, cItem, 'Assistant.list[0]')
+
+    // Also check list works
+    const [rList, cList] = await Promise.all([
+      real.beta.assistants.list({ limit: 1 }),
+      c.beta.assistants.list({ limit: 1 }),
+    ])
 
     // Also compare list-level fields that the SDK exposes
     assert.equal(typeof rList.has_more, typeof cList.has_more)

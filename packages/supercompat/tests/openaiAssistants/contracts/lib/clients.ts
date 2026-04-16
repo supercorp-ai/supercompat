@@ -34,11 +34,11 @@ export function createResponsesClient(): OpenAI {
   }
 
   const client = supercompat({
-    client: openaiClientAdapter({ openai }),
+    clientAdapter: openaiClientAdapter({ openai }),
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => currentAssistant,
     }),
-    storage: openaiResponsesStorageAdapter(),
+    storageAdapter: openaiResponsesStorageAdapter(),
   })
 
   // Attach helper to update assistant context
@@ -55,12 +55,12 @@ export function createPrismaOpenAIClient(): OpenAI {
   const { PrismaClient } = require('@prisma/client')
 
   const openai = createBaselineClient()
-  const prisma = new PrismaClient()
+  const prisma = createTestPrisma()
 
   const client = supercompat({
-    client: openaiClientAdapter({ openai }),
+    clientAdapter: openaiClientAdapter({ openai }),
     runAdapter: completionsRunAdapter(),
-    storage: prismaStorageAdapter({ prisma }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
   })
 
   ;(client as any)._prisma = prisma

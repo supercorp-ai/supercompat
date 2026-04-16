@@ -7,13 +7,15 @@
  * - Optional custom run adapter (defaults to completionsRunAdapter)
  */
 import OpenAI from 'openai'
-import { PrismaClient } from '@prisma/client'
 import {
   supercompat,
   completionsRunAdapter,
   prismaStorageAdapter,
 } from '../../../../src/openai/index'
 import { config } from './config'
+import { PrismaClient } from '@prisma/client'
+
+const sharedPrisma = new PrismaClient()
 
 export async function createPrismaTestClient({
   clientAdapter,
@@ -26,12 +28,12 @@ export async function createPrismaTestClient({
 }): Promise<OpenAI> {
   config.model = model
 
-  const prisma = new PrismaClient()
+  const prisma = sharedPrisma
 
   const client = supercompat({
-    client: clientAdapter,
+    clientAdapter: clientAdapter,
     runAdapter: runAdapter ?? completionsRunAdapter(),
-    storage: prismaStorageAdapter({ prisma }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
   })
 
   const beta = client.beta as any

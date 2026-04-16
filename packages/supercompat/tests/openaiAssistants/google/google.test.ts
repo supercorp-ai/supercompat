@@ -14,7 +14,7 @@ test("supercompat can list models via Google", async () => {
   const google = new GoogleGenAI({ apiKey });
 
   const client = supercompat({
-    client: googleClientAdapter({ google }),
+    clientAdapter: googleClientAdapter({ google }),
   });
 
   const models = [] as string[];

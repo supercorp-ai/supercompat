@@ -62,10 +62,10 @@ test('azureResponses: responses.retrieve() is intercepted and works', async () =
   })
 
   const client = supercompat({
-    client: azureAiProjectClientAdapter({
+    clientAdapter: azureAiProjectClientAdapter({
       azureAiProject,
     }),
-    storage: azureResponsesStorageAdapter(),
+    storageAdapter: azureResponsesStorageAdapter(),
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => ({
         id: 'local-assistant',
@@ -144,10 +144,10 @@ test('azureResponses: direct responses.retrieve() call works', async () => {
   })
 
   const client = supercompat({
-    client: azureAiProjectClientAdapter({
+    clientAdapter: azureAiProjectClientAdapter({
       azureAiProject,
     }),
-    storage: azureResponsesStorageAdapter(),
+    storageAdapter: azureResponsesStorageAdapter(),
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: async () => ({
         id: 'local-assistant',

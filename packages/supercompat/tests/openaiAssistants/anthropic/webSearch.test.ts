@@ -27,7 +27,7 @@ const createClient = () => {
   })
 
   return supercompat({
-    client: anthropicClientAdapter({ anthropic }),
+    clientAdapter: anthropicClientAdapter({ anthropic }),
   })
 }
 

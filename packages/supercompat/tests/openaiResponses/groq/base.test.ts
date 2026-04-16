@@ -8,6 +8,7 @@ import { config } from '../contracts/lib/config'
 import { withRetry } from '../contracts/lib/withRetry'
 import { supercompat, groqClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 import Groq from 'groq-sdk'
 
 const apiKey = process.env.GROQ_API_KEY
@@ -22,15 +23,15 @@ function createClient() {
   const providerClient = new Groq({ apiKey })
 
   return supercompat({
-    client: groqClientAdapter({ groq: providerClient }),
+    clientAdapter: groqClientAdapter({ groq: providerClient }),
     runAdapter: completionsRunAdapter(),
-    storage: prismaStorageAdapter({ prisma: new PrismaClient() }),
+    storageAdapter: prismaStorageAdapter({ prisma: createTestPrisma() }),
   })
 }
 
-describe('Responses API: prisma + groq', { timeout: 600_000, concurrency: 1 }, () => {
+describe('Responses API: prisma + groq', { timeout: 60_000, concurrency: 1 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { timeout: 120_000 }, () =>
+    test(name, { timeout: 60_000 }, () =>
       withRetry(() => contract(createClient()), { label: name, delayMs: 5000 }))
   }
 })

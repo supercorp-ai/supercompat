@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { GoogleGenAI } from '@google/genai'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 import {
   supercompat,
   googleClientAdapter,
@@ -199,7 +200,7 @@ before(async () => {
   buildImage()
   containerProcess = startContainer()
   await waitForHealth()
-}, { timeout: 120_000 })
+}, { timeout: 60_000 })
 
 after(async () => {
   try {
@@ -212,8 +213,8 @@ after(async () => {
 // Full e2e: Gemini native SDK → real MCP server → validate model sees screen
 // =========================================================================
 describe('tests', { concurrency: true }, () => {
-test('Google native SDK Gemini: full e2e with real MCP computer use server', { timeout: 300_000 }, async () => {
-  const prisma = new PrismaClient()
+test('Google native SDK Gemini: full e2e with real MCP computer use server', { timeout: 60_000 }, async () => {
+  const prisma = createTestPrisma()
   const mcpClient = new McpClient(MCP_SERVER_URL)
   await mcpClient.initialize()
 
@@ -223,8 +224,8 @@ test('Google native SDK Gemini: full e2e with real MCP computer use server', { t
   const google = new GoogleGenAI({ apiKey: googleApiKey })
 
   const client = supercompat({
-    client: googleClientAdapter({ google }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: googleClientAdapter({ google }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 

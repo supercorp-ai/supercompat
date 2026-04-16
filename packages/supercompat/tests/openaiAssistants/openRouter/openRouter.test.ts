@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert'
 import OpenAI from 'openai'
 import { OpenRouter, HTTPClient } from '@openrouter/sdk'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 import {
   supercompat,
   openRouterClientAdapter,
@@ -37,7 +38,7 @@ function makeOpenRouter() {
 describe('tests', { concurrency: true }, () => {
 test('openRouter: basic chat completion', async () => {
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
   })
 
   const result = await client.chat.completions.create({
@@ -61,7 +62,7 @@ test('openRouter: basic chat completion', async () => {
 // =========================================================================
 test('openRouter: streaming chat completion', async () => {
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
   })
 
   const stream = await client.chat.completions.create({
@@ -89,7 +90,7 @@ test('openRouter: streaming chat completion', async () => {
 // =========================================================================
 test('openRouter: tool calling', async () => {
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
   })
 
   const tools: OpenAI.ChatCompletionTool[] = [
@@ -135,11 +136,11 @@ test('openRouter: tool calling', async () => {
 // 4. Thread/run via completionsRunAdapter
 // =========================================================================
 test('openRouter: thread/run via completionsRunAdapter', async () => {
-  const prisma = new PrismaClient()
+  const prisma = createTestPrisma()
 
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 
@@ -177,11 +178,11 @@ test('openRouter: thread/run via completionsRunAdapter', async () => {
 // 5. Thread/run with tool calling
 // =========================================================================
 test('openRouter: thread/run with tool calling', async () => {
-  const prisma = new PrismaClient()
+  const prisma = createTestPrisma()
 
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
-    storage: prismaStorageAdapter({ prisma }),
+    clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    storageAdapter: prismaStorageAdapter({ prisma }),
     runAdapter: completionsRunAdapter(),
   })
 
@@ -256,7 +257,7 @@ test('openRouter: thread/run with tool calling', async () => {
 // =========================================================================
 test('openRouter: models list', async () => {
   const client = supercompat({
-    client: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+    clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
   })
 
   const models = [] as string[]

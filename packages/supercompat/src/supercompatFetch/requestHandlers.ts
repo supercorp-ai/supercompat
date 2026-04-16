@@ -3,47 +3,47 @@ import { RunAdapter, StorageAdapterArgs } from '@/types'
 import { supercompat } from '@/supercompat'
 
 const storageRequestHandlers = ({
-  storage,
+  storageAdapter,
   runAdapter,
-  client,
+  clientAdapter,
 }: {
-  storage?: (arg0: StorageAdapterArgs) => any
+  storageAdapter?: (arg0: StorageAdapterArgs) => any
   runAdapter?: RunAdapter
-  client: any
+  clientAdapter: any
 }) => {
-  if (!storage) return {}
+  if (!storageAdapter) return {}
   if (!runAdapter) return {}
 
   const wrappedClient = supercompat({
-    client,
+    clientAdapter,
   })
 
-  const result = storage({
+  const result = storageAdapter({
     runAdapter: {
       ...runAdapter,
       handleRun: partob(runAdapter.handleRun, { client: wrappedClient }),
     },
     client: wrappedClient,
-    originalClient: client,
+    originalClientAdapter: clientAdapter,
   })
   return result.requestHandlers
 }
 
 export const requestHandlers = ({
-  client,
-  storage,
+  clientAdapter,
+  storageAdapter,
   runAdapter,
 }: {
-  client: any
-  storage?: (arg0: StorageAdapterArgs) => any
+  clientAdapter: any
+  storageAdapter?: (arg0: StorageAdapterArgs) => any
   runAdapter?: RunAdapter
 }) => (
   assign(
-    client.requestHandlers,
+    clientAdapter.requestHandlers,
     storageRequestHandlers({
-      storage,
+      storageAdapter,
       runAdapter,
-      client,
+      clientAdapter,
     })
   )
 )

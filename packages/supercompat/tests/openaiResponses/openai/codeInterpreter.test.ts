@@ -76,7 +76,7 @@ test('serializeItemAsMessage preserves output_text annotations', async () => {
 
 // Integration test: create a conversation with code interpreter via raw API,
 // then read messages back through supercompat and verify annotations survive
-test('code interpreter file annotations preserved through supercompat messages.list', { timeout: 120_000 }, async () => {
+test('code interpreter file annotations preserved through supercompat messages.list', { timeout: 60_000 }, async () => {
   const realOpenAI = new OpenAI({
     apiKey,
     ...(process.env.HTTPS_PROXY
@@ -134,11 +134,11 @@ test('code interpreter file annotations preserved through supercompat messages.l
   }
 
   const client = supercompat({
-    client: openaiClientAdapter({ openai: realOpenAI }),
+    clientAdapter: openaiClientAdapter({ openai: realOpenAI }),
     runAdapter: openaiResponsesRunAdapter({
       getOpenaiAssistant: () => openaiAssistant,
     }),
-    storage: openaiResponsesStorageAdapter(),
+    storageAdapter: openaiResponsesStorageAdapter(),
   })
 
   // Use supercompat to list messages from the same conversation

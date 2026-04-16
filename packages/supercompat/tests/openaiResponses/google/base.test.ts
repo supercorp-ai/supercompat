@@ -7,6 +7,7 @@ import { config } from '../contracts/lib/config'
 import { withRetry } from '../contracts/lib/withRetry'
 import { supercompat, googleClientAdapter, completionsRunAdapter, prismaStorageAdapter } from '../../../src/openai/index'
 import { PrismaClient } from '@prisma/client'
+import { createTestPrisma } from '../../lib/testPrisma'
 
 
 import { GoogleGenAI } from '@google/genai'
@@ -25,14 +26,14 @@ function createClient() {
 
   const providerClient = new GoogleGenAI({ apiKey })
   return supercompat({
-    client: googleClientAdapter({ google: providerClient }),
+    clientAdapter: googleClientAdapter({ google: providerClient }),
     runAdapter: completionsRunAdapter(),
-    storage: prismaStorageAdapter({ prisma: new PrismaClient() }),
+    storageAdapter: prismaStorageAdapter({ prisma: createTestPrisma() }),
   })
 }
 
-describe('Responses API: prisma + google', { concurrency: true, timeout: 600_000 }, () => {
+describe('Responses API: prisma + google', { concurrency: true, timeout: 60_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { concurrency: true, timeout: 120_000 }, () => withRetry(() => contract(createClient()), { label: name }))
+    test(name, { concurrency: true, timeout: 60_000 }, () => withRetry(() => contract(createClient()), { label: name }))
   }
 })
