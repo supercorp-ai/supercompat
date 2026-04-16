@@ -1,0 +1,90 @@
+---
+title: OpenAI
+description: Run Supercompat against OpenAI — Responses, Assistants, and managed state.
+index: 0
+---
+
+# OpenAI
+
+OpenAI is the native home of the types Supercompat uses. There's almost nothing to translate — the main reason to route through Supercompat at all is to get a single, provider-agnostic surface so you can switch later.
+
+## Install
+
+```bash
+npm install supercompat openai
+```
+
+## Minimal setup
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  openaiClientAdapter,
+  openaiResponsesRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({
+    openai: new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
+  }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: openaiResponsesRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'gpt-4.1-mini',
+  input: 'Hello.',
+})
+```
+
+## Using OpenAI-managed state
+
+Skip Postgres entirely. `openaiResponsesStorageAdapter` forwards conversations and responses directly to OpenAI.
+
+```tsx
+import {
+  openaiClientAdapter,
+  openaiResponsesRunAdapter,
+  openaiResponsesStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: openaiResponsesStorageAdapter(),
+  runAdapter: openaiResponsesRunAdapter(),
+})
+```
+
+## Assistants API
+
+The same client exposes the Assistants surface. Use `completionsRunAdapter` for provider-portable assistants, or `openaiResponsesRunAdapter` to run assistants on the Responses API.
+
+```tsx
+const assistant = await client.beta.assistants.create({
+  model: 'gpt-4.1-mini',
+  instructions: 'You are a code reviewer.',
+})
+```
+
+## Native tools
+
+With `openaiResponsesRunAdapter`, these built-in tools are forwarded to OpenAI as-is:
+
+- `{ type: 'web_search' }`
+- `{ type: 'file_search' }`
+- `{ type: 'code_interpreter' }`
+- `{ type: 'computer_use_preview', computer_use_preview: { display_width, display_height, environment } }`
+
+See [Tools](/docs/tools) and [Computer use](/docs/tools/computer-use).
+
+## Models
+
+Pass any model id OpenAI currently publishes — the SDK doesn't validate names. The canonical list lives at [platform.openai.com/docs/models](https://platform.openai.com/docs/models).
+
+Some current examples:
+
+- `gpt-4.1`, `gpt-4.1-mini`
+- `o3`, `o4-mini`
+- `computer-use-preview`

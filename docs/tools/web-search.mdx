@@ -1,0 +1,173 @@
+---
+title: Web search
+description: OpenAI's server-side web search as a built-in tool, plus Perplexity's always-on web grounding.
+index: 1
+---
+
+# Web search
+
+Ground answers in live web sources via the `web_search_preview` tool. The model issues search queries, reads snippets, and returns an answer with citations — no orchestration on your side.
+
+## OpenAI
+
+Pair [`openaiClientAdapter`](/docs/adapters/client-adapters/openai) with [`openaiResponsesRunAdapter`](/docs/adapters/run-adapters/openai-responses):
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  openaiClientAdapter,
+  openaiResponsesRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: openaiResponsesRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'gpt-4.1',
+  input: 'What is the current population of Tokyo? Use web search.',
+  tools: [{ type: 'web_search_preview' }],
+})
+```
+
+The returned text includes inline citations — each citation is a `url_citation` annotation on the text output item.
+
+### Reading citations
+
+```tsx
+for (const item of response.output) {
+  if (item.type !== 'message') continue
+  for (const content of item.content) {
+    if (content.type !== 'output_text') continue
+    for (const annotation of content.annotations ?? []) {
+      if (annotation.type === 'url_citation') {
+        console.log(annotation.url, annotation.title)
+      }
+    }
+  }
+}
+```
+
+## Azure OpenAI
+
+Same tool declaration against an Azure OpenAI Responses deployment:
+
+```tsx
+import { AzureOpenAI } from 'openai'
+import {
+  supercompat,
+  azureOpenaiClientAdapter,
+  azureResponsesRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const azureOpenai = new AzureOpenAI({
+  endpoint: process.env.AZURE_OPENAI_ENDPOINT!,
+  apiKey: process.env.AZURE_OPENAI_API_KEY,
+  apiVersion: '2024-10-21',
+})
+
+const client = supercompat({
+  clientAdapter: azureOpenaiClientAdapter({ azureOpenai }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: azureResponsesRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'my-gpt-4-1-deployment', // Azure deployment name
+  input: 'What is trending in AI this week?',
+  tools: [{ type: 'web_search_preview' }],
+})
+```
+
+## Anthropic
+
+Anthropic exposes a native server-side web-search tool, `web_search_20250305`. The `anthropicClientAdapter` forwards it as-is and normalizes the resulting `web_search_tool_result` content blocks for you. Pair with [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) on the Assistants surface:
+
+```tsx
+import Anthropic from '@anthropic-ai/sdk'
+import { PrismaClient } from '@prisma/client'
+import {
+  supercompat,
+  anthropicClientAdapter,
+  completionsRunAdapter,
+  prismaStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: anthropicClientAdapter({ anthropic: new Anthropic() }),
+  storageAdapter: prismaStorageAdapter({ prisma: new PrismaClient() }),
+  runAdapter: completionsRunAdapter(),
+})
+
+const assistant = await client.beta.assistants.create({
+  model: 'claude-sonnet-4-6',
+  instructions: 'Search the web before answering.',
+  tools: [
+    {
+      type: 'web_search_20250305',
+      web_search_20250305: {
+        max_uses: 5,
+      },
+    } as any,
+  ],
+})
+
+const thread = await client.beta.threads.create()
+await client.beta.threads.messages.create(thread.id, {
+  role: 'user',
+  content: 'What is trending in open-source AI today?',
+})
+const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+  assistant_id: assistant.id,
+})
+```
+
+The tool executes on Anthropic's side — your run completes without `requires_action`, and the results appear in the message content.
+
+## Perplexity (web-grounded by default)
+
+Perplexity's Sonar models ground every response in live web sources without any `tools` entry. Pair [`perplexityClientAdapter`](/docs/adapters/client-adapters/perplexity) with [`completionsRunAdapter`](/docs/adapters/run-adapters/completions):
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  perplexityClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const perplexity = new OpenAI({
+  apiKey: process.env.PERPLEXITY_API_KEY,
+  baseURL: 'https://api.perplexity.ai',
+})
+
+const client = supercompat({
+  clientAdapter: perplexityClientAdapter({ perplexity }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'sonar-pro',
+  input: 'What happened in open-source AI this week?',
+})
+```
+
+No `tools` configuration needed — Sonar always searches.
+
+## Compatibility
+
+| Pairing | Tool declaration |
+|---|---|
+| [`openaiClientAdapter`](/docs/adapters/client-adapters/openai) + [`openaiResponsesRunAdapter`](/docs/adapters/run-adapters/openai-responses) | `{ type: 'web_search_preview' }` |
+| [`azureOpenaiClientAdapter`](/docs/adapters/client-adapters/azure-openai) + [`azureResponsesRunAdapter`](/docs/adapters/run-adapters/azure-responses) | `{ type: 'web_search_preview' }` |
+| [`anthropicClientAdapter`](/docs/adapters/client-adapters/anthropic) + [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) | `{ type: 'web_search_20250305', web_search_20250305: { max_uses } }` |
+| [`perplexityClientAdapter`](/docs/adapters/client-adapters/perplexity) + [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) | *(none — Sonar searches by default)* |
+
+For providers without a built-in web-search tool (Google, Mistral, Groq, Together, OpenRouter, Ollama), build a [function tool](/docs/tools/function-calling) that hits your own search backend.

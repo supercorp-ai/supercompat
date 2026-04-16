@@ -1,49 +1,71 @@
 ---
 title: Adapters
+description: The three adapter types that compose into a Supercompat client.
 index: 2
+icon: LayersIcon
 ---
 
 # Adapters
 
-Supercompat uses three types of adapters to separate concerns. Each adapter handles a specific responsibility, and they can be mixed and matched.
+Every `supercompat()` call takes three adapters:
 
-## Client Adapters
+```tsx
+const client = supercompat({
+  clientAdapter,
+  storageAdapter,
+  runAdapter,
+})
+```
 
-Determine which LLM provider to call.
+Each handles a single concern. You pick one of each, and together they decide how a call to the OpenAI SDK is routed.
 
-| Adapter | Provider |
-|---|---|
-| `openaiClientAdapter` | OpenAI |
-| `anthropicClientAdapter` | Anthropic |
-| `googleClientAdapter` | Google (Gemini) |
-| `azureOpenaiClientAdapter` | Azure OpenAI |
-| `azureAiProjectClientAdapter` | Azure AI Project |
-| `mistralClientAdapter` | Mistral |
-| `groqClientAdapter` | Groq |
-| `openRouterClientAdapter` | OpenRouter |
-| `togetherClientAdapter` | Together |
-| `perplexityClientAdapter` | Perplexity |
-| `ollamaClientAdapter` | Ollama |
+## The three types
 
-## Run Adapters
+<Grid columns={{ initial: '1', md: '3' }} gap="4">
+  <DocsCard
+    title="Client adapters"
+    description="Which provider is the backend — OpenAI, Anthropic, Google, Azure, and more."
+    type="PROVIDERS"
+    href="/docs/adapters/client-adapters"
+  />
 
-Determine which API to call on the provider.
+  <DocsCard
+    title="Run adapters"
+    description="Which API shape the run loop uses — Completions, Responses, Gemini, Agents."
+    type="RUNTIME"
+    href="/docs/adapters/run-adapters"
+  />
 
-| Adapter | API | Notes |
+  <DocsCard
+    title="Storage adapters"
+    description="Where assistants, threads, messages, and runs are persisted."
+    type="STORAGE"
+    href="/docs/adapters/storage-adapters"
+  />
+</Grid>
+
+## How they combine
+
+The **client adapter** owns the wire — it talks to the provider. The **run adapter** owns the run loop — it decides what kind of call to make and how to turn the response into streaming events. The **storage adapter** owns the stateful surface — assistants, threads, messages, runs, and conversations.
+
+A request flowing through a Supercompat client is handled in three stages:
+
+| Stage | Responsibility | Example |
 |---|---|---|
-| `completionsRunAdapter` | `/chat/completions` | Works with any provider |
-| `openaiResponsesRunAdapter` | OpenAI `/responses` | Native OpenAI Responses API |
-| `azureResponsesRunAdapter` | Azure `/responses` | Native Azure Responses API |
-| `anthropicRunAdapter` | Anthropic Messages | Native web search, computer use |
-| `geminiRunAdapter` | Gemini `generateContent` | Native Google tools |
+| Storage | Persist and read stateful entities | Create a thread, append a message, open a run |
+| Run | Execute the run loop against the provider | Call `/chat/completions`, stream deltas back |
+| Client | Talk the underlying provider protocol | POST to `/v1/chat/completions` on Anthropic |
 
-## Storage Adapters
+## Compatible combinations
 
-Determine where conversation state is stored.
+Not every adapter combination is meaningful.
 
-| Adapter | Backend | Notes |
-|---|---|---|
-| `memoryStorageAdapter` | In-memory | Development, testing |
-| `prismaStorageAdapter` | PostgreSQL (via Prisma) | Production |
-| `openaiResponsesStorageAdapter` | OpenAI API | Uses OpenAI for state |
-| `azureResponsesStorageAdapter` | Azure API | Uses Azure for state |
+- **`completionsRunAdapter`** works with every client adapter. It's the recommended choice for Anthropic, Mistral, Groq, Together, OpenRouter, Perplexity, and Ollama.
+- **`openaiResponsesRunAdapter`** requires `openaiClientAdapter`. The Responses API is OpenAI-native.
+- **`geminiRunAdapter`** requires `googleClientAdapter`. Calls Gemini's `generateContent` directly for native Google tools.
+- **`azureAgentsRunAdapter`** requires `azureAiProjectClientAdapter`. Azure Agents is an Azure-native surface.
+- **`memoryStorageAdapter`** and **`prismaStorageAdapter`** work with every run adapter.
+- **`openaiResponsesStorageAdapter`** pairs with `openaiResponsesRunAdapter`.
+- **`azureResponsesStorageAdapter`** pairs with `azureResponsesRunAdapter`.
+
+When in doubt, start with `completionsRunAdapter` and `prismaStorageAdapter` — that pair works against every provider.

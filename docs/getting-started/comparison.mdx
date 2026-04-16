@@ -1,0 +1,83 @@
+---
+title: Comparison
+description: How Supercompat compares to Vercel AI SDK, LiteLLM, OpenRouter, LangChain, and OpenAI-compatible proxies.
+index: 1
+---
+
+# Comparison
+
+Supercompat sits in a specific slot in the multi-provider LLM space. Here's how it compares to the closest alternatives.
+
+## At a glance
+
+| Tool | Surface | Providers | In-process | State |
+|---|---|---|---|---|
+| **Supercompat** | OpenAI / Anthropic SDK | Broad | Yes | Responses + Assistants + Agents |
+| Vercel AI SDK | `ai` package | Broad | Yes | Message arrays |
+| LangChain.js | LangChain API | Broad | Yes | Agent / memory modules |
+| LiteLLM (Python) | `litellm` package | Broad | Yes (Python) | No |
+| LiteLLM Proxy / Portkey / Helicone | OpenAI wire (HTTP proxy) | Broad | No | No |
+| OpenRouter (direct) | OpenAI wire (HTTPS) | Via OpenRouter | As SDK client | No |
+
+## Supercompat vs. Vercel AI SDK
+
+**Vercel AI SDK** gives you its own abstraction — `generateText`, `streamText`, `generateObject` — over every provider. You write against `ai`, not `openai` or `@anthropic-ai/sdk`.
+
+**Supercompat** gives you the real `OpenAI` SDK (or `Anthropic` SDK). You write against the provider's own SDK and get the provider's **full native feature surface** — not a lowest-common-denominator abstraction. Threads, runs, Responses conversations, server-side web search, file search, code interpreter, computer use, typed event streams, and every SDK utility function are all in scope — because you're calling the real SDK.
+
+Supercompat is the better pick when you need the full native depth of a provider's API, regardless of which provider is behind it. Vercel AI SDK optimizes for a unified app-level abstraction; Supercompat optimizes for preserving the provider SDK experience while still letting you swap backends.
+
+## Supercompat vs. LangChain
+
+**LangChain** is a higher-level framework: chains, agents, retrievers, memory modules. Its model abstraction is one piece of a much larger surface.
+
+**Supercompat** is narrower and lower-level. It doesn't define chains or agents; it gives you a real LLM SDK pointed at any provider, with storage and run adapters for the Assistants and Responses surfaces.
+
+Pick **LangChain** when you want the whole orchestration framework.
+Pick **Supercompat** when you want the SDK plus a thin, typed compatibility layer — and you want to compose your own orchestration without losing access to native provider features.
+
+## Supercompat vs. LiteLLM
+
+**LiteLLM** has two deployment modes:
+
+- **Python SDK** (`from litellm import completion`) — runs **in-process in Python apps**. Unifies providers behind LiteLLM's API. Python-only on the client.
+- **LiteLLM Proxy** — a self-hosted OpenAI-compatible gateway server. Your app talks to it over HTTP in OpenAI format. This is the only supported integration path for JS/TS apps; there's no official LiteLLM JS SDK.
+
+**Supercompat** runs **in-process in TypeScript/JavaScript**. Single npm dependency, no proxy server, no HTTP hop, no separate deployment story. Your app imports `openai` or `@anthropic-ai/sdk` and uses it natively.
+
+Pick **LiteLLM** if you're on Python, or if you want a central gateway with its dashboard for auth, cost tracking, and rate-limiting.
+Pick **Supercompat** if you're on TypeScript and want to eliminate the proxy hop while keeping the full native SDK surface.
+
+## Supercompat vs. Portkey / Helicone
+
+**Portkey** and **Helicone** are observability / routing **proxies** — their primary value is caching, analytics, fallbacks, key management, and usage tracking. You send OpenAI-format requests to them; they forward and log.
+
+**Supercompat** is a **client-side** library. It has no observability dashboard and no cloud component. It's focused on turning one SDK into any provider in-process.
+
+The two compose. You can use Supercompat to get an OpenAI client pointed at any provider, then set its `baseURL` to Portkey or Helicone to layer observability on top.
+
+## Supercompat vs. OpenRouter (direct)
+
+**OpenRouter** is a backend provider (an HTTPS endpoint that exposes 300+ models via the OpenAI wire format). Calling OpenRouter directly with the OpenAI SDK already works for basic chat completions.
+
+**Supercompat + OpenRouter** (via [`openRouterClientAdapter`](/docs/adapters/client-adapters/openrouter)) adds:
+
+- The **Responses API** and **Assistants API** on top of OpenRouter's chat-completions endpoint.
+- [Storage adapters](/docs/adapters/storage-adapters) so you get persisted threads, runs, conversations.
+- Provider routing hints (`provider: { order, allow_fallbacks }`) forwarded on every request.
+- Free switching between OpenRouter and a direct provider when you want to stop going through an aggregator — same code.
+
+## Why choose Supercompat
+
+- **Real SDK types, full provider features.** You keep every capability the provider exposes — not a lowest-common-denominator abstraction.
+- **Responses + Assistants surfaces against any provider.** Not just chat completions.
+- **In-process.** No proxy, no sidecar, works in edge runtimes.
+- **Composable adapters.** Pick one client × one run × one storage; swap any layer without touching the rest of your code.
+- **Storage you own.** Prisma + Postgres, memory, OpenAI-managed, Azure-managed — your call.
+
+## When Supercompat is *not* the right fit
+
+- You're on Python. (Use LiteLLM's Python SDK.)
+- You want a framework with agents, chains, memory modules, retrievers out of the box. (Use LangChain or Vercel AI SDK.)
+- You want a hosted gateway for observability, caching, or centralized key management. (Use Portkey, Helicone, or LiteLLM Proxy.)
+- You only use OpenAI, on OpenAI, forever. (Just use `openai` directly.)

@@ -1,0 +1,69 @@
+---
+title: Groq
+description: Ultra-fast inference on Llama, Qwen, and Groq-hosted models.
+index: 5
+---
+
+# Groq
+
+Groq hosts open-weight models on custom inference hardware. Latency is measured in tens of milliseconds for most workloads. Supercompat talks to Groq via the official `groq-sdk`.
+
+## Install
+
+```bash
+npm install supercompat openai groq-sdk
+```
+
+## Minimal setup
+
+```tsx
+import Groq from 'groq-sdk'
+import {
+  supercompat,
+  groqClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: groqClientAdapter({
+    groq: new Groq({ apiKey: process.env.GROQ_API_KEY }),
+  }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'llama-3.3-70b-versatile',
+  input: 'Give me a haiku about latency.',
+})
+```
+
+## Streaming
+
+Groq's throughput makes streaming feel instantaneous:
+
+```tsx
+const stream = await client.responses.create({
+  model: 'llama-3.3-70b-versatile',
+  input: 'Count from one to ten.',
+  stream: true,
+})
+
+for await (const event of stream) {
+  if (event.type === 'response.output_text.delta') {
+    process.stdout.write(event.delta)
+  }
+}
+```
+
+## Models
+
+Pass any Groq-hosted model id — the full catalog is at [console.groq.com/docs/models](https://console.groq.com/docs/models).
+
+Some current examples:
+
+- `llama-3.3-70b-versatile`
+- `llama-3.1-8b-instant`
+- `qwen-2.5-32b`
+- `openai/gpt-oss-120b`

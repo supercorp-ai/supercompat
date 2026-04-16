@@ -1,0 +1,108 @@
+---
+title: openaiResponsesRunAdapter
+index: 1
+type: CODE
+---
+
+# `openaiResponsesRunAdapter`
+
+Executes runs against OpenAI's native `/responses` endpoint. Use this when you want OpenAI-native features: server-side `web_search`, `code_interpreter`, `file_search`, and `computer_use_preview`.
+
+## Signature
+
+```tsx
+openaiResponsesRunAdapter({
+  getOpenaiAssistant?: (args?: { select?: { id?: false } }) =>
+    Promise<Assistant | Pick<Assistant, 'id'>>,
+  waitUntil?: <T>(p: Promise<T>) => void | Promise<void>,
+})
+```
+
+## Basic use
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  openaiClientAdapter,
+  openaiResponsesRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: openaiResponsesRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'gpt-4.1-mini',
+  input: 'Hello.',
+})
+```
+
+## With OpenAI-managed state
+
+```tsx
+import {
+  openaiClientAdapter,
+  openaiResponsesRunAdapter,
+  openaiResponsesStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai }),
+  storageAdapter: openaiResponsesStorageAdapter(),
+  runAdapter: openaiResponsesRunAdapter(),
+})
+```
+
+No database, no Prisma — OpenAI owns the conversation state.
+
+## Built-in tools
+
+```tsx
+await client.responses.create({
+  model: 'gpt-4.1',
+  input: 'What happened in open-source AI this week?',
+  tools: [{ type: 'web_search' }],
+})
+
+await client.responses.create({
+  model: 'gpt-4.1',
+  input: 'Factor 420.',
+  tools: [{ type: 'code_interpreter' }],
+})
+
+await client.responses.create({
+  model: 'gpt-4.1',
+  input: 'Summarize my uploaded document.',
+  tools: [{ type: 'file_search', vector_store_ids: [vectorStoreId] }],
+})
+```
+
+## `getOpenaiAssistant`
+
+Attach a stored OpenAI Assistant to the run. Useful when instructions/model/tools are managed as an Assistant record.
+
+```tsx
+openaiResponsesRunAdapter({
+  getOpenaiAssistant: async () => openai.beta.assistants.retrieve('asst_...'),
+})
+```
+
+## `waitUntil` (edge runtimes)
+
+On Vercel Edge or Cloudflare Workers, pass the runtime's `waitUntil` so post-stream work (writing the response to storage) completes.
+
+```tsx
+import { openaiResponsesRunAdapter } from 'supercompat/openai'
+
+openaiResponsesRunAdapter({
+  waitUntil: (p) => context.waitUntil(p),
+})
+```
+
+## Compatible client adapters
+
+- [`openaiClientAdapter`](/docs/adapters/client-adapters/openai)

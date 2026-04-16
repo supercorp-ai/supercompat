@@ -1,0 +1,72 @@
+---
+title: Google
+description: Gemini through the OpenAI SDK, with native Google tool integrations.
+index: 2
+---
+
+# Google
+
+Supercompat talks to Gemini via the official `@google/genai` SDK. Use `geminiRunAdapter` to hit Gemini's native `generateContent` surface, or `completionsRunAdapter` for the OpenAI-compatible path.
+
+## Install
+
+```bash
+npm install supercompat openai @google/genai
+```
+
+## Minimal setup
+
+```tsx
+import { GoogleGenAI } from '@google/genai'
+import {
+  supercompat,
+  googleClientAdapter,
+  geminiRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const google = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY })
+
+const client = supercompat({
+  clientAdapter: googleClientAdapter({ google }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: geminiRunAdapter({ google }),
+})
+
+const response = await client.responses.create({
+  model: 'gemini-2.5-flash',
+  input: 'List three planets in our solar system.',
+})
+```
+
+## Tool use
+
+Function tools are declared with the OpenAI shape and translated into Gemini's tool format by the run adapter:
+
+```tsx
+await client.responses.create({
+  model: 'gemini-2.5-flash',
+  input: 'What's the weather in Tokyo?',
+  tools: [
+    {
+      type: 'function',
+      name: 'get_weather',
+      parameters: {
+        type: 'object',
+        properties: { city: { type: 'string' } },
+        required: ['city'],
+      },
+    },
+  ],
+})
+```
+
+## Models
+
+Pass any Gemini model id — the full catalog is at [ai.google.dev/gemini-api/docs/models](https://ai.google.dev/gemini-api/docs/models).
+
+Some current examples:
+
+- `gemini-2.5-pro`
+- `gemini-2.5-flash`
+- `gemini-2.5-flash-lite`

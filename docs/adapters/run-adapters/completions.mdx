@@ -1,0 +1,136 @@
+---
+title: completionsRunAdapter
+index: 0
+type: CODE
+---
+
+# `completionsRunAdapter`
+
+The default run adapter. Rewrites every run into one or more `/chat/completions` calls. Works with every provider Supercompat supports.
+
+## Signature
+
+```tsx
+completionsRunAdapter()
+```
+
+No options.
+
+## Responses API (any provider)
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  openaiClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'gpt-4.1-mini',
+  input: 'Hello.',
+})
+```
+
+## Anthropic via Completions
+
+```tsx
+import Anthropic from '@anthropic-ai/sdk'
+import {
+  supercompat,
+  anthropicClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: anthropicClientAdapter({ anthropic: new Anthropic() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+await client.responses.create({
+  model: 'claude-sonnet-4-6',
+  input: 'Why pick Claude?',
+})
+```
+
+## Groq via Completions
+
+```tsx
+import Groq from 'groq-sdk'
+import {
+  supercompat,
+  groqClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: groqClientAdapter({ groq: new Groq() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+await client.responses.create({
+  model: 'llama-3.3-70b-versatile',
+  input: 'Give me a one-sentence answer.',
+})
+```
+
+## Tool use
+
+```tsx
+await client.responses.create({
+  model: 'gpt-4.1-mini',
+  input: 'What is the weather in Berlin?',
+  tools: [
+    {
+      type: 'function',
+      name: 'get_weather',
+      parameters: {
+        type: 'object',
+        properties: { city: { type: 'string' } },
+        required: ['city'],
+      },
+    },
+  ],
+})
+```
+
+Function tools round-trip through `/chat/completions` for every backend.
+
+## Streaming
+
+```tsx
+const stream = await client.responses.create({
+  model: 'llama-3.3-70b-versatile',
+  input: 'Count to five.',
+  stream: true,
+})
+
+for await (const event of stream) {
+  if (event.type === 'response.output_text.delta') process.stdout.write(event.delta)
+}
+```
+
+## Compatible client adapters
+
+- [`openaiClientAdapter`](/docs/adapters/client-adapters/openai)
+- [`anthropicClientAdapter`](/docs/adapters/client-adapters/anthropic)
+- [`googleClientAdapter`](/docs/adapters/client-adapters/google)
+- [`mistralClientAdapter`](/docs/adapters/client-adapters/mistral)
+- [`groqClientAdapter`](/docs/adapters/client-adapters/groq)
+- [`togetherClientAdapter`](/docs/adapters/client-adapters/together)
+- [`openRouterClientAdapter`](/docs/adapters/client-adapters/openrouter)
+- [`perplexityClientAdapter`](/docs/adapters/client-adapters/perplexity)
+- [`ollamaClientAdapter`](/docs/adapters/client-adapters/ollama)
+- [`azureOpenaiClientAdapter`](/docs/adapters/client-adapters/azure-openai)
+- [`azureAiProjectClientAdapter`](/docs/adapters/client-adapters/azure-ai-project)

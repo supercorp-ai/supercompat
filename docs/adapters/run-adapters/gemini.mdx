@@ -1,0 +1,86 @@
+---
+title: geminiRunAdapter
+index: 2
+type: CODE
+---
+
+# `geminiRunAdapter`
+
+Executes runs against Gemini's native `generateContent` / `streamGenerateContent` endpoints. Use this when you want Gemini-native features (Google search grounding, function tools with Gemini's schema).
+
+## Signature
+
+```tsx
+geminiRunAdapter({
+  google: GoogleGenAI,
+})
+```
+
+## Install
+
+```bash
+npm install supercompat openai @google/genai
+```
+
+## Example
+
+```tsx
+import { GoogleGenAI } from '@google/genai'
+import {
+  supercompat,
+  googleClientAdapter,
+  geminiRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const google = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY })
+
+const client = supercompat({
+  clientAdapter: googleClientAdapter({ google }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: geminiRunAdapter({ google }),
+})
+
+const response = await client.responses.create({
+  model: 'gemini-2.5-flash',
+  input: 'List three facts about the moon.',
+})
+```
+
+## Tool use
+
+```tsx
+await client.responses.create({
+  model: 'gemini-2.5-flash',
+  input: 'What is the weather in Tokyo?',
+  tools: [
+    {
+      type: 'function',
+      name: 'get_weather',
+      parameters: {
+        type: 'object',
+        properties: { city: { type: 'string' } },
+        required: ['city'],
+      },
+    },
+  ],
+})
+```
+
+## Streaming
+
+```tsx
+const stream = await client.responses.create({
+  model: 'gemini-2.5-flash',
+  input: 'Count from one to three.',
+  stream: true,
+})
+
+for await (const event of stream) {
+  if (event.type === 'response.output_text.delta') process.stdout.write(event.delta)
+}
+```
+
+## Compatible client adapters
+
+- [`googleClientAdapter`](/docs/adapters/client-adapters/google)

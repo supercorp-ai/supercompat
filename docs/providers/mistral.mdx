@@ -1,0 +1,70 @@
+---
+title: Mistral
+description: Mistral models through the Mistral SDK.
+index: 4
+---
+
+# Mistral
+
+Use Mistral Large, Small, and the Codestral family through the official `@mistralai/mistralai` SDK.
+
+## Install
+
+```bash
+npm install supercompat openai @mistralai/mistralai
+```
+
+## Minimal setup
+
+```tsx
+import { Mistral } from '@mistralai/mistralai'
+import {
+  supercompat,
+  mistralClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: mistralClientAdapter({
+    mistral: new Mistral({ apiKey: process.env.MISTRAL_API_KEY }),
+  }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'mistral-large-latest',
+  input: 'Summarize Mistral AI in one sentence.',
+})
+```
+
+## Tool use
+
+```tsx
+await client.responses.create({
+  model: 'mistral-large-latest',
+  input: 'What is the weather in Nice?',
+  tools: [
+    {
+      type: 'function',
+      name: 'get_weather',
+      parameters: {
+        type: 'object',
+        properties: { city: { type: 'string' } },
+        required: ['city'],
+      },
+    },
+  ],
+})
+```
+
+## Models
+
+Pass any Mistral model id — the full catalog is at [docs.mistral.ai/getting-started/models/models_overview](https://docs.mistral.ai/getting-started/models/models_overview/).
+
+Some current examples:
+
+- `mistral-large-latest`
+- `mistral-small-latest`
+- `codestral-latest`

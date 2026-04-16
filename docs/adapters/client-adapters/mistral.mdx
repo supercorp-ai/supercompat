@@ -1,0 +1,72 @@
+---
+title: mistralClientAdapter
+index: 3
+type: CODE
+---
+
+# `mistralClientAdapter`
+
+Points the OpenAI SDK at Mistral.
+
+## Signature
+
+```tsx
+mistralClientAdapter({
+  mistral: Mistral,
+})
+```
+
+## Install
+
+```bash
+npm install supercompat openai @mistralai/mistralai
+```
+
+## Example
+
+```tsx
+import { Mistral } from '@mistralai/mistralai'
+import {
+  supercompat,
+  mistralClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: mistralClientAdapter({
+    mistral: new Mistral({ apiKey: process.env.MISTRAL_API_KEY }),
+  }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'mistral-large-latest',
+  input: 'Why is Mistral known for efficiency?',
+})
+```
+
+## Tool use
+
+```tsx
+await client.responses.create({
+  model: 'mistral-large-latest',
+  input: 'What is the weather in Nice?',
+  tools: [
+    {
+      type: 'function',
+      name: 'get_weather',
+      parameters: {
+        type: 'object',
+        properties: { city: { type: 'string' } },
+        required: ['city'],
+      },
+    },
+  ],
+})
+```
+
+## Compatible run adapters
+
+- [`completionsRunAdapter`](/docs/adapters/run-adapters/completions)

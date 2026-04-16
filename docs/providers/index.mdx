@@ -1,0 +1,100 @@
+---
+title: Providers
+description: Per-provider setup, supported features, and recommended adapter pairings.
+index: 3
+icon: TokensIcon
+---
+
+# Providers
+
+Every provider has its own SDK, its own auth story, and its own feature set. The table below is a quick cross-reference; the provider pages have the details and copy-pasteable code.
+
+## Supported providers
+
+| Provider | Client adapter | Recommended run adapter | Notes |
+|---|---|---|---|
+| OpenAI | `openaiClientAdapter` | `openaiResponsesRunAdapter` | Native Responses API |
+| Anthropic | `anthropicClientAdapter` | `completionsRunAdapter` | Claude via `/chat/completions` |
+| Google (Gemini) | `googleClientAdapter` | `geminiRunAdapter` | Native Google tools |
+| Azure OpenAI | `azureOpenaiClientAdapter` | `azureResponsesRunAdapter` | Responses on Azure |
+| Azure AI Foundry | `azureAiProjectClientAdapter` | `azureAgentsRunAdapter` | Stateful Agents on Azure |
+| Mistral | `mistralClientAdapter` | `completionsRunAdapter` | Mistral Large/Small |
+| Groq | `groqClientAdapter` | `completionsRunAdapter` | Ultra-fast inference |
+| Together | `togetherClientAdapter` | `completionsRunAdapter` | Llama, Qwen, GPT-OSS |
+| OpenRouter | `openRouterClientAdapter` | `completionsRunAdapter` | 300+ models |
+| Perplexity | `perplexityClientAdapter` | `completionsRunAdapter` | Sonar, web-grounded |
+| Ollama | `ollamaClientAdapter` | `completionsRunAdapter` | Local models |
+
+## Provider guides
+
+<Grid columns={{ initial: '1', md: '2' }} gap="4">
+  <DocsCard
+    title="OpenAI"
+    description="Responses and Assistants APIs, native tools, and OpenAI-managed state."
+    type="PROVIDERS"
+    href="/docs/providers/openai"
+  />
+
+  <DocsCard
+    title="Anthropic"
+    description="Claude models through /chat/completions."
+    type="PROVIDERS"
+    href="/docs/providers/anthropic"
+  />
+
+  <DocsCard
+    title="Google"
+    description="Gemini with native Google tooling."
+    type="PROVIDERS"
+    href="/docs/providers/google"
+  />
+
+  <DocsCard
+    title="Azure"
+    description="Azure OpenAI and Azure AI Foundry Agents."
+    type="PROVIDERS"
+    href="/docs/providers/azure"
+  />
+
+  <DocsCard
+    title="Mistral"
+    description="Mistral Large, Small, and Codestral."
+    type="PROVIDERS"
+    href="/docs/providers/mistral"
+  />
+
+  <DocsCard
+    title="Groq"
+    description="Ultra-fast inference for Llama, Qwen, and GPT-OSS."
+    type="PROVIDERS"
+    href="/docs/providers/groq"
+  />
+
+  <DocsCard
+    title="Together"
+    description="Open-weight models hosted on Together AI."
+    type="PROVIDERS"
+    href="/docs/providers/together"
+  />
+
+  <DocsCard
+    title="OpenRouter"
+    description="300+ models behind a single OpenAI-compatible endpoint."
+    type="PROVIDERS"
+    href="/docs/providers/openrouter"
+  />
+
+  <DocsCard
+    title="Perplexity"
+    description="Sonar — live web-grounded answers with citations."
+    type="PROVIDERS"
+    href="/docs/providers/perplexity"
+  />
+
+  <DocsCard
+    title="Ollama"
+    description="Run local open-weight models via an Ollama instance."
+    type="PROVIDERS"
+    href="/docs/providers/ollama"
+  />
+</Grid>

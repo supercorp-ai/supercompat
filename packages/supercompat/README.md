@@ -1,16 +1,12 @@
----
-title: Getting started
-description: OpenAI-compatible TypeScript SDK for every LLM provider.
-index: 0
----
-
 # Supercompat
 
-![Supercompat — Switch AI models without compromises.](/images/docs/supercompat-hero.png)
+![Supercompat — Switch AI models without compromises.](https://raw.githubusercontent.com/supercorp-ai/supercompat/main/packages/supercompat/supercompat.png)
 
 Supercompat is a TypeScript library that lets you call **any LLM provider** through the **OpenAI SDK** (or the **Anthropic SDK**). Swap one adapter and the same `client.responses.create()` call reaches Anthropic, Google, Groq, Mistral, Together, OpenRouter, Perplexity, Ollama, or Azure — with the original SDK types intact.
 
 It runs in-process. No proxy server, no request forwarding, no extra latency. Supercompat installs a custom `fetch` on the SDK instance and routes calls locally.
+
+Full docs: **[supercompat.com/docs](https://supercompat.com/docs)**.
 
 ## Install
 
@@ -47,7 +43,7 @@ console.log(response.output_text)
 
 ## Persistent state
 
-`memoryStorageAdapter` is fine for one-shot scripts but loses everything on restart. For persisted conversations, threads, and runs, swap it for [`prismaStorageAdapter`](/docs/adapters/storage-adapters/prisma):
+`memoryStorageAdapter` is fine for one-shot scripts but loses everything on restart. For persisted conversations, threads, and runs, swap it for [`prismaStorageAdapter`](https://supercompat.com/docs/adapters/storage-adapters/prisma):
 
 ```tsx
 import { PrismaClient } from '@prisma/client'
@@ -80,57 +76,20 @@ const second = await client.responses.create({
 })
 ```
 
-Conversations, responses, assistants, threads, messages, and runs all land in Postgres. See [Storage adapters](/docs/adapters/storage-adapters) for every option — including OpenAI-managed and Azure-managed state.
+Conversations, responses, assistants, threads, messages, and runs all land in Postgres. See [Storage adapters](https://supercompat.com/docs/adapters/storage-adapters) for every option — including OpenAI-managed and Azure-managed state.
 
 ## Where to go next
 
-<Grid columns={{ initial: '1', md: '2' }} gap="4">
-  <DocsCard
-    title="Installation"
-    description="Install the package, pick a provider SDK, and wire them together."
-    type="GUIDE"
-    href="/docs/getting-started/installation"
-  />
+- **[Installation](https://supercompat.com/docs/getting-started/installation)** — install the package, pick a provider SDK, and wire them together.
+- **[Comparison](https://supercompat.com/docs/getting-started/comparison)** — how Supercompat compares to Vercel AI SDK, LiteLLM, LangChain, and others.
+- **[Output SDKs](https://supercompat.com/docs/output-sdks)** — return an OpenAI-shaped or Anthropic-shaped client. Works with every provider.
+- **[Adapters](https://supercompat.com/docs/adapters)** — the three adapter types (client, storage, run) and how they compose.
+- **[Providers](https://supercompat.com/docs/providers)** — setup notes for OpenAI, Anthropic, Google, Azure, and every other backend.
+- **[Tools](https://supercompat.com/docs/tools)** — function calling, web search, file search, code interpreter, and computer use.
+- **[Streaming](https://supercompat.com/docs/streaming)** — stream deltas through the OpenAI SDK regardless of which provider is behind it.
 
-  <DocsCard
-    title="Comparison"
-    description="How Supercompat compares to Vercel AI SDK, LiteLLM, LangChain, and others."
-    type="OVERVIEW"
-    href="/docs/getting-started/comparison"
-  />
+## Links
 
-  <DocsCard
-    title="Output SDKs"
-    description="Return an OpenAI-shaped or Anthropic-shaped client. Works with every provider."
-    type="OVERVIEW"
-    href="/docs/output-sdks"
-  />
-
-  <DocsCard
-    title="Adapters"
-    description="The three adapter types — client, storage, and run — and how they compose."
-    type="ADAPTERS"
-    href="/docs/adapters"
-  />
-
-  <DocsCard
-    title="Providers"
-    description="Setup notes for OpenAI, Anthropic, Google, Azure, and every other backend."
-    type="PROVIDERS"
-    href="/docs/providers"
-  />
-
-  <DocsCard
-    title="Tools"
-    description="Function calling, web search, file search, code interpreter, and computer use."
-    type="CODE"
-    href="/docs/tools"
-  />
-
-  <DocsCard
-    title="Streaming"
-    description="Stream deltas through the OpenAI SDK regardless of which provider is behind it."
-    type="RUNTIME"
-    href="/docs/streaming"
-  />
-</Grid>
+- Docs: [supercompat.com/docs](https://supercompat.com/docs)
+- GitHub: [github.com/supercorp-ai/supercompat](https://github.com/supercorp-ai/supercompat)
+- Supported by [Supercorp](https://supercorp.ai)

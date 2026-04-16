@@ -1,0 +1,62 @@
+---
+title: azureAiProjectClientAdapter
+index: 10
+type: CODE
+---
+
+# `azureAiProjectClientAdapter`
+
+Points the OpenAI SDK at an Azure AI Foundry project (Agents).
+
+## Signature
+
+```tsx
+azureAiProjectClientAdapter({
+  azureAiProject: AIProjectClient,
+})
+```
+
+## Install
+
+```bash
+npm install supercompat openai @azure/ai-projects @azure/identity @prisma/client
+```
+
+## Example
+
+```tsx
+import { AIProjectClient } from '@azure/ai-projects'
+import { DefaultAzureCredential } from '@azure/identity'
+import { PrismaClient } from '@prisma/client'
+import {
+  supercompat,
+  azureAiProjectClientAdapter,
+  azureAgentsRunAdapter,
+  azureAgentsStorageAdapter,
+} from 'supercompat/openai'
+
+const prisma = new PrismaClient()
+const azureAiProject = new AIProjectClient(
+  process.env.AZURE_AI_PROJECT_ENDPOINT!,
+  new DefaultAzureCredential(),
+)
+
+const client = supercompat({
+  clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
+  storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+  runAdapter: azureAgentsRunAdapter({ azureAiProject }),
+})
+
+const assistant = await client.beta.assistants.create({
+  model: 'my-agent-deployment',
+  instructions: 'You are a concise assistant.',
+})
+
+const thread = await client.beta.threads.create()
+await client.beta.threads.messages.create(thread.id, { role: 'user', content: 'Hello.' })
+const run = await client.beta.threads.runs.createAndPoll(thread.id, { assistant_id: assistant.id })
+```
+
+## Compatible run adapters
+
+- [`azureAgentsRunAdapter`](/docs/adapters/run-adapters/azure-agents) — required for Foundry Agents

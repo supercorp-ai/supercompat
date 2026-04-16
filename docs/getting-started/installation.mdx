@@ -1,0 +1,99 @@
+---
+title: Installation
+description: Add Supercompat and your provider SDK to a TypeScript project.
+index: 0
+---
+
+# Installation
+
+Supercompat is a single npm package. You install it alongside the SDK of whichever provider you want to reach.
+
+## Add the package
+
+```bash
+npm install supercompat openai
+```
+
+The `openai` package is always required — Supercompat returns a real OpenAI client and exposes its types. Install the backend SDK you plan to use in addition:
+
+```bash
+# Anthropic
+npm install @anthropic-ai/sdk
+
+# Google (Gemini)
+npm install @google/genai
+
+# Groq
+npm install groq-sdk
+
+# Mistral
+npm install @mistralai/mistralai
+
+# Azure AI Projects
+npm install @azure/ai-projects @azure/identity
+```
+
+Together, OpenRouter, Perplexity, and Ollama speak the OpenAI wire format, so the OpenAI SDK is enough for those.
+
+## Imports
+
+Everything is imported from `supercompat/openai`:
+
+```tsx
+import {
+  supercompat,
+  openaiClientAdapter,
+  anthropicClientAdapter,
+  completionsRunAdapter,
+  openaiResponsesRunAdapter,
+  memoryStorageAdapter,
+  prismaStorageAdapter,
+} from 'supercompat/openai'
+```
+
+The subpath `supercompat/openai` returns an OpenAI-shaped client. That is the path you want 99% of the time.
+
+## Minimal call
+
+Call Claude through the OpenAI SDK:
+
+```tsx
+import Anthropic from '@anthropic-ai/sdk'
+import {
+  supercompat,
+  anthropicClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: anthropicClientAdapter({ anthropic: new Anthropic() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'claude-sonnet-4-6',
+  input: 'Say hi.',
+})
+```
+
+`client` is an `OpenAI` instance with every method typed as it would be if you had imported OpenAI directly — but the backend is Anthropic. Swap `anthropicClientAdapter` for any other [client adapter](/docs/adapters/client-adapters) to change providers.
+
+## Environment
+
+Supercompat works in any JavaScript runtime that the underlying provider SDKs support:
+
+- Node.js 20+ (ESM or CJS)
+- Next.js edge and server runtimes
+- Serverless functions (Vercel, Cloudflare Workers, AWS Lambda)
+- Browsers, when the provider SDK supports it
+
+No background workers and no separate process to run.
+
+## Next
+
+Pick the output SDK you want to build against:
+
+- [OpenAI SDK](/docs/output-sdks/openai) — Responses API and Assistants API.
+- [Anthropic SDK](/docs/output-sdks/anthropic) — Messages API.

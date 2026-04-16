@@ -1,0 +1,90 @@
+---
+title: Anthropic
+description: Use the Anthropic SDK shape — Messages API — against any provider.
+index: 1
+---
+
+# Anthropic SDK
+
+Import from `supercompat/anthropic` to get an `Anthropic` instance. It exposes the **Messages API** — `client.messages.create()` — and returns objects typed as `Anthropic.Message`.
+
+## Install
+
+```bash
+npm install supercompat @anthropic-ai/sdk
+```
+
+## Minimal call
+
+```tsx
+import Anthropic from '@anthropic-ai/sdk'
+import {
+  supercompat,
+  anthropicClientAdapter,
+} from 'supercompat/anthropic'
+
+const client = supercompat({
+  clientAdapter: anthropicClientAdapter({ anthropic: new Anthropic() }),
+})
+
+const message = await client.messages.create({
+  model: 'claude-sonnet-4-6',
+  max_tokens: 512,
+  messages: [
+    { role: 'user', content: 'Explain the Messages API in one sentence.' },
+  ],
+})
+
+console.log(message.content)
+```
+
+The Messages API is stateless — you pass the full conversation history on each call.
+
+## Streaming
+
+```tsx
+const stream = await client.messages.stream({
+  model: 'claude-sonnet-4-6',
+  max_tokens: 512,
+  messages: [{ role: 'user', content: 'Count to five.' }],
+})
+
+for await (const event of stream) {
+  if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+    process.stdout.write(event.delta.text)
+  }
+}
+```
+
+## Against a different backend
+
+The Anthropic SDK surface still works when you point it at another provider through the client adapter. For example, to route `client.messages.create()` to OpenAI:
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  openaiClientAdapter,
+} from 'supercompat/anthropic'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+})
+
+const message = await client.messages.create({
+  model: 'gpt-4.1-mini',
+  max_tokens: 512,
+  messages: [{ role: 'user', content: 'Explain OpenAI in one sentence.' }],
+})
+```
+
+The return type stays `Anthropic.Message` even though the backend is OpenAI.
+
+## When to use this surface
+
+Pick the Anthropic output SDK when:
+
+- Your app is already structured around `client.messages.create()` and Anthropic's content blocks.
+- You want to keep Anthropic's streaming event vocabulary throughout your code.
+
+For new projects, the OpenAI output SDK with the Responses API is generally the recommended default.

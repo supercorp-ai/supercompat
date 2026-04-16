@@ -1,0 +1,71 @@
+---
+title: googleClientAdapter
+index: 2
+type: CODE
+---
+
+# `googleClientAdapter`
+
+Points the OpenAI SDK at Google Gemini.
+
+## Signature
+
+```tsx
+googleClientAdapter({
+  google: GoogleGenAI,
+})
+```
+
+## Install
+
+```bash
+npm install supercompat openai @google/genai
+```
+
+## Native Gemini
+
+Pair with `geminiRunAdapter` to access Gemini's native `generateContent` surface:
+
+```tsx
+import { GoogleGenAI } from '@google/genai'
+import {
+  supercompat,
+  googleClientAdapter,
+  geminiRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const google = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY })
+
+const client = supercompat({
+  clientAdapter: googleClientAdapter({ google }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: geminiRunAdapter({ google }),
+})
+
+const response = await client.responses.create({
+  model: 'gemini-2.5-flash',
+  input: 'List three interesting facts about Mars.',
+})
+```
+
+## Completions fallback
+
+```tsx
+import {
+  googleClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+supercompat({
+  clientAdapter: googleClientAdapter({ google }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+```
+
+## Compatible run adapters
+
+- [`geminiRunAdapter`](/docs/adapters/run-adapters/gemini) — native Gemini
+- [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) — OpenAI-compatible path

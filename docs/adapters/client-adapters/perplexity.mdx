@@ -1,0 +1,57 @@
+---
+title: perplexityClientAdapter
+index: 7
+type: CODE
+---
+
+# `perplexityClientAdapter`
+
+Points the OpenAI SDK at Perplexity's Sonar endpoints.
+
+## Signature
+
+```tsx
+perplexityClientAdapter({
+  perplexity: OpenAI,
+})
+```
+
+## Install
+
+```bash
+npm install supercompat openai
+```
+
+## Example
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  perplexityClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const perplexity = new OpenAI({
+  apiKey: process.env.PERPLEXITY_API_KEY,
+  baseURL: 'https://api.perplexity.ai',
+})
+
+const client = supercompat({
+  clientAdapter: perplexityClientAdapter({ perplexity }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'sonar',
+  input: 'What is trending in open-source AI today?',
+})
+```
+
+Sonar answers include web citations inline.
+
+## Compatible run adapters
+
+- [`completionsRunAdapter`](/docs/adapters/run-adapters/completions)

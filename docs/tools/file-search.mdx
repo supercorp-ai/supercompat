@@ -1,0 +1,125 @@
+---
+title: File search
+description: Retrieval over an OpenAI vector store as a built-in tool — usable from the Responses API and the Assistants API.
+index: 2
+---
+
+# File search
+
+The `file_search` tool lets the model query an OpenAI vector store. Upload documents once, get a vector store id back, and pass that id to any run you want to retrieve over.
+
+## Create a vector store
+
+One-time setup — use the OpenAI SDK directly:
+
+```tsx
+import OpenAI from 'openai'
+
+const openai = new OpenAI()
+
+const file = await openai.files.create({
+  file: new File([pdfBytes], 'example.pdf', { type: 'application/pdf' }),
+  purpose: 'assistants',
+})
+
+const vectorStore = await openai.vectorStores.create({
+  name: 'Docs store',
+  file_ids: [file.id],
+})
+```
+
+Indexing is asynchronous — poll `openai.vectorStores.retrieve(vectorStore.id)` until `status === 'completed'` before running queries.
+
+## Responses API
+
+Pair [`openaiClientAdapter`](/docs/adapters/client-adapters/openai) with [`openaiResponsesRunAdapter`](/docs/adapters/run-adapters/openai-responses) and pass the vector store id on the `file_search` tool:
+
+```tsx
+import {
+  supercompat,
+  openaiClientAdapter,
+  openaiResponsesRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: openaiResponsesRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'gpt-4.1',
+  temperature: 0,
+  instructions: 'You MUST use file_search. ALWAYS search before answering.',
+  input: 'What is the lucky number in the attached file? Reply with just the number.',
+  tools: [
+    {
+      type: 'file_search',
+      vector_store_ids: [vectorStore.id],
+    },
+  ],
+})
+```
+
+The result includes `file_citation` annotations pointing to the matched documents.
+
+## Assistants API — vector store on the assistant
+
+Attach the store to an assistant with `tool_resources`:
+
+```tsx
+import {
+  supercompat,
+  openaiClientAdapter,
+  completionsRunAdapter,
+  prismaStorageAdapter,
+} from 'supercompat/openai'
+import { PrismaClient } from '@prisma/client'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai }),
+  storageAdapter: prismaStorageAdapter({ prisma: new PrismaClient() }),
+  runAdapter: completionsRunAdapter(),
+})
+
+const assistant = await client.beta.assistants.create({
+  model: 'gpt-4.1-mini',
+  instructions:
+    'You are a document search assistant. You MUST ALWAYS use the file_search tool.',
+  tools: [{ type: 'file_search' }],
+  tool_resources: {
+    file_search: { vector_store_ids: [vectorStore.id] },
+  },
+})
+
+const thread = await client.beta.threads.create()
+await client.beta.threads.messages.create(thread.id, {
+  role: 'user',
+  content: 'What is the lucky number in the policy doc? Reply with just the number.',
+})
+const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+  assistant_id: assistant.id,
+})
+```
+
+## Assistants API — attach the file to one message
+
+You can also attach the file on a per-message basis without creating a vector store upfront:
+
+```tsx
+await client.beta.threads.messages.create(thread.id, {
+  role: 'user',
+  content: 'What is the lucky number in the attached file? Reply with just the number.',
+  attachments: [
+    {
+      file_id: file.id,
+      tools: [{ type: 'file_search' as const }],
+    },
+  ],
+})
+```
+
+## Compatibility
+
+`file_search` is a first-party OpenAI / Azure OpenAI feature. Supercompat's tests exercise it against OpenAI; the same declarations work against Azure OpenAI deployments that expose the Responses or Assistants API. For providers that don't expose a built-in vector-store tool (Anthropic, Google, Mistral, Groq, Together, OpenRouter, Perplexity, Ollama), build retrieval as a [function tool](/docs/tools/function-calling) that queries your own vector database.

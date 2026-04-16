@@ -1,0 +1,327 @@
+---
+title: Function calling
+description: Attach your own functions to a run and handle the call / output round-trip. Works on every provider that supports tool use.
+index: 0
+---
+
+# Function calling
+
+Function tools let the model ask your code to run a function and hand the result back. They round-trip through every provider Supercompat tests — OpenAI, Anthropic, Google, Mistral, Groq, Together, OpenRouter, and Azure OpenAI. The one exception is Perplexity, which does not expose function tools through `/chat/completions`.
+
+## Responses API shape
+
+Declare tools with the OpenAI Responses shape. The `completionsRunAdapter` translates them into the native format for each provider.
+
+```tsx
+const response = await client.responses.create({
+  model,
+  instructions: 'You MUST call the get_weather tool. Never answer without calling it first.',
+  input: 'What is the weather in London?',
+  tools: [
+    {
+      type: 'function',
+      name: 'get_weather',
+      description: 'Get the current weather in a city.',
+      parameters: {
+        type: 'object',
+        properties: {
+          city: { type: 'string', description: 'City name' },
+        },
+        required: ['city'],
+      },
+    },
+  ],
+})
+```
+
+Handle the `function_call` item and return the result:
+
+```tsx
+const call = response.output.find((item) => item.type === 'function_call')
+if (call) {
+  const args = JSON.parse(call.arguments)
+  const weather = await getWeather(args.city)
+
+  await client.responses.create({
+    model,
+    previous_response_id: response.id,
+    input: [
+      {
+        type: 'function_call_output',
+        call_id: call.call_id,
+        output: JSON.stringify(weather),
+      },
+    ],
+  })
+}
+```
+
+## Per-provider setup
+
+Pick the client adapter; the tool declaration and round-trip above are identical.
+
+### OpenAI
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  openaiClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const model = 'gpt-4.1-mini'
+```
+
+### Anthropic
+
+```tsx
+import Anthropic from '@anthropic-ai/sdk'
+import {
+  supercompat,
+  anthropicClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: anthropicClientAdapter({ anthropic: new Anthropic() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const model = 'claude-sonnet-4-6'
+```
+
+### Google (Gemini)
+
+```tsx
+import { GoogleGenAI } from '@google/genai'
+import {
+  supercompat,
+  googleClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: googleClientAdapter({ google: new GoogleGenAI() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const model = 'gemini-2.5-flash'
+```
+
+### Azure OpenAI
+
+```tsx
+import { AzureOpenAI } from 'openai'
+import {
+  supercompat,
+  azureOpenaiClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const azureOpenai = new AzureOpenAI({
+  endpoint: process.env.AZURE_OPENAI_ENDPOINT!,
+  apiKey: process.env.AZURE_OPENAI_API_KEY,
+  apiVersion: '2024-10-21',
+})
+
+const client = supercompat({
+  clientAdapter: azureOpenaiClientAdapter({ azureOpenai }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const model = 'gpt-4.1-mini' // Azure deployment name
+```
+
+### Mistral
+
+```tsx
+import { Mistral } from '@mistralai/mistralai'
+import {
+  supercompat,
+  mistralClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: mistralClientAdapter({ mistral: new Mistral() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const model = 'mistral-small-latest'
+```
+
+### Groq
+
+```tsx
+import Groq from 'groq-sdk'
+import {
+  supercompat,
+  groqClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: groqClientAdapter({ groq: new Groq() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const model = 'llama-3.3-70b-versatile'
+```
+
+### Together
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  togetherClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const together = new OpenAI({
+  apiKey: process.env.TOGETHER_API_KEY,
+  baseURL: 'https://api.together.xyz/v1',
+})
+
+const client = supercompat({
+  clientAdapter: togetherClientAdapter({ together }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const model = 'openai/gpt-oss-120b'
+
+// Note: Together does not support parallel tool calls through /chat/completions.
+```
+
+### OpenRouter
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  openRouterClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const openRouter = new OpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
+})
+
+const client = supercompat({
+  clientAdapter: openRouterClientAdapter({ openRouter }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const model = 'anthropic/claude-sonnet-4-6'
+```
+
+### Perplexity
+
+Perplexity's Sonar endpoints do not expose function tools through `/chat/completions`. Use Perplexity for web-grounded answers, not for function-calling workloads.
+
+## Assistants API shape
+
+For the Assistants surface, the tool object nests under `function`:
+
+```tsx
+const assistant = await client.beta.assistants.create({
+  model,
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'get_weather',
+        description: 'Get the current weather in a city.',
+        parameters: {
+          type: 'object',
+          properties: { city: { type: 'string' } },
+          required: ['city'],
+        },
+      },
+    },
+  ],
+})
+```
+
+Handle the call in the run loop:
+
+```tsx
+const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+  assistant_id: assistant.id,
+})
+
+if (run.status === 'requires_action') {
+  const calls = run.required_action!.submit_tool_outputs.tool_calls
+  const outputs = await Promise.all(
+    calls.map(async (call) => ({
+      tool_call_id: call.id,
+      output: JSON.stringify(
+        await getWeather(JSON.parse(call.function.arguments).city),
+      ),
+    })),
+  )
+
+  await client.beta.threads.runs.submitToolOutputsAndPoll(thread.id, run.id, {
+    tool_outputs: outputs,
+  })
+}
+```
+
+The same Assistants flow works across every client adapter listed above.
+
+## Streaming tool calls
+
+While streaming, `function_call_arguments.delta` events fire as arguments come in, followed by a single `function_call_arguments.done` event when the call is ready to execute:
+
+```tsx
+for await (const event of stream) {
+  if (event.type === 'response.function_call_arguments.done') {
+    const args = JSON.parse(event.arguments)
+    // Execute the tool…
+  }
+}
+```
+
+## Parallel tool calls
+
+When the model emits multiple tool calls in one turn, each arrives as its own `function_call` item. Resolve them in any order and return all outputs together before continuing. Together is the one tested provider without parallel-tool-call support through `/chat/completions`.
+
+## Tool choice
+
+`tool_choice` works across every provider that supports function tools:
+
+```tsx
+await client.responses.create({
+  model,
+  input: '...',
+  tools: [...],
+  tool_choice: { type: 'function', function: { name: 'get_weather' } },
+})
+
+// Or:
+tool_choice: 'required'
+tool_choice: 'auto'
+```

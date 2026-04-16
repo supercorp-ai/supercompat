@@ -1,0 +1,77 @@
+---
+title: azureAgentsStorageAdapter
+index: 4
+type: CODE
+---
+
+# `azureAgentsStorageAdapter`
+
+Stores Assistants-surface state on Azure AI Foundry. Azure owns assistants, threads, and runs; Prisma covers durability and run-step caching.
+
+## Signature
+
+```tsx
+azureAgentsStorageAdapter({
+  azureAiProject: AIProjectClient,
+  prisma: PrismaClient,
+})
+```
+
+## Install
+
+```bash
+npm install supercompat openai @azure/ai-projects @azure/identity @prisma/client
+npm install -D prisma
+```
+
+## Prisma tables
+
+Because this adapter relies on Prisma, you need the same tables [`prismaStorageAdapter`](/docs/adapters/storage-adapters/prisma) uses for the Assistants API *plus* one extra model that persists function-tool outputs across Azure run turns:
+
+1. Add the [Assistants API schema](/docs/adapters/storage-adapters/prisma#assistants-api-schema) to your `schema.prisma`.
+2. Add the [`AzureAgentsFunctionOutput` model](/docs/adapters/storage-adapters/prisma#azure-ai-foundry-agents) in the same file.
+3. Apply the changes:
+
+```bash
+npx prisma db push
+npx prisma generate
+```
+
+## Example
+
+```tsx
+import { AIProjectClient } from '@azure/ai-projects'
+import { DefaultAzureCredential } from '@azure/identity'
+import { PrismaClient } from '@prisma/client'
+import {
+  supercompat,
+  azureAiProjectClientAdapter,
+  azureAgentsRunAdapter,
+  azureAgentsStorageAdapter,
+} from 'supercompat/openai'
+
+const prisma = new PrismaClient()
+const azureAiProject = new AIProjectClient(
+  process.env.AZURE_AI_PROJECT_ENDPOINT!,
+  new DefaultAzureCredential(),
+)
+
+const client = supercompat({
+  clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
+  storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+  runAdapter: azureAgentsRunAdapter({ azureAiProject }),
+})
+
+const assistant = await client.beta.assistants.create({
+  model: 'my-agent-deployment',
+  instructions: 'You are a concise assistant.',
+})
+
+const thread = await client.beta.threads.create()
+await client.beta.threads.messages.create(thread.id, { role: 'user', content: 'Hello.' })
+const run = await client.beta.threads.runs.createAndPoll(thread.id, { assistant_id: assistant.id })
+```
+
+## Compatible run adapters
+
+- [`azureAgentsRunAdapter`](/docs/adapters/run-adapters/azure-agents)

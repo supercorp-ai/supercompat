@@ -1,0 +1,88 @@
+---
+title: Streaming
+description: Stream deltas through the OpenAI SDK, regardless of which provider is behind it.
+index: 5
+icon: BoxModelIcon
+---
+
+# Streaming
+
+Every run adapter supports streaming. Pass `stream: true` and iterate the returned `AsyncIterable`. Events are always shaped as the OpenAI SDK types — Supercompat translates provider-native deltas into OpenAI events on the way back.
+
+## Responses API
+
+```tsx
+const stream = await client.responses.create({
+  model: 'gpt-4.1-mini',
+  input: 'Count to three.',
+  stream: true,
+})
+
+for await (const event of stream) {
+  if (event.type === 'response.output_text.delta') {
+    process.stdout.write(event.delta)
+  }
+}
+```
+
+Event types you'll see (`OpenAI.Responses.ResponseStreamEvent`):
+
+- `response.created`
+- `response.in_progress`
+- `response.output_item.added` / `response.output_item.done`
+- `response.output_text.delta` / `response.output_text.done`
+- `response.function_call_arguments.delta` / `response.function_call_arguments.done`
+- `response.completed`
+
+All providers emit this vocabulary.
+
+## Assistants API
+
+```tsx
+const stream = await client.beta.threads.runs.create(thread.id, {
+  assistant_id: assistant.id,
+  stream: true,
+})
+
+for await (const event of stream) {
+  switch (event.event) {
+    case 'thread.message.delta': {
+      const delta = event.data.delta.content?.[0]
+      if (delta?.type === 'text') process.stdout.write(delta.text.value)
+      break
+    }
+    case 'thread.run.requires_action':
+      // Handle tool calls — see Tools doc.
+      break
+  }
+}
+```
+
+Events follow `OpenAI.Beta.AssistantStreamEvent`:
+
+- `thread.created`
+- `thread.run.created` / `thread.run.in_progress` / `thread.run.requires_action` / `thread.run.completed` / `thread.run.failed`
+- `thread.run.step.created` / `thread.run.step.delta` / `thread.run.step.completed`
+- `thread.message.created` / `thread.message.delta` / `thread.message.completed`
+
+## Translated under the hood
+
+With `completionsRunAdapter`, Supercompat streams the provider's `/chat/completions` response and re-emits each chunk as the matching OpenAI event. With `geminiRunAdapter` or `openaiResponsesRunAdapter`, deltas come from the provider's native streaming endpoint and are translated on the fly.
+
+Your iteration code stays the same whether the backend is OpenAI, Anthropic, Gemini, or a Completions-compatible provider.
+
+## Edge runtimes
+
+If you're running on an edge platform (Vercel Edge, Cloudflare Workers), pass `waitUntil` to the OpenAI or Azure Responses run adapter so background work — such as writing the final response to storage — is finished even after the stream is returned to the caller.
+
+```tsx
+import { openaiResponsesRunAdapter } from 'supercompat/openai'
+
+supercompat({
+  clientAdapter,
+  storageAdapter,
+  runAdapter: openaiResponsesRunAdapter({
+    waitUntil: (p) => context.waitUntil(p),
+  }),
+})
+```

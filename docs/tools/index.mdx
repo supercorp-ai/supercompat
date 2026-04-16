@@ -1,0 +1,89 @@
+---
+title: Tools
+description: Function calling, web search, file search, code interpreter, and computer use.
+index: 4
+icon: CodeIcon
+---
+
+# Tools
+
+Supercompat supports tool use end-to-end. Function tools round-trip cleanly through every provider, and provider-native built-in tools (web search, file search, code interpreter, computer use) are forwarded when the provider supports them.
+
+## Available tools
+
+<Grid columns={{ initial: '1', md: '2' }} gap="4">
+  <DocsCard
+    title="Function calling"
+    description="Attach your own functions and handle the call / output round-trip."
+    type="CODE"
+    href="/docs/tools/function-calling"
+  />
+
+  <DocsCard
+    title="Web search"
+    description="Server-side web search grounds answers in live sources."
+    type="CODE"
+    href="/docs/tools/web-search"
+  />
+
+  <DocsCard
+    title="File search"
+    description="Retrieval over an OpenAI vector store."
+    type="CODE"
+    href="/docs/tools/file-search"
+  />
+
+  <DocsCard
+    title="Code interpreter"
+    description="Sandboxed Python execution for math, plotting, and data tasks."
+    type="CODE"
+    href="/docs/tools/code-interpreter"
+  />
+
+  <DocsCard
+    title="Computer use"
+    description="The model drives a screen — clicks, types, and reads screenshots."
+    type="CODE"
+    href="/docs/tools/computer-use"
+  />
+</Grid>
+
+## Provider support
+
+Per Supercompat's test suite:
+
+| Provider | Function calling | Web search | File search | Code interpreter | Computer use |
+|---|:---:|:---:|:---:|:---:|:---:|
+| [OpenAI](/docs/providers/openai) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| [Anthropic](/docs/providers/anthropic) | ✓ | ✓ | — | ✓ | ✓ |
+| [Google (Gemini)](/docs/providers/google) | ✓ | — | — | — | ✓ |
+| [Azure OpenAI](/docs/providers/azure) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| [Mistral](/docs/providers/mistral) | ✓ | — | — | — | — |
+| [Groq](/docs/providers/groq) | ✓ | — | — | — | — |
+| [Together](/docs/providers/together) | ✓ | — | — | — | — |
+| [OpenRouter](/docs/providers/openrouter) | ✓ | — | — | — | ✓ |
+| [Perplexity](/docs/providers/perplexity) | — | ✓ (built-in) | — | — | — |
+| [Ollama](/docs/providers/ollama) | ✓ | — | — | — | — |
+
+A **✓** means Supercompat's tests exercise this tool against that provider. A **—** means the provider doesn't expose the feature natively — use a [function tool](/docs/tools/function-calling) to wire your own implementation.
+
+## Tool choice
+
+`tool_choice` works across every provider that supports function tools:
+
+```tsx
+await client.responses.create({
+  model,
+  input: '...',
+  tools: [...],
+  tool_choice: { type: 'function', function: { name: 'get_weather' } },
+})
+
+// Or
+tool_choice: 'required'
+tool_choice: 'auto'
+```
+
+## Parallel tool calls
+
+When the model emits multiple tool calls in one turn, each appears as its own `function_call` item. You resolve them in any order and return their outputs together before continuing.

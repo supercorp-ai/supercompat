@@ -1,0 +1,120 @@
+---
+title: Code interpreter
+description: Sandboxed Python execution as a built-in tool — usable from the Responses API and the Assistants API.
+index: 3
+---
+
+# Code interpreter
+
+The `code_interpreter` tool gives the model a sandboxed Python runtime. Useful for math, data analysis, plotting, and any task where "let the model just write code" is a better answer than a bespoke function tool.
+
+## Responses API
+
+Pair [`openaiClientAdapter`](/docs/adapters/client-adapters/openai) with [`openaiResponsesRunAdapter`](/docs/adapters/run-adapters/openai-responses) and declare the tool with a container:
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  openaiClientAdapter,
+  openaiResponsesRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: openaiResponsesRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'gpt-4.1',
+  temperature: 0,
+  instructions:
+    'You MUST use code_interpreter to execute the code. Do NOT compute manually.',
+  input: 'Execute: print(sum(range(1, 101)))',
+  tools: [
+    {
+      type: 'code_interpreter',
+      container: { type: 'auto' },
+    },
+  ],
+})
+```
+
+The response contains a `code_interpreter_call` item with the executed source, plus the resulting text in the message output.
+
+### With file inputs
+
+Attach file ids to the container so the sandbox has the files available to open:
+
+```tsx
+await client.responses.create({
+  model: 'gpt-4.1',
+  input: 'Plot the first two columns of the attached CSV.',
+  tools: [
+    {
+      type: 'code_interpreter',
+      container: { type: 'auto', file_ids: [uploadedFileId] },
+    },
+  ],
+})
+```
+
+## Assistants API
+
+Attach the tool to the assistant. Code interpreter auto-executes — runs complete without `requires_action`:
+
+```tsx
+import {
+  supercompat,
+  openaiClientAdapter,
+  completionsRunAdapter,
+  prismaStorageAdapter,
+} from 'supercompat/openai'
+import { PrismaClient } from '@prisma/client'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: prismaStorageAdapter({ prisma: new PrismaClient() }),
+  runAdapter: completionsRunAdapter(),
+})
+
+const assistant = await client.beta.assistants.create({
+  model: 'gpt-4.1-mini',
+  instructions:
+    'You MUST use code_interpreter to compute results. Do NOT compute manually.',
+  tools: [{ type: 'code_interpreter' }],
+})
+
+const thread = await client.beta.threads.create()
+await client.beta.threads.messages.create(thread.id, {
+  role: 'user',
+  content: 'Execute: print(sum(range(1, 101)))',
+})
+const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+  assistant_id: assistant.id,
+})
+```
+
+Inspect the run steps to see the executed code:
+
+```tsx
+const steps = await client.beta.threads.runs.steps.list(thread.id, run.id)
+for (const step of steps.data) {
+  if (step.type !== 'tool_calls') continue
+  for (const call of step.step_details.tool_calls) {
+    if (call.type !== 'code_interpreter') continue
+    console.log(call.code_interpreter.input)
+    for (const output of call.code_interpreter.outputs) {
+      if (output.type === 'logs') console.log(output.logs)
+    }
+  }
+}
+```
+
+## Compatibility
+
+Supercompat's tests exercise `code_interpreter` against OpenAI on both the Responses and the Assistants surfaces. Azure OpenAI deployments that expose these surfaces accept the same declarations. Azure AI Foundry Agents expose `code_interpreter` as a first-class agent tool when paired with [`azureAgentsRunAdapter`](/docs/adapters/run-adapters/azure-agents).
+
+Providers without a built-in sandboxed runtime (Anthropic, Google, Mistral, Groq, Together, OpenRouter, Perplexity, Ollama) should model code execution as a [function tool](/docs/tools/function-calling) that runs code in a sandbox you control.

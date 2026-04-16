@@ -1,0 +1,73 @@
+---
+title: ollamaClientAdapter
+index: 8
+type: CODE
+---
+
+# `ollamaClientAdapter`
+
+Points the OpenAI SDK at a local (or remote) Ollama instance.
+
+## Signature
+
+```tsx
+ollamaClientAdapter({
+  ollama: OpenAI,
+})
+```
+
+## Install
+
+```bash
+npm install supercompat openai
+```
+
+Make sure Ollama is running and you've pulled the model you want:
+
+```bash
+ollama serve
+ollama pull llama3.2
+```
+
+## Example
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  ollamaClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const ollama = new OpenAI({
+  apiKey: 'ollama', // Ollama accepts any non-empty value.
+  baseURL: 'http://localhost:11434/v1',
+})
+
+const client = supercompat({
+  clientAdapter: ollamaClientAdapter({ ollama }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'llama3.2',
+  input: 'Hello.',
+})
+```
+
+## Remote Ollama
+
+Swap the base URL to reach a different machine:
+
+```tsx
+const ollama = new OpenAI({
+  apiKey: 'ollama',
+  baseURL: 'http://gpu-box.local:11434/v1',
+})
+```
+
+## Compatible run adapters
+
+- [`completionsRunAdapter`](/docs/adapters/run-adapters/completions)

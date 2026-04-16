@@ -1,0 +1,81 @@
+---
+title: openaiClientAdapter
+index: 0
+type: CODE
+---
+
+# `openaiClientAdapter`
+
+Points the OpenAI SDK at OpenAI itself. This is the baseline — use it when your backend is OpenAI.
+
+## Signature
+
+```tsx
+openaiClientAdapter({
+  openai: OpenAI,
+})
+```
+
+## Install
+
+```bash
+npm install supercompat openai
+```
+
+## Responses API
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  openaiClientAdapter,
+  openaiResponsesRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({
+    openai: new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
+  }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: openaiResponsesRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'gpt-4.1-mini',
+  input: 'Hello.',
+})
+```
+
+## Assistants API
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  openaiClientAdapter,
+  completionsRunAdapter,
+  prismaStorageAdapter,
+} from 'supercompat/openai'
+import { PrismaClient } from '@prisma/client'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: prismaStorageAdapter({ prisma: new PrismaClient() }),
+  runAdapter: completionsRunAdapter(),
+})
+
+const assistant = await client.beta.assistants.create({
+  model: 'gpt-4.1-mini',
+  instructions: 'You are a helpful assistant.',
+})
+
+const thread = await client.beta.threads.create()
+await client.beta.threads.messages.create(thread.id, { role: 'user', content: 'Hi.' })
+const run = await client.beta.threads.runs.createAndPoll(thread.id, { assistant_id: assistant.id })
+```
+
+## Compatible run adapters
+
+- [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) — default
+- [`openaiResponsesRunAdapter`](/docs/adapters/run-adapters/openai-responses) — native Responses API

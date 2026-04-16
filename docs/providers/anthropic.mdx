@@ -1,0 +1,91 @@
+---
+title: Anthropic
+description: Claude models through the OpenAI SDK.
+index: 1
+---
+
+# Anthropic
+
+Use Anthropic's Claude models through the OpenAI SDK surface. Supercompat routes every call through `/chat/completions` using `completionsRunAdapter`, so function tools, streaming, and the Responses API work with `anthropic-sdk` as the backend.
+
+## Install
+
+```bash
+npm install supercompat openai @anthropic-ai/sdk
+```
+
+## Minimal setup
+
+```tsx
+import Anthropic from '@anthropic-ai/sdk'
+import {
+  supercompat,
+  anthropicClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+const client = supercompat({
+  clientAdapter: anthropicClientAdapter({ anthropic }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'claude-sonnet-4-6',
+  input: 'Explain quantum computing in one sentence.',
+})
+```
+
+## Tool use
+
+Function tools are declared with the OpenAI shape:
+
+```tsx
+const response = await client.responses.create({
+  model: 'claude-sonnet-4-6',
+  input: 'What is the weather in Paris?',
+  tools: [
+    {
+      type: 'function',
+      name: 'get_weather',
+      description: 'Return the current weather in a city.',
+      parameters: {
+        type: 'object',
+        properties: { city: { type: 'string' } },
+        required: ['city'],
+      },
+    },
+  ],
+})
+```
+
+Anthropic tool_use blocks come back as `function_call` items on the OpenAI side. See [Tools](/docs/tools) for the full round-trip.
+
+## Streaming
+
+```tsx
+const stream = await client.responses.create({
+  model: 'claude-sonnet-4-6',
+  input: 'Count to three.',
+  stream: true,
+})
+
+for await (const event of stream) {
+  if (event.type === 'response.output_text.delta') {
+    process.stdout.write(event.delta)
+  }
+}
+```
+
+## Models
+
+Pass any Claude model id — the full catalog is at [docs.anthropic.com/en/docs/about-claude/models/overview](https://docs.anthropic.com/en/docs/about-claude/models/overview).
+
+Some current examples:
+
+- `claude-sonnet-4-6`
+- `claude-opus-4-6`
+- `claude-haiku-4-5`

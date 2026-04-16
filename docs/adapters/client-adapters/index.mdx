@@ -1,0 +1,41 @@
+---
+title: Client
+description: Pick which LLM provider the OpenAI SDK talks to.
+index: 0
+---
+
+# Client adapters
+
+A **client adapter** wires a provider SDK into Supercompat. Every adapter follows the same shape: it takes the provider's own SDK instance and returns an opaque handle that `supercompat()` plugs into the generated OpenAI client.
+
+Switching providers is a one-line change.
+
+## Catalog
+
+| Adapter | Provider | Page |
+|---|---|---|
+| `openaiClientAdapter` | OpenAI | [OpenAI](/docs/adapters/client-adapters/openai) |
+| `anthropicClientAdapter` | Anthropic | [Anthropic](/docs/adapters/client-adapters/anthropic) |
+| `googleClientAdapter` | Google (Gemini) | [Google](/docs/adapters/client-adapters/google) |
+| `mistralClientAdapter` | Mistral | [Mistral](/docs/adapters/client-adapters/mistral) |
+| `groqClientAdapter` | Groq | [Groq](/docs/adapters/client-adapters/groq) |
+| `togetherClientAdapter` | Together | [Together](/docs/adapters/client-adapters/together) |
+| `openRouterClientAdapter` | OpenRouter | [OpenRouter](/docs/adapters/client-adapters/openrouter) |
+| `perplexityClientAdapter` | Perplexity | [Perplexity](/docs/adapters/client-adapters/perplexity) |
+| `ollamaClientAdapter` | Ollama | [Ollama](/docs/adapters/client-adapters/ollama) |
+| `azureOpenaiClientAdapter` | Azure OpenAI | [Azure OpenAI](/docs/adapters/client-adapters/azure-openai) |
+| `azureAiProjectClientAdapter` | Azure AI Projects | [Azure AI Project](/docs/adapters/client-adapters/azure-ai-project) |
+
+## Shape
+
+Every client adapter has the same call signature — pass in the provider's own SDK client instance:
+
+```tsx
+supercompat({
+  clientAdapter: someClientAdapter({ someProviderClient }),
+  storageAdapter,
+  runAdapter,
+})
+```
+
+The parameter name mirrors the provider — `openai`, `anthropic`, `google`, `mistral`, `groq`, `together`, `openRouter`, `perplexity`, `ollama`, `azureOpenai`, `azureAiProject`.

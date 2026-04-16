@@ -1,0 +1,286 @@
+---
+title: Computer use
+description: The model drives a screen — clicks, types, and reads screenshots. Tested on OpenAI, Anthropic, Google, Azure, and OpenRouter vision models.
+index: 4
+---
+
+# Computer use
+
+A computer-use agent lets the model decide what to do on a screen — click, type, scroll, take a screenshot — and hand each action back to your application to execute. Supercompat normalizes this into a single tool shape and a single agent loop; the run/client adapters translate to whatever the provider expects on the wire.
+
+> The end-to-end computer-use tests are **flaky** by nature — they depend on a live browser environment and the model actually being willing to act. Expect occasional retries in CI, but the setup patterns below are exactly what the tests use.
+
+## OpenAI
+
+Pair [`openaiClientAdapter`](/docs/adapters/client-adapters/openai) with [`openaiResponsesRunAdapter`](/docs/adapters/run-adapters/openai-responses):
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  openaiClientAdapter,
+  openaiResponsesRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: openaiResponsesRunAdapter(),
+})
+```
+
+### Declare the tool
+
+Use the `computer` type. Supercompat forwards it to OpenAI as `computer_use_preview`.
+
+```tsx
+await client.responses.create({
+  model: 'computer-use-preview',
+  input: 'Search for "supercompat" on Google.',
+  tools: [{ type: 'computer' }],
+  truncation: 'auto',
+})
+```
+
+For a concrete environment, supply dimensions and platform:
+
+```tsx
+await client.responses.create({
+  model: 'computer-use-preview',
+  input: 'Search for "supercompat" on Google.',
+  tools: [
+    {
+      type: 'computer',
+      computer: {
+        display_width: 1280,
+        display_height: 720,
+        environment: 'mac',
+      },
+    },
+  ],
+  truncation: 'auto',
+})
+```
+
+Fields:
+
+- `display_width` (default `1280`)
+- `display_height` (default `720`)
+- `environment` — `'mac' | 'windows' | 'linux'`
+
+## Azure OpenAI
+
+Same declaration against an Azure OpenAI deployment that exposes computer-use:
+
+```tsx
+import { AzureOpenAI } from 'openai'
+import {
+  supercompat,
+  azureOpenaiClientAdapter,
+  azureResponsesRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const azureOpenai = new AzureOpenAI({
+  endpoint: process.env.AZURE_OPENAI_ENDPOINT!,
+  apiKey: process.env.AZURE_OPENAI_API_KEY,
+  apiVersion: '2024-10-21',
+})
+
+const client = supercompat({
+  clientAdapter: azureOpenaiClientAdapter({ azureOpenai }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: azureResponsesRunAdapter(),
+})
+
+await client.responses.create({
+  model: 'my-computer-use-deployment',
+  input: 'Open a browser and search for "supercompat".',
+  tools: [{ type: 'computer' }],
+  truncation: 'auto',
+})
+```
+
+## Run loop
+
+The agent emits a `computer_call` item with an `action` describing what to do next. Perform the action, take a screenshot, and return it as a `computer_call_output`. Repeat until the model stops requesting actions.
+
+```tsx
+let response = await client.responses.create({
+  model: 'computer-use-preview',
+  input: initialPrompt,
+  tools: [
+    {
+      type: 'computer',
+      computer: { display_width: 1280, display_height: 720, environment: 'mac' },
+    },
+  ],
+  truncation: 'auto',
+})
+
+while (true) {
+  const call = response.output.find((item) => item.type === 'computer_call')
+  if (!call) break
+
+  // call.action is a discriminated union — { type: 'click', x, y },
+  // { type: 'type', text }, { type: 'screenshot' }, etc.
+  await executeOnVM(call.action)
+
+  const screenshot = await captureScreenshot()
+
+  response = await client.responses.create({
+    model: 'computer-use-preview',
+    previous_response_id: response.id,
+    input: [
+      {
+        type: 'computer_call_output',
+        call_id: call.call_id,
+        output: {
+          type: 'computer_screenshot',
+          image_url: screenshot,
+        },
+      },
+    ],
+    truncation: 'auto',
+  })
+}
+```
+
+Your `executeOnVM` function maps each action type to a real input event on the environment you control — a virtual machine, a browser instance, or any sandbox with mouse and keyboard APIs.
+
+## Anthropic
+
+On the Assistants surface, [`anthropicClientAdapter`](/docs/adapters/client-adapters/anthropic) + [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) forward Anthropic's native `computer_20250124` (or `computer_20251124`) tool and normalize the resulting `computer_use` blocks into OpenAI-compatible `computer_call` items. The adapter automatically attaches the matching `computer-use-*` beta header based on the tool type you declare.
+
+```tsx
+import Anthropic from '@anthropic-ai/sdk'
+import { PrismaClient } from '@prisma/client'
+import {
+  supercompat,
+  anthropicClientAdapter,
+  completionsRunAdapter,
+  prismaStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: anthropicClientAdapter({ anthropic: new Anthropic() }),
+  storageAdapter: prismaStorageAdapter({ prisma: new PrismaClient() }),
+  runAdapter: completionsRunAdapter(),
+})
+
+const assistant = await client.beta.assistants.create({
+  model: 'claude-sonnet-4-6',
+  instructions: 'You control a browser via the computer tool. Take a screenshot before acting.',
+  tools: [
+    {
+      type: 'computer_20250124',
+      computer_20250124: {
+        name: 'computer',
+        display_width_px: 1280,
+        display_height_px: 720,
+      },
+    } as any,
+  ],
+})
+```
+
+Drive it through the standard Assistants run loop — `requires_action` surfaces `computer_call` items; execute the action on your environment and submit a `computer_call_output` with the resulting screenshot.
+
+## OpenRouter (Qwen, GLM, Kimi, Gemini Flash)
+
+OpenRouter's catalog includes several vision models that can be adapted into computer-use agents. [`openRouterClientAdapter`](/docs/adapters/client-adapters/openrouter) handles each model's quirks — GLM emits normalized coordinates (0–1000) that get denormalized to pixels; Qwen returns slightly malformed JSON that's parsed with a fuzzy extractor; Kimi-VL uses the standard pixel format.
+
+```tsx
+import { OpenRouter, HTTPClient } from '@openrouter/sdk'
+import { PrismaClient } from '@prisma/client'
+import {
+  supercompat,
+  openRouterClientAdapter,
+  completionsRunAdapter,
+  prismaStorageAdapter,
+} from 'supercompat/openai'
+
+const httpClient = new HTTPClient({
+  fetcher: (request: Request) => {
+    request.headers.set('Connection', 'close')
+    return fetch(request)
+  },
+})
+
+const client = supercompat({
+  clientAdapter: openRouterClientAdapter({
+    openRouter: new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY!, httpClient }),
+  }),
+  storageAdapter: prismaStorageAdapter({ prisma: new PrismaClient() }),
+  runAdapter: completionsRunAdapter(),
+})
+
+const assistant = await client.beta.assistants.create({
+  model: 'z-ai/glm-4.6v',
+  instructions: 'You control a computer via the computer tool. Take a screenshot before acting.',
+  tools: [
+    {
+      type: 'computer_use_preview',
+      computer_use_preview: {
+        display_width: 1280,
+        display_height: 720,
+      },
+    },
+  ],
+})
+```
+
+Tested OpenRouter vision models:
+
+- `z-ai/glm-4.6v`
+- `qwen/qwen-2.5-vl-72b-instruct`
+- `moonshotai/kimi-vl-a3b-thinking`
+- `google/gemini-2.5-flash`
+
+## Google (Gemini)
+
+[`googleClientAdapter`](/docs/adapters/client-adapters/google) + [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) on the Assistants surface. Same `computer_use_preview` shape:
+
+```tsx
+import { GoogleGenAI } from '@google/genai'
+import { PrismaClient } from '@prisma/client'
+import {
+  supercompat,
+  googleClientAdapter,
+  completionsRunAdapter,
+  prismaStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: googleClientAdapter({ google: new GoogleGenAI() }),
+  storageAdapter: prismaStorageAdapter({ prisma: new PrismaClient() }),
+  runAdapter: completionsRunAdapter(),
+})
+
+const assistant = await client.beta.assistants.create({
+  model: 'gemini-2.5-flash',
+  instructions: 'You control a browser via the computer tool. Take a screenshot before acting.',
+  tools: [
+    {
+      type: 'computer_use_preview',
+      computer_use_preview: {
+        display_width: 1280,
+        display_height: 720,
+      },
+    },
+  ],
+})
+```
+
+## Compatibility summary
+
+| Pairing | Tool shape | Tested models |
+|---|---|---|
+| [`openaiClientAdapter`](/docs/adapters/client-adapters/openai) + [`openaiResponsesRunAdapter`](/docs/adapters/run-adapters/openai-responses) | `{ type: 'computer' }` (Responses API) | `computer-use-preview` |
+| [`azureOpenaiClientAdapter`](/docs/adapters/client-adapters/azure-openai) + [`azureResponsesRunAdapter`](/docs/adapters/run-adapters/azure-responses) | `{ type: 'computer' }` (Responses API) | Azure deployment exposing computer-use |
+| [`anthropicClientAdapter`](/docs/adapters/client-adapters/anthropic) + [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) | `{ type: 'computer_20250124', computer_20250124: {...} }` (Assistants API) | `claude-sonnet-4-6` |
+| [`googleClientAdapter`](/docs/adapters/client-adapters/google) + [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) | `{ type: 'computer_use_preview', computer_use_preview: {...} }` (Assistants API) | `gemini-2.5-flash` |
+| [`openRouterClientAdapter`](/docs/adapters/client-adapters/openrouter) + [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) | `{ type: 'computer_use_preview', computer_use_preview: {...} }` (Assistants API) | GLM, Qwen-VL, Kimi-VL, Gemini Flash via OpenRouter |
+
+The Responses API path uses the shorter `{ type: 'computer' }` shape; the Assistants API path uses the longer `{ type: 'computer_use_preview', computer_use_preview: {...} }` shape. Supercompat translates both into whatever the provider actually expects on the wire.

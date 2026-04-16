@@ -1,0 +1,55 @@
+---
+title: togetherClientAdapter
+index: 5
+type: CODE
+---
+
+# `togetherClientAdapter`
+
+Points the OpenAI SDK at Together AI. Together uses an OpenAI-compatible endpoint, so this wraps a normal `OpenAI` client.
+
+## Signature
+
+```tsx
+togetherClientAdapter({
+  together: OpenAI,
+})
+```
+
+## Install
+
+```bash
+npm install supercompat openai
+```
+
+## Example
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  togetherClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const together = new OpenAI({
+  apiKey: process.env.TOGETHER_API_KEY,
+  baseURL: 'https://api.together.xyz/v1',
+})
+
+const client = supercompat({
+  clientAdapter: togetherClientAdapter({ together }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+  input: 'What is Together AI known for?',
+})
+```
+
+## Compatible run adapters
+
+- [`completionsRunAdapter`](/docs/adapters/run-adapters/completions)

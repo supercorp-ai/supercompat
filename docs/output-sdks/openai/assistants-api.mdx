@@ -1,0 +1,103 @@
+---
+title: Assistants API
+description: Threads, messages, runs, and tool-use round-trips through any provider.
+index: 1
+---
+
+# Assistants API
+
+Supercompat also supports the older **Assistants API** surface — `beta.assistants`, `beta.threads`, and the run loop. Useful when you have an existing app built on that API and want to change the backend, or when you want stateful threads with minimal app-side bookkeeping.
+
+## Set up a client
+
+```tsx
+import OpenAI from 'openai'
+import { PrismaClient } from '@prisma/client'
+import {
+  supercompat,
+  openaiClientAdapter,
+  completionsRunAdapter,
+  prismaStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: prismaStorageAdapter({ prisma: new PrismaClient() }),
+  runAdapter: completionsRunAdapter(),
+})
+```
+
+`completionsRunAdapter` makes the run loop execute against `/chat/completions`. That means it works against every provider — including OpenAI — because it never depends on the provider having a native assistants/runs surface.
+
+## Create an assistant
+
+```tsx
+const assistant = await client.beta.assistants.create({
+  model: 'gpt-4.1-mini',
+  name: 'Reviewer',
+  instructions: 'You review short pieces of text for clarity.',
+})
+```
+
+## Send a message and run
+
+```tsx
+const thread = await client.beta.threads.create()
+
+await client.beta.threads.messages.create(thread.id, {
+  role: 'user',
+  content: 'Please review: "The quick brown fox."',
+})
+
+const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+  assistant_id: assistant.id,
+})
+
+const messages = await client.beta.threads.messages.list(thread.id)
+console.log(messages.data[0].content)
+```
+
+`createAndPoll` waits for the run to complete. Under the hood, Supercompat is making chat completion calls through your chosen provider and writing thread/run/message state through the storage adapter.
+
+## Against a different provider
+
+```tsx
+import Anthropic from '@anthropic-ai/sdk'
+import { anthropicClientAdapter } from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: anthropicClientAdapter({ anthropic: new Anthropic() }),
+  storageAdapter: prismaStorageAdapter({ prisma: new PrismaClient() }),
+  runAdapter: completionsRunAdapter(),
+})
+
+// Everything below works against Claude.
+const assistant = await client.beta.assistants.create({
+  model: 'claude-sonnet-4-6',
+  name: 'Reviewer',
+  instructions: 'You review short pieces of text for clarity.',
+})
+```
+
+## Streaming a run
+
+```tsx
+const stream = await client.beta.threads.runs.create(thread.id, {
+  assistant_id: assistant.id,
+  stream: true,
+})
+
+for await (const event of stream) {
+  if (event.event === 'thread.message.delta') {
+    const delta = event.data.delta.content?.[0]
+    if (delta?.type === 'text') process.stdout.write(delta.text.value)
+  }
+}
+```
+
+Events are `OpenAI.Beta.AssistantStreamEvent` on every provider.
+
+## Next
+
+- [Tools](/docs/tools) — attach function tools to an assistant or a run.
+- [Storage adapters](/docs/adapters/storage-adapters) — compare Prisma, OpenAI-managed, and Azure-managed state.

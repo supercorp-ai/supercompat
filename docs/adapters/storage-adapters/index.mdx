@@ -1,0 +1,27 @@
+---
+title: Storage
+description: Where assistants, threads, messages, runs, and conversations are persisted.
+index: 1
+---
+
+# Storage adapters
+
+Supercompat needs somewhere to keep state: assistants, threads, messages, runs, run steps, and — for the Responses API — conversations and conversation items. The **storage adapter** is that somewhere.
+
+## Catalog
+
+| Adapter | Backend | Page |
+|---|---|---|
+| `memoryStorageAdapter` | In-process memory | [Memory](/docs/adapters/storage-adapters/memory) |
+| `prismaStorageAdapter` | PostgreSQL via Prisma | [Prisma](/docs/adapters/storage-adapters/prisma) |
+| `openaiResponsesStorageAdapter` | OpenAI-managed | [OpenAI Responses](/docs/adapters/storage-adapters/openai-responses) |
+| `azureResponsesStorageAdapter` | Azure-managed | [Azure Responses](/docs/adapters/storage-adapters/azure-responses) |
+| `azureAgentsStorageAdapter` | Azure AI Foundry + Prisma | [Azure Agents](/docs/adapters/storage-adapters/azure-agents) |
+
+## Picking one
+
+- **Scripts and tests:** `memoryStorageAdapter`.
+- **Production, you own the DB:** `prismaStorageAdapter`. Works with every provider.
+- **OpenAI-only app, no DB:** `openaiResponsesStorageAdapter`.
+- **Azure-only app, no DB:** `azureResponsesStorageAdapter`.
+- **Azure Agents:** `azureAgentsStorageAdapter`.

@@ -1,0 +1,59 @@
+---
+title: azureOpenaiClientAdapter
+index: 9
+type: CODE
+---
+
+# `azureOpenaiClientAdapter`
+
+Points the OpenAI SDK at an Azure OpenAI resource.
+
+## Signature
+
+```tsx
+azureOpenaiClientAdapter({
+  azureOpenai: AzureOpenAI,
+})
+```
+
+## Install
+
+```bash
+npm install supercompat openai
+```
+
+## Example — Responses API on Azure
+
+```tsx
+import { AzureOpenAI } from 'openai'
+import {
+  supercompat,
+  azureOpenaiClientAdapter,
+  azureResponsesRunAdapter,
+  azureResponsesStorageAdapter,
+} from 'supercompat/openai'
+
+const azureOpenai = new AzureOpenAI({
+  endpoint: process.env.AZURE_OPENAI_ENDPOINT!,
+  apiKey: process.env.AZURE_OPENAI_API_KEY,
+  apiVersion: '2024-10-01-preview',
+})
+
+const client = supercompat({
+  clientAdapter: azureOpenaiClientAdapter({ azureOpenai }),
+  storageAdapter: azureResponsesStorageAdapter(),
+  runAdapter: azureResponsesRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'my-gpt-4-1-deployment',
+  input: 'Hello from Azure.',
+})
+```
+
+Use your Azure **deployment name** as `model` — not the model id.
+
+## Compatible run adapters
+
+- [`azureResponsesRunAdapter`](/docs/adapters/run-adapters/azure-responses) — native Azure Responses
+- [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) — generic fallback

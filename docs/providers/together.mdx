@@ -1,0 +1,74 @@
+---
+title: Together
+description: Open-weight models hosted on Together AI.
+index: 6
+---
+
+# Together
+
+Together AI hosts Llama, Qwen, Mixtral, GPT-OSS, and dozens of other open-weight models behind an OpenAI-compatible endpoint. Supercompat talks to it via the OpenAI SDK with a custom base URL.
+
+## Install
+
+```bash
+npm install supercompat openai
+```
+
+## Minimal setup
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  togetherClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const together = new OpenAI({
+  apiKey: process.env.TOGETHER_API_KEY,
+  baseURL: 'https://api.together.xyz/v1',
+})
+
+const client = supercompat({
+  clientAdapter: togetherClientAdapter({ together }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+  input: 'What is Llama good at?',
+})
+```
+
+## Tool use
+
+```tsx
+await client.responses.create({
+  model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+  input: 'What is the weather in Oslo?',
+  tools: [
+    {
+      type: 'function',
+      name: 'get_weather',
+      parameters: {
+        type: 'object',
+        properties: { city: { type: 'string' } },
+        required: ['city'],
+      },
+    },
+  ],
+})
+```
+
+## Models
+
+Pass any model id Together hosts — the full catalog is at [docs.together.ai/docs/serverless-models](https://docs.together.ai/docs/serverless-models).
+
+Some current examples:
+
+- `meta-llama/Llama-3.3-70B-Instruct-Turbo`
+- `Qwen/Qwen2.5-72B-Instruct-Turbo`
+- `openai/gpt-oss-120b`
+- `mistralai/Mixtral-8x22B-Instruct-v0.1`

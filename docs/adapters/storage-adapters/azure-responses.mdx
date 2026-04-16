@@ -1,0 +1,50 @@
+---
+title: azureResponsesStorageAdapter
+index: 3
+type: CODE
+---
+
+# `azureResponsesStorageAdapter`
+
+Uses Azure OpenAI's Responses endpoints for state. The Azure counterpart of `openaiResponsesStorageAdapter`.
+
+## Signature
+
+```tsx
+azureResponsesStorageAdapter()
+```
+
+No options.
+
+## Example
+
+```tsx
+import { AzureOpenAI } from 'openai'
+import {
+  supercompat,
+  azureOpenaiClientAdapter,
+  azureResponsesRunAdapter,
+  azureResponsesStorageAdapter,
+} from 'supercompat/openai'
+
+const azureOpenai = new AzureOpenAI({
+  endpoint: process.env.AZURE_OPENAI_ENDPOINT!,
+  apiKey: process.env.AZURE_OPENAI_API_KEY,
+  apiVersion: '2024-10-01-preview',
+})
+
+const client = supercompat({
+  clientAdapter: azureOpenaiClientAdapter({ azureOpenai }),
+  storageAdapter: azureResponsesStorageAdapter(),
+  runAdapter: azureResponsesRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'my-gpt-4-1-deployment',
+  input: 'Hello.',
+})
+```
+
+## Compatible run adapters
+
+- [`azureResponsesRunAdapter`](/docs/adapters/run-adapters/azure-responses)

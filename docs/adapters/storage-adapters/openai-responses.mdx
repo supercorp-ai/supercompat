@@ -1,0 +1,54 @@
+---
+title: openaiResponsesStorageAdapter
+index: 2
+type: CODE
+---
+
+# `openaiResponsesStorageAdapter`
+
+Uses OpenAI itself as the state store. Conversation and response calls are forwarded to OpenAI's `/conversations` and `/responses` endpoints. No Postgres, no Prisma — OpenAI owns the state.
+
+Only compatible with the Responses surface on OpenAI.
+
+## Signature
+
+```tsx
+openaiResponsesStorageAdapter({
+  deferItemCreationUntilRun?: boolean,
+})
+```
+
+- `deferItemCreationUntilRun` — when `true`, conversation items aren't written to OpenAI until the run is actually created. Useful when you want to validate a request before spending tokens. Defaults to `false`.
+
+## Example
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  openaiClientAdapter,
+  openaiResponsesRunAdapter,
+  openaiResponsesStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: openaiResponsesStorageAdapter(),
+  runAdapter: openaiResponsesRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'gpt-4.1-mini',
+  input: 'Hello.',
+})
+```
+
+## Deferred item creation
+
+```tsx
+openaiResponsesStorageAdapter({ deferItemCreationUntilRun: true })
+```
+
+## Compatible run adapters
+
+- [`openaiResponsesRunAdapter`](/docs/adapters/run-adapters/openai-responses)

@@ -1,0 +1,66 @@
+---
+title: groqClientAdapter
+index: 4
+type: CODE
+---
+
+# `groqClientAdapter`
+
+Points the OpenAI SDK at Groq.
+
+## Signature
+
+```tsx
+groqClientAdapter({
+  groq: Groq,
+})
+```
+
+## Install
+
+```bash
+npm install supercompat openai groq-sdk
+```
+
+## Example
+
+```tsx
+import Groq from 'groq-sdk'
+import {
+  supercompat,
+  groqClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: groqClientAdapter({
+    groq: new Groq({ apiKey: process.env.GROQ_API_KEY }),
+  }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'llama-3.3-70b-versatile',
+  input: 'Write a haiku about fast inference.',
+})
+```
+
+## Streaming (feels instant)
+
+```tsx
+const stream = await client.responses.create({
+  model: 'llama-3.3-70b-versatile',
+  input: 'Explain photosynthesis in three sentences.',
+  stream: true,
+})
+
+for await (const event of stream) {
+  if (event.type === 'response.output_text.delta') process.stdout.write(event.delta)
+}
+```
+
+## Compatible run adapters
+
+- [`completionsRunAdapter`](/docs/adapters/run-adapters/completions)

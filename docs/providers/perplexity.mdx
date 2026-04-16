@@ -1,0 +1,55 @@
+---
+title: Perplexity
+description: Perplexity Sonar — live web-grounded answers.
+index: 8
+---
+
+# Perplexity
+
+Perplexity's Sonar models answer with citations sourced from the live web. Supercompat talks to Perplexity via the OpenAI SDK with a custom base URL.
+
+## Install
+
+```bash
+npm install supercompat openai
+```
+
+## Minimal setup
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  perplexityClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const perplexity = new OpenAI({
+  apiKey: process.env.PERPLEXITY_API_KEY,
+  baseURL: 'https://api.perplexity.ai',
+})
+
+const client = supercompat({
+  clientAdapter: perplexityClientAdapter({ perplexity }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'sonar',
+  input: 'What happened in AI news this week?',
+})
+```
+
+Sonar responses include web citations in the output text; parsing them is application-specific.
+
+## Models
+
+Pass any Sonar model id — the full list is at [docs.perplexity.ai/getting-started/models](https://docs.perplexity.ai/getting-started/models).
+
+Some current examples:
+
+- `sonar` — fast, general-purpose
+- `sonar-pro` — higher quality, slower
+- `sonar-reasoning` — chain-of-thought over live web

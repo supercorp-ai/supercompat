@@ -1,0 +1,106 @@
+---
+title: Responses API
+description: Call client.responses.create() against any provider.
+index: 0
+---
+
+# Responses API
+
+The OpenAI Responses API is a stateless surface built around `responses.create()` with optional persisted `conversations`. Supercompat supports it against every provider through the run adapter you pick.
+
+## Basic call
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  openaiClientAdapter,
+  openaiResponsesRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: openaiResponsesRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'gpt-4.1-mini',
+  input: 'Describe the Responses API in one sentence.',
+})
+
+console.log(response.output_text)
+```
+
+The first response is the first turn of a conversation. Continue it with `previous_response_id`:
+
+```tsx
+const followup = await client.responses.create({
+  model: 'gpt-4.1-mini',
+  input: 'Say the same thing, in French.',
+  previous_response_id: response.id,
+})
+```
+
+## Against a different provider
+
+Swap the client adapter. Everything else stays the same.
+
+```tsx
+import Anthropic from '@anthropic-ai/sdk'
+import {
+  supercompat,
+  anthropicClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: anthropicClientAdapter({ anthropic: new Anthropic() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'claude-sonnet-4-6',
+  input: 'Describe the Responses API in one sentence.',
+})
+```
+
+The same `client.responses.create()` call reaches Anthropic. The return type is `OpenAI.Responses.Response`.
+
+## Streaming
+
+```tsx
+const stream = await client.responses.create({
+  model: 'gpt-4.1-mini',
+  input: 'Count to ten.',
+  stream: true,
+})
+
+for await (const event of stream) {
+  if (event.type === 'response.output_text.delta') {
+    process.stdout.write(event.delta)
+  }
+}
+```
+
+Events are always `OpenAI.Responses.ResponseStreamEvent`. See [Streaming](/docs/streaming).
+
+## Persisting conversations
+
+Swap `memoryStorageAdapter()` for [`prismaStorageAdapter`](/docs/adapters/storage-adapters/prisma) to keep every response and conversation item in Postgres:
+
+```tsx
+import { PrismaClient } from '@prisma/client'
+import { prismaStorageAdapter } from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: prismaStorageAdapter({ prisma: new PrismaClient() }),
+  runAdapter: openaiResponsesRunAdapter(),
+})
+```
+
+For OpenAI-managed state (no DB), use [`openaiResponsesStorageAdapter`](/docs/adapters/storage-adapters/openai-responses).

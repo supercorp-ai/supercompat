@@ -1,0 +1,88 @@
+---
+title: anthropicClientAdapter
+index: 1
+type: CODE
+---
+
+# `anthropicClientAdapter`
+
+Points the OpenAI SDK at Anthropic. Use it to call Claude models through `client.responses.create()` or the Assistants surface.
+
+## Signature
+
+```tsx
+anthropicClientAdapter({
+  anthropic: Anthropic,
+})
+```
+
+## Install
+
+```bash
+npm install supercompat openai @anthropic-ai/sdk
+```
+
+## Responses API
+
+```tsx
+import Anthropic from '@anthropic-ai/sdk'
+import {
+  supercompat,
+  anthropicClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: anthropicClientAdapter({
+    anthropic: new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }),
+  }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'claude-sonnet-4-6',
+  input: 'Summarize the strengths of Claude in one sentence.',
+})
+```
+
+## Streaming
+
+```tsx
+const stream = await client.responses.create({
+  model: 'claude-sonnet-4-6',
+  input: 'Count from one to five.',
+  stream: true,
+})
+
+for await (const event of stream) {
+  if (event.type === 'response.output_text.delta') {
+    process.stdout.write(event.delta)
+  }
+}
+```
+
+## Tool use
+
+```tsx
+await client.responses.create({
+  model: 'claude-sonnet-4-6',
+  input: 'What is the weather in Paris?',
+  tools: [
+    {
+      type: 'function',
+      name: 'get_weather',
+      parameters: {
+        type: 'object',
+        properties: { city: { type: 'string' } },
+        required: ['city'],
+      },
+    },
+  ],
+})
+```
+
+## Compatible run adapters
+
+- [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) — recommended

@@ -1,0 +1,105 @@
+---
+title: Azure
+description: Azure OpenAI and Azure AI Foundry Agents.
+index: 3
+---
+
+# Azure
+
+Azure hosts two surfaces Supercompat supports: **Azure OpenAI** deployments (models like `gpt-4.1` deployed under an Azure resource) and **Azure AI Foundry Agents** (stateful agents with threads, runs, and tool use).
+
+## Azure OpenAI
+
+Use `azureOpenaiClientAdapter` with the `AzureOpenAI` class from the OpenAI SDK.
+
+```tsx
+import { AzureOpenAI } from 'openai'
+import {
+  supercompat,
+  azureOpenaiClientAdapter,
+  azureResponsesRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const azureOpenai = new AzureOpenAI({
+  endpoint: process.env.AZURE_OPENAI_ENDPOINT!,
+  apiKey: process.env.AZURE_OPENAI_API_KEY,
+  apiVersion: '2024-10-01-preview',
+})
+
+const client = supercompat({
+  clientAdapter: azureOpenaiClientAdapter({ azureOpenai }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: azureResponsesRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'my-gpt-4-1-deployment',
+  input: 'Summarize the solar system.',
+})
+```
+
+For Azure-managed conversation state, use `azureResponsesStorageAdapter`:
+
+```tsx
+import { azureResponsesStorageAdapter } from 'supercompat/openai'
+
+supercompat({
+  clientAdapter: azureOpenaiClientAdapter({ azureOpenai }),
+  storageAdapter: azureResponsesStorageAdapter(),
+  runAdapter: azureResponsesRunAdapter(),
+})
+```
+
+## Azure AI Foundry Agents
+
+Use `azureAiProjectClientAdapter` with an `AIProjectClient`, and pair it with `azureAgentsRunAdapter` and `azureAgentsStorageAdapter`.
+
+```bash
+npm install supercompat openai @azure/ai-projects @azure/identity @prisma/client
+```
+
+```tsx
+import { AIProjectClient } from '@azure/ai-projects'
+import { DefaultAzureCredential } from '@azure/identity'
+import { PrismaClient } from '@prisma/client'
+import {
+  supercompat,
+  azureAiProjectClientAdapter,
+  azureAgentsRunAdapter,
+  azureAgentsStorageAdapter,
+} from 'supercompat/openai'
+
+const prisma = new PrismaClient()
+const azureAiProject = new AIProjectClient(
+  process.env.AZURE_AI_PROJECT_ENDPOINT!,
+  new DefaultAzureCredential(),
+)
+
+const client = supercompat({
+  clientAdapter: azureAiProjectClientAdapter({ azureAiProject }),
+  storageAdapter: azureAgentsStorageAdapter({ azureAiProject, prisma }),
+  runAdapter: azureAgentsRunAdapter({ azureAiProject }),
+})
+
+const assistant = await client.beta.assistants.create({
+  model: 'my-agent-deployment',
+  instructions: 'You are a concise assistant.',
+})
+
+const thread = await client.beta.threads.create()
+await client.beta.threads.messages.create(thread.id, {
+  role: 'user',
+  content: 'Hello.',
+})
+
+const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+  assistant_id: assistant.id,
+})
+```
+
+Azure owns the assistants and threads; Prisma covers durability and run-step caching.
+
+## Hybrid
+
+If your Azure deployment exposes both Agents and Responses, `azureAgentsResponsesRunAdapter` handles both surfaces on a single client. See the source for the full option list.

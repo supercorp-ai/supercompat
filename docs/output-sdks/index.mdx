@@ -1,0 +1,43 @@
+---
+title: Output SDKs
+description: The two SDK shapes Supercompat returns — OpenAI and Anthropic.
+index: 1
+icon: MixIcon
+---
+
+# Output SDKs
+
+Supercompat returns a client that looks like one of two SDKs — whichever one your application already knows how to use. This is the **output SDK**.
+
+- **OpenAI** — import from `supercompat/openai`. You get an `OpenAI` instance with full TypeScript types. Exposes the **Responses API** (`client.responses.create`) and the **Assistants API** (`client.beta.threads.*`, `client.beta.assistants.*`).
+- **Anthropic** — import from `supercompat/anthropic`. You get an `Anthropic` instance. Exposes the **Messages API** (`client.messages.create`).
+
+The backend provider is independent of the output SDK — that's decided by the **client adapter**. You can point an OpenAI-shaped client at Anthropic, Groq, or Gemini, and you can point an Anthropic-shaped client at OpenAI.
+
+## Pick one
+
+<Grid columns={{ initial: '1', md: '2' }} gap="4">
+  <DocsCard
+    title="OpenAI SDK"
+    description="Responses API and Assistants API from the OpenAI SDK, backed by any provider."
+    type="CODE"
+    href="/docs/output-sdks/openai"
+  />
+
+  <DocsCard
+    title="Anthropic SDK"
+    description="Messages API from the Anthropic SDK, backed by any provider."
+    type="CODE"
+    href="/docs/output-sdks/anthropic"
+  />
+</Grid>
+
+## Quick comparison
+
+| Surface | Import path | Entry call | Stateful? |
+|---|---|---|---|
+| Responses API | `supercompat/openai` | `client.responses.create()` | Optional (conversations) |
+| Assistants API | `supercompat/openai` | `client.beta.threads.runs.create()` | Yes (threads + runs) |
+| Messages API | `supercompat/anthropic` | `client.messages.create()` | No |
+
+Most new code should use the Responses API. The Assistants API is there for existing applications built on OpenAI's threads/runs surface. The Messages API is for apps already structured around Anthropic.

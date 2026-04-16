@@ -1,0 +1,26 @@
+---
+title: Run
+description: Pick which provider API the run loop executes against.
+index: 2
+---
+
+# Run adapters
+
+The **run adapter** decides what the SDK actually calls when you do `client.responses.create()`, `client.beta.threads.runs.create()`, or stream a message. Different providers expose different native surfaces — Completions, Responses, Azure Agents — and the run adapter abstracts that so your application code stays the same.
+
+## Catalog
+
+| Adapter | Target API | Page |
+|---|---|---|
+| `completionsRunAdapter` | `/chat/completions` | [Completions](/docs/adapters/run-adapters/completions) |
+| `openaiResponsesRunAdapter` | OpenAI `/responses` | [OpenAI Responses](/docs/adapters/run-adapters/openai-responses) |
+| `geminiRunAdapter` | Gemini `generateContent` | [Gemini](/docs/adapters/run-adapters/gemini) |
+| `azureResponsesRunAdapter` | Azure `/responses` | [Azure Responses](/docs/adapters/run-adapters/azure-responses) |
+| `azureAgentsRunAdapter` | Azure AI Foundry Agents | [Azure Agents](/docs/adapters/run-adapters/azure-agents) |
+
+## Picking one
+
+- Start with `completionsRunAdapter`. It's the widest-reaching and the friendliest default — and the recommended choice for Anthropic, Mistral, Groq, Together, OpenRouter, Perplexity, and Ollama.
+- Switch to `openaiResponsesRunAdapter` on OpenAI when you want the native Responses API (server-side web search, code interpreter, file search).
+- Switch to `geminiRunAdapter` on Google when you want native Google tool integrations.
+- Use `azureResponsesRunAdapter` or `azureAgentsRunAdapter` when you're on Azure.

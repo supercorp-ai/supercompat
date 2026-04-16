@@ -1,0 +1,56 @@
+---
+title: OpenAI
+description: A real OpenAI client — every SDK function works, backed by any provider.
+index: 0
+---
+
+# OpenAI SDK
+
+Import from `supercompat/openai` and you get a real `OpenAI` instance. **Every function the OpenAI SDK exposes works** — Responses, Assistants, Chat Completions, Embeddings, Files, Vector Stores, everything. The types are the SDK's own types; your editor autocompletes exactly as if you had imported `openai` directly.
+
+The only difference is what the client does on the wire: Supercompat installs a custom `fetch` on the instance and routes each request through your adapter stack. The surface your app calls stays untouched.
+
+## Full SDK support
+
+The client returned by `supercompat()` is an OpenAI client. Anything you can call on `new OpenAI()` you can call here — against any provider. The two surfaces you'll most commonly use:
+
+<Grid columns={{ initial: '1', md: '2' }} gap="4">
+  <DocsCard
+    title="Responses API"
+    description="client.responses.create() — the modern OpenAI surface."
+    type="CODE"
+    href="/docs/output-sdks/openai/responses-api"
+  />
+
+  <DocsCard
+    title="Assistants API"
+    description="Threads, messages, runs, and tool-use round-trips."
+    type="CODE"
+    href="/docs/output-sdks/openai/assistants-api"
+  />
+</Grid>
+
+## Minimal call
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  openaiClientAdapter,
+  openaiResponsesRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: openaiResponsesRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'gpt-4.1-mini',
+  input: 'Say hi.',
+})
+```
+
+The return type is `OpenAI.Responses.Response`. The same client also exposes `client.beta.assistants`, `client.beta.threads`, `client.chat.completions`, and the rest of the SDK.

@@ -1,0 +1,77 @@
+---
+title: openRouterClientAdapter
+index: 6
+type: CODE
+---
+
+# `openRouterClientAdapter`
+
+Points the OpenAI SDK at OpenRouter — a meta-gateway to 300+ models.
+
+## Signature
+
+```tsx
+openRouterClientAdapter({
+  openRouter: OpenAI,
+  provider?: Record<string, unknown>,
+})
+```
+
+- `openRouter` — an `OpenAI` client pointed at `https://openrouter.ai/api/v1`.
+- `provider` — optional OpenRouter routing hints forwarded with every request.
+
+## Install
+
+```bash
+npm install supercompat openai
+```
+
+## Example
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  openRouterClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const openRouter = new OpenAI({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
+})
+
+const client = supercompat({
+  clientAdapter: openRouterClientAdapter({ openRouter }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'anthropic/claude-sonnet-4.6',
+  input: 'What makes OpenRouter useful?',
+})
+```
+
+## Provider routing
+
+Pin upstreams, set fallbacks, or require a region:
+
+```tsx
+const client = supercompat({
+  clientAdapter: openRouterClientAdapter({
+    openRouter,
+    provider: {
+      order: ['Anthropic', 'OpenAI'],
+      allow_fallbacks: true,
+    },
+  }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+```
+
+## Compatible run adapters
+
+- [`completionsRunAdapter`](/docs/adapters/run-adapters/completions)

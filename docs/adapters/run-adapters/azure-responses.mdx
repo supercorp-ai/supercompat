@@ -1,0 +1,54 @@
+---
+title: azureResponsesRunAdapter
+index: 3
+type: CODE
+---
+
+# `azureResponsesRunAdapter`
+
+The Azure counterpart of `openaiResponsesRunAdapter`. Routes runs to an Azure OpenAI deployment that supports the Responses API.
+
+## Signature
+
+```tsx
+azureResponsesRunAdapter({
+  getOpenaiAssistant?: (args?: { select?: { id?: false } }) =>
+    Promise<Assistant | Pick<Assistant, 'id'>>,
+  waitUntil?: <T>(p: Promise<T>) => void | Promise<void>,
+})
+```
+
+## Example
+
+```tsx
+import { AzureOpenAI } from 'openai'
+import {
+  supercompat,
+  azureOpenaiClientAdapter,
+  azureResponsesRunAdapter,
+  azureResponsesStorageAdapter,
+} from 'supercompat/openai'
+
+const azureOpenai = new AzureOpenAI({
+  endpoint: process.env.AZURE_OPENAI_ENDPOINT!,
+  apiKey: process.env.AZURE_OPENAI_API_KEY,
+  apiVersion: '2024-10-01-preview',
+})
+
+const client = supercompat({
+  clientAdapter: azureOpenaiClientAdapter({ azureOpenai }),
+  storageAdapter: azureResponsesStorageAdapter(),
+  runAdapter: azureResponsesRunAdapter(),
+})
+
+const response = await client.responses.create({
+  model: 'my-gpt-4-1-deployment',
+  input: 'Hello from Azure.',
+})
+```
+
+Use your Azure **deployment name** as `model`.
+
+## Compatible client adapters
+
+- [`azureOpenaiClientAdapter`](/docs/adapters/client-adapters/azure-openai)

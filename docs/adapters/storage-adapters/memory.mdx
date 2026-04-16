@@ -1,0 +1,66 @@
+---
+title: memoryStorageAdapter
+index: 0
+type: CODE
+---
+
+# `memoryStorageAdapter`
+
+Keeps every assistant, thread, message, run, conversation, and response in an in-process Map. Nothing survives a restart.
+
+Use for local development, tests, and throwaway scripts.
+
+## Signature
+
+```tsx
+memoryStorageAdapter()
+```
+
+No options.
+
+## Example
+
+```tsx
+import OpenAI from 'openai'
+import {
+  supercompat,
+  openaiClientAdapter,
+  completionsRunAdapter,
+  memoryStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: completionsRunAdapter(),
+})
+
+// Everything below is held in memory:
+const thread = await client.beta.threads.create()
+await client.beta.threads.messages.create(thread.id, { role: 'user', content: 'Hi.' })
+```
+
+## With Responses API
+
+```tsx
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: memoryStorageAdapter(),
+  runAdapter: openaiResponsesRunAdapter(),
+})
+
+const a = await client.responses.create({ model: 'gpt-4.1-mini', input: 'Hello.' })
+const b = await client.responses.create({
+  model: 'gpt-4.1-mini',
+  input: 'Say it in French.',
+  previous_response_id: a.id,
+})
+```
+
+## Compatible run adapters
+
+- [`completionsRunAdapter`](/docs/adapters/run-adapters/completions)
+- [`openaiResponsesRunAdapter`](/docs/adapters/run-adapters/openai-responses)
+- [`geminiRunAdapter`](/docs/adapters/run-adapters/gemini)
+- [`azureResponsesRunAdapter`](/docs/adapters/run-adapters/azure-responses)
+- [`azureAgentsRunAdapter`](/docs/adapters/run-adapters/azure-agents)

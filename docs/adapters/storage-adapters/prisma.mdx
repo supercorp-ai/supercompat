@@ -1,0 +1,490 @@
+---
+title: prismaStorageAdapter
+index: 1
+type: CODE
+---
+
+# `prismaStorageAdapter`
+
+Persists everything to Postgres via a Prisma client. Supercompat does **not** ship a `schema.prisma` — you add the models to your own schema and run migrations against your database. Which models you need depends on which API surface you call.
+
+## Signature
+
+```tsx
+prismaStorageAdapter({
+  prisma: PrismaClient,
+})
+```
+
+## Install
+
+```bash
+npm install supercompat openai @prisma/client
+npm install -D prisma
+```
+
+Initialize Prisma if you haven't already:
+
+```bash
+npx prisma init
+```
+
+Point `DATABASE_URL` at a Postgres instance in `.env`.
+
+## Which tables do I need?
+
+It depends on which API surface you call through Supercompat:
+
+| API surface | Call you make | Tables required |
+|---|---|---|
+| Responses API | `client.responses.create()` | [Responses schema](#responses-api-schema) |
+| Assistants API | `client.beta.threads.*`, `client.beta.assistants.*` | [Assistants schema](#assistants-api-schema) |
+| Azure AI Foundry Agents | `client.beta.*` via `azureAgentsStorageAdapter` | [Assistants schema](#assistants-api-schema) + [Azure add-on](#azure-ai-foundry-agents) |
+
+Add only the tables for the surface(s) you use. You can add both if your app uses both.
+
+## Apply the schema
+
+After adding the models to your `schema.prisma`:
+
+```bash
+npx prisma db push       # or: npx prisma migrate dev --name supercompat
+npx prisma generate
+```
+
+Import the generated client and pass it in:
+
+```tsx
+import OpenAI from 'openai'
+import { PrismaClient } from '@prisma/client'
+import {
+  supercompat,
+  openaiClientAdapter,
+  completionsRunAdapter,
+  prismaStorageAdapter,
+} from 'supercompat/openai'
+
+const prisma = new PrismaClient()
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: prismaStorageAdapter({ prisma }),
+  runAdapter: completionsRunAdapter(),
+})
+```
+
+## Responses API schema
+
+Append to your `schema.prisma`:
+
+```prisma
+model Conversation {
+  id          String     @id @default(dbgenerated("gen_random_uuid()"))
+  metadata    Json?
+  responses   Response[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+enum ResponseStatus {
+  QUEUED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+  INCOMPLETE
+}
+
+enum TruncationType {
+  AUTO
+  LAST_MESSAGES
+  DISABLED
+}
+
+model Response {
+  id                          String              @id @default(dbgenerated("gen_random_uuid()"))
+  conversationId              String?
+  conversation                Conversation?       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  model                       String
+  status                      ResponseStatus
+  error                       Json?
+  metadata                    Json?
+  usage                       Json?
+  instructions                String?
+  temperature                 Float?
+  topP                        Float?
+  maxOutputTokens             Int?
+  truncationType              TruncationType      @default(DISABLED)
+  truncationLastMessagesCount Int?
+  textFormatType              String?             @default("text")
+  textFormatSchema            Json?
+  input                       Json?
+  outputItems                 ResponseOutputItem[]
+  tools                       ResponseTool[]
+  createdAt                   DateTime            @default(now())
+  updatedAt                   DateTime            @updatedAt
+
+  @@index([conversationId])
+}
+
+enum ResponseOutputItemType {
+  MESSAGE
+  FUNCTION_CALL
+  COMPUTER_CALL
+}
+
+enum ResponseOutputItemStatus {
+  IN_PROGRESS
+  COMPLETED
+  INCOMPLETE
+}
+
+model ResponseOutputItem {
+  id                  String                   @id @default(dbgenerated("gen_random_uuid()"))
+  responseId          String
+  response            Response                 @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  type                ResponseOutputItemType
+  status              ResponseOutputItemStatus @default(IN_PROGRESS)
+  role                String?
+  content             Json?
+  callId              String?
+  name                String?
+  arguments           String?
+  actions             Json?
+  pendingSafetyChecks Json?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  @@index([responseId])
+  @@index([createdAt(sort: Asc)])
+}
+
+enum ResponseToolType {
+  FUNCTION
+  FILE_SEARCH
+  WEB_SEARCH
+  CODE_INTERPRETER
+  COMPUTER_USE
+}
+
+model ResponseTool {
+  id                  String                       @id @default(dbgenerated("gen_random_uuid()"))
+  type                ResponseToolType
+  responseId          String
+  response            Response                     @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  functionTool        ResponseFunctionTool?
+  fileSearchTool      ResponseFileSearchTool?
+  webSearchTool       ResponseWebSearchTool?
+  codeInterpreterTool ResponseCodeInterpreterTool?
+  computerUseTool     ResponseComputerUseTool?
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+
+  @@index([responseId])
+}
+
+model ResponseFunctionTool {
+  id          String       @id @default(dbgenerated("gen_random_uuid()"))
+  name        String
+  description String?
+  parameters  Json
+  strict      Boolean      @default(false)
+  toolId      String       @unique
+  tool        ResponseTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model ResponseFileSearchTool {
+  id             String       @id @default(dbgenerated("gen_random_uuid()"))
+  vectorStoreIds String[]     @default([])
+  maxNumResults  Int          @default(20)
+  toolId         String       @unique
+  tool           ResponseTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model ResponseWebSearchTool {
+  id        String       @id @default(dbgenerated("gen_random_uuid()"))
+  toolId    String       @unique
+  tool      ResponseTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model ResponseCodeInterpreterTool {
+  id        String       @id @default(dbgenerated("gen_random_uuid()"))
+  toolId    String       @unique
+  tool      ResponseTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model ResponseComputerUseTool {
+  id            String       @id @default(dbgenerated("gen_random_uuid()"))
+  displayHeight Int          @default(720)
+  displayWidth  Int          @default(1280)
+  environment   String       @default("linux")
+  toolId        String       @unique
+  tool          ResponseTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+```
+
+## Assistants API schema
+
+Append to your `schema.prisma`:
+
+```prisma
+model Assistant {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  modelSlug    String?
+  instructions String?
+  name         String?
+  description  String?
+  metadata     Json?
+  threads      Thread[]
+  runs         Run[]
+  runSteps     RunStep[]
+  messages     Message[]
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(6)
+}
+
+model Thread {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assistantId String    @db.Uuid
+  assistant   Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  metadata    Json?
+  messages    Message[]
+  runs        Run[]
+  runSteps    RunStep[]
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@index([assistantId])
+  @@index([createdAt(sort: Desc)])
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
+enum MessageStatus {
+  IN_PROGRESS
+  INCOMPLETE
+  COMPLETED
+}
+
+model Message {
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  threadId          String        @db.Uuid
+  thread            Thread        @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  role              MessageRole
+  content           Json
+  status            MessageStatus @default(COMPLETED)
+  assistantId       String?       @db.Uuid
+  assistant         Assistant?    @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  runId             String?       @db.Uuid
+  run               Run?          @relation(fields: [runId], references: [id], onDelete: Cascade)
+  completedAt       DateTime?     @db.Timestamptz(6)
+  incompleteAt      DateTime?     @db.Timestamptz(6)
+  incompleteDetails Json?
+  attachments       Json[]        @default([])
+  metadata          Json?
+  toolCalls         Json?
+  createdAt         DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime      @updatedAt @db.Timestamptz(6)
+
+  @@index([threadId])
+  @@index([createdAt(sort: Desc)])
+}
+
+enum RunStatus {
+  QUEUED
+  IN_PROGRESS
+  REQUIRES_ACTION
+  CANCELLING
+  CANCELLED
+  FAILED
+  COMPLETED
+  EXPIRED
+}
+
+model Run {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  threadId            String    @db.Uuid
+  thread              Thread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  assistantId         String    @db.Uuid
+  assistant           Assistant @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  status              RunStatus
+  requiredAction      Json?
+  lastError           Json?
+  expiresAt           Int
+  startedAt           Int?
+  cancelledAt         Int?
+  failedAt            Int?
+  completedAt         Int?
+  model               String
+  instructions        String
+  tools               Json[]    @default([])
+  metadata            Json?
+  usage               Json?
+  truncationStrategy  Json      @default("{ \"type\": \"auto\" }")
+  responseFormat      Json      @default("{ \"type\": \"text\" }")
+  runSteps            RunStep[]
+  messages            Message[]
+  createdAt           DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @db.Timestamptz(6)
+}
+
+enum RunStepType {
+  MESSAGE_CREATION
+  TOOL_CALLS
+}
+
+enum RunStepStatus {
+  IN_PROGRESS
+  CANCELLED
+  FAILED
+  COMPLETED
+  EXPIRED
+}
+
+model RunStep {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  threadId    String        @db.Uuid
+  thread      Thread        @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  assistantId String        @db.Uuid
+  assistant   Assistant     @relation(fields: [assistantId], references: [id], onDelete: Cascade)
+  runId       String        @db.Uuid
+  run         Run           @relation(fields: [runId], references: [id], onDelete: Cascade)
+  type        RunStepType
+  status      RunStepStatus
+  stepDetails Json
+  lastError   Json?
+  expiredAt   Int?
+  cancelledAt Int?
+  failedAt    Int?
+  completedAt Int?
+  metadata    Json?
+  usage       Json?
+  createdAt   DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime      @updatedAt @db.Timestamptz(6)
+
+  @@index([threadId, runId, type, status])
+  @@index([createdAt(sort: Asc)])
+}
+```
+
+## Azure AI Foundry Agents
+
+If you're using [`azureAgentsStorageAdapter`](/docs/adapters/storage-adapters/azure-agents), add **both** the [Assistants schema](#assistants-api-schema) above *and* this extra model that persists function-tool outputs between run turns:
+
+```prisma
+model AzureAgentsFunctionOutput {
+  id         String   @id @default(dbgenerated("gen_random_uuid()"))
+  runId      String
+  toolCallId String
+  output     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([runId, toolCallId])
+  @@index([runId])
+}
+```
+
+## Example — Responses
+
+```tsx
+import OpenAI from 'openai'
+import { PrismaClient } from '@prisma/client'
+import {
+  supercompat,
+  openaiClientAdapter,
+  openaiResponsesRunAdapter,
+  prismaStorageAdapter,
+} from 'supercompat/openai'
+
+const prisma = new PrismaClient()
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: prismaStorageAdapter({ prisma }),
+  runAdapter: openaiResponsesRunAdapter(),
+})
+
+const first = await client.responses.create({
+  model: 'gpt-4.1-mini',
+  input: 'My name is Alice.',
+})
+
+const second = await client.responses.create({
+  model: 'gpt-4.1-mini',
+  input: 'What did I just tell you?',
+  previous_response_id: first.id,
+})
+```
+
+Conversations, responses, output items, and tools are persisted to Postgres.
+
+## Example — Assistants
+
+```tsx
+import OpenAI from 'openai'
+import { PrismaClient } from '@prisma/client'
+import {
+  supercompat,
+  openaiClientAdapter,
+  completionsRunAdapter,
+  prismaStorageAdapter,
+} from 'supercompat/openai'
+
+const prisma = new PrismaClient()
+
+const client = supercompat({
+  clientAdapter: openaiClientAdapter({ openai: new OpenAI() }),
+  storageAdapter: prismaStorageAdapter({ prisma }),
+  runAdapter: completionsRunAdapter(),
+})
+
+const assistant = await client.beta.assistants.create({
+  model: 'gpt-4.1-mini',
+  instructions: 'You are a helpful assistant.',
+})
+
+const thread = await client.beta.threads.create()
+await client.beta.threads.messages.create(thread.id, { role: 'user', content: 'Hello.' })
+const run = await client.beta.threads.runs.createAndPoll(thread.id, {
+  assistant_id: assistant.id,
+})
+```
+
+Assistants, threads, messages, runs, and run-steps land in Postgres.
+
+## Works with every provider
+
+Swap the client adapter; the storage adapter doesn't care:
+
+```tsx
+import Anthropic from '@anthropic-ai/sdk'
+import { anthropicClientAdapter } from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: anthropicClientAdapter({ anthropic: new Anthropic() }),
+  storageAdapter: prismaStorageAdapter({ prisma }),
+  runAdapter: completionsRunAdapter(),
+})
+```
+
+## Compatible run adapters
+
+- [`completionsRunAdapter`](/docs/adapters/run-adapters/completions)
+- [`openaiResponsesRunAdapter`](/docs/adapters/run-adapters/openai-responses)
+- [`geminiRunAdapter`](/docs/adapters/run-adapters/gemini)
+- [`azureResponsesRunAdapter`](/docs/adapters/run-adapters/azure-responses)
+- [`azureAgentsRunAdapter`](/docs/adapters/run-adapters/azure-agents)
