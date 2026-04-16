@@ -1,8 +1,6 @@
-# Supercompat
-
 ![Supercompat — Switch AI models without compromises.](https://raw.githubusercontent.com/supercorp-ai/supercompat/main/packages/supercompat/supercompat.png)
 
-Supercompat is a TypeScript library that lets you call **any LLM provider** through the **OpenAI SDK** (or the **Anthropic SDK**). Swap one adapter and the same `client.responses.create()` call reaches Anthropic, Google, Groq, Mistral, Together, OpenRouter, Perplexity, Ollama, or Azure — with the original SDK types intact.
+Supercompat is AI compatibility layer without compromises. Supercompat library that lets you call **any LLM provider** through the **OpenAI SDK** (or the **Anthropic SDK**). Swap one adapter and the same `client.responses.create()` call reaches Anthropic, Google, Groq, Mistral, Together, OpenRouter, Perplexity, Ollama, or Azure — with the original SDK types intact.
 
 It runs in-process. No proxy server, no request forwarding, no extra latency. Supercompat installs a custom `fetch` on the SDK instance and routes calls locally.
 
