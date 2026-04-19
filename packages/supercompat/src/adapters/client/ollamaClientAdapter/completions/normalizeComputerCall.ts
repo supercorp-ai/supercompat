@@ -1,4 +1,7 @@
 // Per-model quirks. Only models listed here get special treatment.
+// Keys are prefixes matched against Ollama model identifiers (e.g. "gemma4",
+// "gemma4:2b", "qwen2.5vl:32b"). See also the OpenRouter adapter — these
+// mirror the same quirks under Ollama naming conventions.
 const MODEL_QUIRKS: Record<string, {
   // Coordinates are 0-1000 normalized (not pixels)
   normalizedCoords?: boolean
@@ -9,11 +12,13 @@ const MODEL_QUIRKS: Record<string, {
   // Model sometimes produces malformed JSON that needs fuzzy extraction
   fuzzyFallback?: boolean
 }> = {
-  'z-ai/glm-4.6v': { normalizedCoords: true, cleanArtifacts: true },
-  'qwen/': { fuzzyFallback: true },
-  'moonshotai/kimi-k2.5': { relativeCoords: { referenceWidth: 1920, referenceHeight: 1080 } },
-  'google/gemma-4': { normalizedCoords: true, fuzzyFallback: true },
-  'google/gemma-3': { normalizedCoords: true, fuzzyFallback: true },
+  'gemma4': { normalizedCoords: true, fuzzyFallback: true },
+  'gemma3': { normalizedCoords: true, fuzzyFallback: true },
+  'glm-4.6v': { normalizedCoords: true, cleanArtifacts: true },
+  'glm4.6v': { normalizedCoords: true, cleanArtifacts: true },
+  'qwen': { fuzzyFallback: true },
+  'kimi-k2.5': { relativeCoords: { referenceWidth: 1920, referenceHeight: 1080 } },
+  'kimi2.5': { relativeCoords: { referenceWidth: 1920, referenceHeight: 1080 } },
 }
 
 export const getQuirks = (model: string) => {
@@ -54,7 +59,6 @@ const cleanGlmAction = (action: Record<string, unknown>): Record<string, unknown
   const typeVal = action.type
   if (typeof typeVal !== 'string') return action
 
-  // Try extracting JSON from embedded <arg_value>{...} in the type field
   const argValueMatch = typeVal.match(/<arg_value>\s*(\{[\s\S]*\})\s*$/)
   if (argValueMatch) {
     const inner = parseJson(argValueMatch[1])
@@ -63,15 +67,11 @@ const cleanGlmAction = (action: Record<string, unknown>): Record<string, unknown
     }
   }
 
-  // Strip all tags and whitespace
   const cleanedType = typeVal
     .replace(/<\/?[^>]+>/g, '')
     .replace(/\n/g, '')
     .trim()
 
-  // Check if type starts with a known action type followed by garbage
-  // Handles: "clickclick167622" → click + 167, 622
-  //          "click167621" → click + 167, 621
   for (const actionType of KNOWN_ACTION_TYPES) {
     if (cleanedType.startsWith(actionType) && cleanedType !== actionType) {
       const rest = cleanedType.slice(actionType.length)
@@ -79,14 +79,12 @@ const cleanGlmAction = (action: Record<string, unknown>): Record<string, unknown
       if (nums && nums.length >= 2) {
         return { ...action, type: actionType, x: parseInt(nums[0]), y: parseInt(nums[1]) }
       }
-      // Single concatenated number: try to split into valid 0-1000 coordinate pair
       if (nums && nums.length === 1 && nums[0].length >= 2) {
         const coords = splitCoordDigits(nums[0])
         if (coords) {
           return { ...action, type: actionType, ...coords }
         }
       }
-      // No coordinates, just duplicated/garbled type name
       return { ...action, type: actionType }
     }
   }
@@ -96,7 +94,6 @@ const cleanGlmAction = (action: Record<string, unknown>): Record<string, unknown
   return { ...action, type: cleanedType }
 }
 
-// E.g. x: "167</arg_key>\n\n<arg_value>620" → extract x=167, y=620
 const cleanGlmFields = (action: Record<string, unknown>): Record<string, unknown> => {
   const result = { ...action }
 
@@ -185,7 +182,6 @@ const fuzzyExtractJson = (text: string): any => {
     if (yMatch) {
       result.y = parseInt(yMatch[1])
     } else if (xMatch) {
-      // Handle malformed array-like coords: "x": 168, 621] or "x": [168, 621]
       const afterX = text.slice((xMatch.index ?? 0) + xMatch[0].length)
       const nextNum = afterX.match(/\s*,?\s*(\d+)/)
       if (nextNum) result.y = parseInt(nextNum[1])
@@ -193,6 +189,23 @@ const fuzzyExtractJson = (text: string): any => {
     const textMatch = text.match(/"text"\s*:\s*"([^"]*)"/)
     if (textMatch) result.text = textMatch[1]
     return { action: result }
+  }
+
+  // Gemma-style bounding-box output: [{"box_2d": [y1, x1, y2, x2], "label": "..."}]
+  // Convert to a click at the box center.
+  const boxMatch = text.match(/"box_2d"\s*:\s*\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\]/)
+  if (boxMatch) {
+    const y1 = parseInt(boxMatch[1])
+    const x1 = parseInt(boxMatch[2])
+    const y2 = parseInt(boxMatch[3])
+    const x2 = parseInt(boxMatch[4])
+    return {
+      action: {
+        type: 'click',
+        x: Math.round((x1 + x2) / 2),
+        y: Math.round((y1 + y2) / 2),
+      },
+    }
   }
 
   return undefined
@@ -290,12 +303,10 @@ const normalizeStructure = (
     ? (action: Record<string, unknown>) => applyArtifactCleanup(action)
     : (action: Record<string, unknown>) => action
 
-  // Already nested: { action: { type: 'click', ... } }
   if (parsed.action && typeof parsed.action === 'object') {
     return { ...parsed, action: clean(parsed.action as Record<string, unknown>) }
   }
 
-  // Flat with string action: { action: 'click', x: 168, y: 622 }
   if (typeof parsed.action === 'string') {
     const actionObj: Record<string, unknown> = { type: parsed.action }
     const rest: Record<string, unknown> = {}
@@ -310,7 +321,6 @@ const normalizeStructure = (
     return { ...rest, action: clean(actionObj) }
   }
 
-  // Flat without action key: { type: 'click', x: 168, y: 622 }
   if (typeof parsed.type === 'string') {
     const actionObj: Record<string, unknown> = {}
     const rest: Record<string, unknown> = {}
@@ -340,14 +350,12 @@ export const denormalizeComputerCallArguments = ({
   displayHeight: number
   model: string
 }): string => {
-  // Handle case where arguments are already a parsed object (some models via OpenRouter)
   if (typeof argumentsText === 'object' && argumentsText !== null) {
     argumentsText = JSON.stringify(argumentsText)
   }
 
   const quirks = getQuirks(model)
 
-  // Step 1: Parse JSON (with artifact cleanup only for known models)
   let text = argumentsText
   if (quirks.cleanArtifacts) {
     text = cleanTextArtifacts(text)
@@ -362,10 +370,8 @@ export const denormalizeComputerCallArguments = ({
     return argumentsText
   }
 
-  // Step 2: Normalize structure (universal) + artifact cleanup (model-specific)
   const normalized = normalizeStructure(parsed, !!quirks.cleanArtifacts)
 
-  // Step 3: Denormalize coordinates (model-specific)
   if (quirks.normalizedCoords && normalized.action && typeof normalized.action === 'object') {
     return JSON.stringify({
       ...normalized,

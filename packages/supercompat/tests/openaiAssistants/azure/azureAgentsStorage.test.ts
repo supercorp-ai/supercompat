@@ -141,10 +141,10 @@ function createClient(): OpenAI {
   return client
 }
 
-describe('azureAgentsStorageAdapter', { concurrency: true, timeout: 60_000 }, () => {
+describe('azureAgentsStorageAdapter', { concurrency: true, timeout: 120_000 }, () => {
   for (const [name, contract] of Object.entries(contracts)) {
     const slow = name.includes('file search') || name.includes('annotation indexes')
-    test(name, { concurrency: true, timeout: slow ? 180_000 : 60_000 }, () =>
+    test(name, { concurrency: true, timeout: slow ? 360_000 : 120_000 }, () =>
       withRetry(() => contract(createClient()), { label: name }))
   }
 })

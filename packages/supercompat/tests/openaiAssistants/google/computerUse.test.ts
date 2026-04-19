@@ -200,7 +200,7 @@ before(async () => {
   buildImage()
   containerProcess = startContainer()
   await waitForHealth()
-}, { timeout: 60_000 })
+}, { timeout: 240_000 })
 
 after(async () => {
   try {
@@ -213,7 +213,7 @@ after(async () => {
 // Full e2e: Gemini native SDK → real MCP server → validate model sees screen
 // =========================================================================
 describe('tests', { concurrency: true }, () => {
-test('Google native SDK Gemini: full e2e with real MCP computer use server', { timeout: 60_000 }, async () => {
+test('Google native SDK Gemini: full e2e with real MCP computer use server', { timeout: 240_000 }, async () => {
   const prisma = createTestPrisma()
   const mcpClient = new McpClient(MCP_SERVER_URL)
   await mcpClient.initialize()

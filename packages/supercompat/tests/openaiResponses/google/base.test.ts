@@ -32,8 +32,8 @@ function createClient() {
   })
 }
 
-describe('Responses API: prisma + google', { concurrency: true, timeout: 60_000 }, () => {
+describe('Responses API: prisma + google', { concurrency: true, timeout: 180_000 }, () => {
   for (const [name, contract] of Object.entries(responsesContracts)) {
-    test(name, { concurrency: true, timeout: 60_000 }, () => withRetry(() => contract(createClient()), { label: name }))
+    test(name, { concurrency: true, timeout: 180_000 }, () => withRetry(() => contract(createClient()), { label: name }))
   }
 })

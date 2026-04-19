@@ -218,7 +218,7 @@ after(async () => {
 // Full e2e: GLM → real MCP server → validate model sees screen content
 // =========================================================================
 describe('tests', { concurrency: true }, () => {
-test('openRouter GLM: full e2e with real MCP computer use server', { timeout: 60_000 }, async () => {
+test('openRouter GLM: full e2e with real MCP computer use server', { timeout: 240_000 }, async () => {
   const prisma = createTestPrisma()
   const mcpClient = new McpClient(MCP_SERVER_URL)
   await mcpClient.initialize()

@@ -176,7 +176,10 @@ function destroyTestEnv(env: TestEnv) {
 
 // --- Tests ---
 
-describe('Computer Use Integration', { concurrency: true, timeout: 60_000 }, () => {
+// concurrency:1 — serial within the file. With 4+ computer-use test files
+// running in parallel via --test-concurrency, anything more causes docker
+// container-name / port collisions and Chromium startup starvation.
+describe('Computer Use Integration', { concurrency: 1, timeout: 480_000 }, () => {
   before(() => {
     buildImage()
   })
@@ -207,7 +210,7 @@ describe('Computer Use Integration', { concurrency: true, timeout: 60_000 }, () 
     }
   })
 
-  test('Responses API: computer use round-trip', { timeout: 60_000 }, async () => {
+  test('Responses API: computer use round-trip', { timeout: 480_000 }, async () => {
     const env = await createTestEnv()
     try {
       const client = new OpenAI({ apiKey })
@@ -257,7 +260,7 @@ describe('Computer Use Integration', { concurrency: true, timeout: 60_000 }, () 
     }
   })
 
-  test('Assistants API: computer use via function tool', { timeout: 60_000 }, async () => {
+  test('Assistants API: computer use via function tool', { timeout: 480_000 }, async () => {
     const env = await createTestEnv()
     try {
       const client = new OpenAI({ apiKey })
@@ -333,7 +336,7 @@ describe('Computer Use Integration', { concurrency: true, timeout: 60_000 }, () 
     }
   })
 
-  test('Anthropic: computer use round-trip', { timeout: 60_000 }, async () => {
+  test('Anthropic: computer use round-trip', { timeout: 480_000 }, async () => {
     const anthropicKey = process.env.ANTHROPIC_API_KEY
     if (!anthropicKey) {
       console.log('Skipping Anthropic computer use: ANTHROPIC_API_KEY required')
@@ -411,7 +414,7 @@ describe('Computer Use Integration', { concurrency: true, timeout: 60_000 }, () 
     }
   })
 
-  test('Responses API: multi-step browser task', { timeout: 180_000 }, async () => {
+  test('Responses API: multi-step browser task', { timeout: 480_000 }, async () => {
     const env = await createTestEnv()
     try {
       const client = new OpenAI({ apiKey })
@@ -490,7 +493,7 @@ describe('Computer Use Integration', { concurrency: true, timeout: 60_000 }, () 
     }
   })
 
-  test('Anthropic: multi-step browser task', { timeout: 180_000 }, async () => {
+  test('Anthropic: multi-step browser task', { timeout: 480_000 }, async () => {
     const anthropicKey = process.env.ANTHROPIC_API_KEY
     if (!anthropicKey) {
       console.log('Skipping Anthropic multi-step: ANTHROPIC_API_KEY required')
@@ -570,7 +573,7 @@ describe('Computer Use Integration', { concurrency: true, timeout: 60_000 }, () 
     }
   })
 
-  test('Google Gemini: computer use round-trip', { timeout: 60_000 }, async () => {
+  test('Google Gemini: computer use round-trip', { timeout: 480_000 }, async () => {
     const googleKey = process.env.GOOGLE_API_KEY
     if (!googleKey) {
       console.log('Skipping Google computer use: GOOGLE_API_KEY required')

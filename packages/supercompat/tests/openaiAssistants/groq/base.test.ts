@@ -12,16 +12,19 @@ import { groqClientAdapter } from '../../../src/openai/index'
 const apiKey = process.env.GROQ_API_KEY
 if (!apiKey) { console.log('Skipping: GROQ_API_KEY required'); process.exit(0) }
 if (process.env.SKIP_PROVIDERS?.split(',').includes('groq')) { console.log('Skipping: groq in SKIP_PROVIDERS'); process.exit(0) }
+// Groq free tier aggressively rate-limits under load; skipped by default.
+// Set GROQ_RUN=1 to run the contract suite against Groq.
+if (!process.env.GROQ_RUN) { console.log('Skipping: Groq skipped by default (set GROQ_RUN=1 to enable)'); process.exit(0) }
 if (!process.env.DATABASE_URL) {
   console.log('Skipping: DATABASE_URL required')
   process.exit(0)
 }
 
-describe('prismaStorageAdapter + Groq', { timeout: 60_000, concurrency: 1 }, () => {
+describe('prismaStorageAdapter + Groq', { timeout: 180_000, concurrency: 1 }, () => {
   beforeEach(() => new Promise(r => setTimeout(r, 3000)))
 
   for (const [name, contract] of Object.entries(completionsContracts)) {
-    test(name, { timeout: 60_000 }, () =>
+    test(name, { timeout: 180_000 }, () =>
       withRetry(async () => contract(await createPrismaTestClient({
         clientAdapter: groqClientAdapter({ groq: new Groq({ apiKey }) }),
         model: 'llama-3.3-70b-versatile',

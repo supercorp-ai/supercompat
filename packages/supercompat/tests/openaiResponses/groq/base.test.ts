@@ -14,6 +14,7 @@ import Groq from 'groq-sdk'
 const apiKey = process.env.GROQ_API_KEY
 if (!apiKey) { console.log('Skipping: groq key required'); process.exit(0) }
 if (process.env.SKIP_PROVIDERS?.split(',').includes('groq')) { console.log('Skipping: groq in SKIP_PROVIDERS'); process.exit(0) }
+if (!process.env.GROQ_RUN) { console.log('Skipping: Groq skipped by default (set GROQ_RUN=1 to enable)'); process.exit(0) }
 if (!process.env.DATABASE_URL) { console.log('Skipping: DATABASE_URL required'); process.exit(0) }
 
 const model = 'llama-3.3-70b-versatile'

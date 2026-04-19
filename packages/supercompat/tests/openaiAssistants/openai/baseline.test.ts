@@ -19,7 +19,7 @@ describe('Baseline: OpenAI Assistants API', { concurrency: true, timeout: 60_000
 
   for (const [name, contract] of Object.entries(contracts)) {
     const slow = name.includes('file search') || name.includes('file_search') || name.includes('annotation indexes')
-    test(name, { concurrency: true, timeout: slow ? 180_000 : 60_000 }, () =>
-      slow ? contract(client) : withRetry(() => contract(client), { label: name }))
+    test(name, { concurrency: true, timeout: slow ? 240_000 : 120_000 }, () =>
+      withRetry(() => contract(client), { label: name, delayMs: slow ? 5000 : 2000 }))
   }
 })

@@ -145,7 +145,10 @@ testOrSkip('openaiResponsesRunAdapter maintains conversation across runs', async
   assert.ok(text.includes('blue'))
 })
 
-describe('tests', { concurrency: true }, () => {
+// concurrency:3 — 11 tests all parallel was causing intermittent errors
+// under full-suite load (OpenAI API backpressure). 3 is enough for speed
+// without hammering the API.
+describe('tests', { concurrency: 3 }, () => {
 test('openaiResponsesRunAdapter streams tool calls via OpenAI', async () => {
   const realOpenAI = new OpenAI({
     apiKey,

@@ -6,7 +6,7 @@ type: CODE
 
 # `ollamaClientAdapter`
 
-Points the OpenAI SDK at a local (or remote) Ollama instance.
+Points the OpenAI SDK at a local (or remote) Ollama instance and layers on the same tool-transform + coordinate-normalization pipeline that powers OpenRouter's computer-use integration.
 
 ## Signature
 
@@ -26,7 +26,7 @@ Make sure Ollama is running and you've pulled the model you want:
 
 ```bash
 ollama serve
-ollama pull llama3.2
+ollama pull gemma4:e4b
 ```
 
 ## Example
@@ -52,7 +52,7 @@ const client = supercompat({
 })
 
 const response = await client.responses.create({
-  model: 'llama3.2',
+  model: 'gemma4:e4b',
   input: 'Hello.',
 })
 ```
@@ -67,6 +67,17 @@ const ollama = new OpenAI({
   baseURL: 'http://gpu-box.local:11434/v1',
 })
 ```
+
+## Computer use
+
+The adapter intercepts `computer_use_preview` tools, rewrites them as a regular `computer_call` function tool, and post-processes model output — denormalizing 0-1000 normalized coordinates (Gemma 4, GLM-4.6v) back to pixels, fuzzy-extracting malformed JSON (Qwen), and relaying screenshots through a synthetic user message (Ollama drops tool-role images). See [Computer use → Ollama](/docs/tools/computer-use#ollama).
+
+Per-model quirks are matched by prefix on the Ollama model id:
+
+- `gemma4`, `gemma3` — 0-1000 normalized coords, `box_2d` fuzzy fallback
+- `glm-4.6v`, `glm4.6v` — 0-1000 normalized coords, native tool-format artifact cleanup
+- `qwen` — fuzzy extraction for malformed JSON
+- `kimi-k2.5`, `kimi2.5` — rescale from 1920×1080 reference or 0.0-1.0 relative coords
 
 ## Compatible run adapters
 

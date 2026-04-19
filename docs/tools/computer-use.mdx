@@ -1,6 +1,6 @@
 ---
 title: Computer use
-description: The model drives a screen — clicks, types, and reads screenshots. Tested on OpenAI, Anthropic, Google, Azure, and OpenRouter vision models.
+description: The model drives a screen — clicks, types, and reads screenshots. Tested on OpenAI, Anthropic, Google, Azure, OpenRouter, and local Ollama vision models.
 index: 4
 ---
 
@@ -237,6 +237,57 @@ Tested OpenRouter vision models:
 - `qwen/qwen-2.5-vl-72b-instruct`
 - `moonshotai/kimi-vl-a3b-thinking`
 - `google/gemini-2.5-flash`
+- `google/gemma-4-26b-a4b-it`, `google/gemma-4-31b-it`
+
+## Ollama (local)
+
+[`ollamaClientAdapter`](/docs/adapters/client-adapters/ollama) + [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) drive a local vision model through the same `computer_use_preview` shape. Gemma 4 is the best candidate today — multimodal, bounding-box grounded, and emits 0-1000 normalized coordinates that the adapter denormalizes to pixels. Expect lower reliability than hosted computer-use models; local coordinate accuracy is the weak link.
+
+```tsx
+import OpenAI from 'openai'
+import { PrismaClient } from '@prisma/client'
+import {
+  supercompat,
+  ollamaClientAdapter,
+  completionsRunAdapter,
+  prismaStorageAdapter,
+} from 'supercompat/openai'
+
+const client = supercompat({
+  clientAdapter: ollamaClientAdapter({
+    ollama: new OpenAI({
+      apiKey: 'ollama',
+      baseURL: 'http://localhost:11434/v1',
+    }),
+  }),
+  storageAdapter: prismaStorageAdapter({ prisma: new PrismaClient() }),
+  runAdapter: completionsRunAdapter(),
+})
+
+const assistant = await client.beta.assistants.create({
+  model: 'gemma4:e4b',
+  instructions: 'You control a computer via the computer tool. Take a screenshot before acting.',
+  tools: [
+    {
+      type: 'computer_use_preview',
+      computer_use_preview: {
+        display_width: 1280,
+        display_height: 720,
+      },
+    },
+  ],
+})
+```
+
+### Ollama drops tool-role images
+
+One Ollama-specific caveat worth calling out: both the OpenAI-compatible endpoint and the native `/api/chat` endpoint **silently drop images attached to `role: "tool"` messages**. The image content part is accepted without error but never reaches the model, which then hallucinates plausible-sounding output.
+
+The adapter handles this for computer-use screenshots automatically: after a `computer_call` returns a screenshot, the tool-result message is kept as a short text receipt (so the `tool_call_id` pairing stays valid) and the image is relayed through a synthetic user message immediately after. The run loop is unchanged from your side.
+
+Tested local models:
+
+- `gemma4:e4b`, `gemma4:26b`, `gemma4:31b`
 
 ## Google (Gemini)
 
@@ -281,6 +332,7 @@ const assistant = await client.beta.assistants.create({
 | [`azureOpenaiClientAdapter`](/docs/adapters/client-adapters/azure-openai) + [`azureResponsesRunAdapter`](/docs/adapters/run-adapters/azure-responses) | `{ type: 'computer' }` (Responses API) | Azure deployment exposing computer-use |
 | [`anthropicClientAdapter`](/docs/adapters/client-adapters/anthropic) + [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) | `{ type: 'computer_20250124', computer_20250124: {...} }` (Assistants API) | `claude-sonnet-4-6` |
 | [`googleClientAdapter`](/docs/adapters/client-adapters/google) + [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) | `{ type: 'computer_use_preview', computer_use_preview: {...} }` (Assistants API) | `gemini-2.5-flash` |
-| [`openRouterClientAdapter`](/docs/adapters/client-adapters/openrouter) + [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) | `{ type: 'computer_use_preview', computer_use_preview: {...} }` (Assistants API) | GLM, Qwen-VL, Kimi-VL, Gemini Flash via OpenRouter |
+| [`openRouterClientAdapter`](/docs/adapters/client-adapters/openrouter) + [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) | `{ type: 'computer_use_preview', computer_use_preview: {...} }` (Assistants API) | GLM, Qwen-VL, Kimi-VL, Gemini Flash, Gemma 4 via OpenRouter |
+| [`ollamaClientAdapter`](/docs/adapters/client-adapters/ollama) + [`completionsRunAdapter`](/docs/adapters/run-adapters/completions) | `{ type: 'computer_use_preview', computer_use_preview: {...} }` (Assistants API) | `gemma4` (local) |
 
 The Responses API path uses the shorter `{ type: 'computer' }` shape; the Assistants API path uses the longer `{ type: 'computer_use_preview', computer_use_preview: {...} }` shape. Supercompat translates both into whatever the provider actually expects on the wire.

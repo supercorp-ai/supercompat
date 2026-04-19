@@ -17,6 +17,7 @@ import {
 const groqKey = process.env.GROQ_API_KEY!
 if (!groqKey) { console.log('Skipping: GROQ_API_KEY required'); process.exit(0) }
 if (process.env.SKIP_PROVIDERS?.split(',').includes('groq')) { console.log('Skipping: groq in SKIP_PROVIDERS'); process.exit(0) }
+if (!process.env.GROQ_RUN) { console.log('Skipping: Groq skipped by default (set GROQ_RUN=1 to enable)'); process.exit(0) }
 
 dns.setDefaultResultOrder('ipv4first')
 

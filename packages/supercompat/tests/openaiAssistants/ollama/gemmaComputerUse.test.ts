@@ -1,14 +1,15 @@
 import { test, describe } from 'node:test'
 import { strict as assert } from 'node:assert'
-import { OpenRouter, HTTPClient } from '@openrouter/sdk'
+import OpenAI from 'openai'
 import { PrismaClient } from '@prisma/client'
 import { createTestPrisma } from '../../lib/testPrisma'
 import {
   supercompat,
-  openRouterClientAdapter,
+  ollamaClientAdapter,
   prismaStorageAdapter,
   completionsRunAdapter,
 } from '../../../src/openai/index'
+import { ollamaBaseUrl, skipIfNoModel } from './lib/resolveModel'
 import {
   startMcpContainer,
   McpClient,
@@ -16,28 +17,23 @@ import {
   type McpContainerHandle,
 } from '../../lib/mcpContainer'
 
-const openrouterApiKey = process.env.OPENROUTER_API_KEY
+// ---------------------------------------------------------------------------
+// Ollama configuration — local-first, no API key needed. The model is
+// auto-resolved from /v1/models if OLLAMA_MODEL isn't set, so "gemma4:26b"
+// vs "gemma4:latest" just works without any env tweaking.
+// ---------------------------------------------------------------------------
+const ollamaModel = await skipIfNoModel()
 
-if (!openrouterApiKey) {
-  throw new Error('OPENROUTER_API_KEY is required to run this test')
+function makeOllama() {
+  return new OpenAI({ baseURL: ollamaBaseUrl, apiKey: 'ollama' })
 }
 
-// Each test owns a container on its own port so the file's tests can run in
-// parallel (describe below sets `concurrency: true`).
-const PORT_SCREENSHOT = 3104
-const PORT_SUBSCRIBE_1280 = 3106
-const PORT_SUBSCRIBE_720 = 3105
-
-const httpClient = new HTTPClient({
-  fetcher: (request: Request) => {
-    request.headers.set('Connection', 'close')
-    return fetch(request)
-  },
-})
-
-function makeOpenRouter() {
-  return new OpenRouter({ apiKey: openrouterApiKey!, httpClient })
-}
+// Each test owns a container on its own port so the tests can run in
+// parallel (describe below sets `concurrency: true`). Ports are static to
+// keep the output predictable when debugging.
+const PORT_SCREENSHOT = 3110
+const PORT_SUBSCRIBE_1280 = 3113
+const PORT_SUBSCRIBE_720 = 3111
 
 const tools = [
   {
@@ -49,8 +45,8 @@ const tools = [
   },
 ] as any[]
 
-// Shared system instructions — emphasise that the model has NO prior knowledge
-// of the screen and MUST call the tool before responding.
+// Local Ollama models are weaker at self-directed tool loops than Anthropic /
+// OpenAI computer-use models, so the system prompt is extra-prescriptive.
 const SYSTEM_INSTRUCTIONS = `You control a computer via the computer_call tool. You have NO knowledge of what is currently on the screen. The ONLY way to see the screen is by calling computer_call with type "screenshot".
 
 CRITICAL RULES:
@@ -73,7 +69,7 @@ async function runComputerUseLoop({
   instructions,
   userMessage,
   maxIterations = 15,
-  testLabel = 'Kimi',
+  testLabel = 'Ollama',
   customTools,
 }: {
   client: any
@@ -88,7 +84,7 @@ async function runComputerUseLoop({
   const useTools = customTools ?? tools
 
   const assistant = await client.beta.assistants.create({
-    model: 'moonshotai/kimi-k2.5',
+    model: ollamaModel,
     instructions,
     tools: useTools,
   })
@@ -142,6 +138,9 @@ async function runComputerUseLoop({
 
   const messages = await client.beta.threads.messages.list(thread.id)
   const assistantMessages = messages.data.filter((m: any) => m.role === 'assistant')
+  // Concatenate every assistant text fragment — some models emit multiple
+  // short messages (one per step) instead of a single final message. The
+  // earlier `find(length > 10)` pass missed those and returned empty.
   const text = assistantMessages
     .flatMap((m: any) => (m.content ?? []))
     .filter((part: any) => part?.type === 'text')
@@ -153,6 +152,7 @@ async function runComputerUseLoop({
   return { run, allActions, allCoords, text, iterations }
 }
 
+// Helper — run a test with its own MCP container spun up on demand.
 async function withContainer<T>(
   opts: { name: string; port: number; displayWidth?: number; displayHeight?: number },
   body: (mcpClient: McpClient) => Promise<T>,
@@ -172,18 +172,20 @@ async function withContainer<T>(
 // Tests run in parallel — each owns its own Docker container on a unique
 // port, so they don't contend for browser state.
 // =========================================================================
-// concurrency:1 — serial within the file. With 4+ computer-use test files
-// running in parallel at the runner level, extra in-file parallelism leads
-// to docker container-name collisions and Chromium startup starvation.
+// concurrency:1 — Ollama serves one request at a time (single GPU queue).
+// Running gemma tests in parallel buys nothing because they all block on
+// the same upstream, and it doubles the wall-time budget we need. Run them
+// strictly in series so each test gets Ollama's full attention when the
+// rest of the suite isn't starving it.
 describe('tests', { concurrency: 1 }, () => {
-  test('openRouter Kimi K2.5: full e2e with real MCP computer use server', { timeout: 360_000 }, async () => {
+  test(`Ollama ${ollamaModel}: full e2e with real MCP computer use server`, { timeout: 900_000 }, async () => {
     const prisma = createTestPrisma()
 
     await withContainer(
-      { name: 'computer-use-mcp-kimi-screenshot', port: PORT_SCREENSHOT },
+      { name: `computer-use-mcp-ollama-screenshot`, port: PORT_SCREENSHOT },
       async (mcpClient) => {
         const client = supercompat({
-          clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+          clientAdapter: ollamaClientAdapter({ ollama: makeOllama() }),
           storageAdapter: prismaStorageAdapter({ prisma }),
           runAdapter: completionsRunAdapter(),
         })
@@ -195,7 +197,7 @@ describe('tests', { concurrency: 1 }, () => {
           instructions: SYSTEM_INSTRUCTIONS,
           userMessage: 'Call the computer_call tool with type "screenshot" to capture the screen. Then tell me: 1) What is the exact URL in the address bar? 2) What is the main heading on the page? 3) List all product names visible on the page.',
           maxIterations: 10,
-          testLabel: 'Kimi Screenshot',
+          testLabel: `${ollamaModel} Screenshot`,
         })
 
         assert.notEqual(run.status, 'failed', `Run should not fail (was: ${JSON.stringify(run.last_error)})`)
@@ -216,14 +218,14 @@ describe('tests', { concurrency: 1 }, () => {
 
   // Simpler task than "click Subscribe + read modal" — smaller vision models
   // choke on precise coordinate clicking but can reliably scroll and read.
-  test('openRouter Kimi K2.5: scroll to bottom and describe footer content', { timeout: 360_000 }, async () => {
+  test(`Ollama ${ollamaModel}: scroll to bottom and describe footer content`, { timeout: 900_000 }, async () => {
     const prisma = createTestPrisma()
 
     await withContainer(
-      { name: 'computer-use-mcp-kimi-subscribe-1280', port: PORT_SUBSCRIBE_1280 },
+      { name: `computer-use-mcp-ollama-subscribe-1280`, port: PORT_SUBSCRIBE_1280 },
       async (mcpClient) => {
         const client = supercompat({
-          clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+          clientAdapter: ollamaClientAdapter({ ollama: makeOllama() }),
           storageAdapter: prismaStorageAdapter({ prisma }),
           runAdapter: completionsRunAdapter(),
         })
@@ -235,7 +237,7 @@ describe('tests', { concurrency: 1 }, () => {
           instructions: SYSTEM_INSTRUCTIONS,
           userMessage: 'Follow these steps EXACTLY and stop after step 3. STEP 1: Take a screenshot. STEP 2: Scroll down once (scroll action, direction "down"). STEP 3: Respond with a single short sentence naming ONE product or heading visible on the page (for example, "Superinterface" or "Supermachine"). DO NOT take more screenshots after step 2. DO NOT keep scrolling.',
           maxIterations: 5,
-          testLabel: 'Kimi ScrollBottom',
+          testLabel: `${ollamaModel} ScrollBottom`,
         })
 
         // Strict assertions: the run must complete, at least one scroll must
@@ -268,19 +270,19 @@ describe('tests', { concurrency: 1 }, () => {
 
   // Same "scroll + describe" task at a smaller display — exercises the
   // coordinate rescaling path (720x500 vs the 1280x720 default).
-  test('openRouter Kimi K2.5: scroll to bottom and describe footer at 720x500', { timeout: 360_000 }, async () => {
+  test(`Ollama ${ollamaModel}: scroll to bottom and describe footer at 720x500`, { timeout: 900_000 }, async () => {
     const prisma = createTestPrisma()
 
     await withContainer(
       {
-        name: 'computer-use-mcp-kimi-subscribe-720',
+        name: `computer-use-mcp-ollama-subscribe-720`,
         port: PORT_SUBSCRIBE_720,
         displayWidth: 720,
         displayHeight: 500,
       },
       async (mcpClient) => {
         const client = supercompat({
-          clientAdapter: openRouterClientAdapter({ openRouter: makeOpenRouter() }),
+          clientAdapter: ollamaClientAdapter({ ollama: makeOllama() }),
           storageAdapter: prismaStorageAdapter({ prisma }),
           runAdapter: completionsRunAdapter(),
         })
@@ -292,7 +294,7 @@ describe('tests', { concurrency: 1 }, () => {
           instructions: SYSTEM_INSTRUCTIONS,
           userMessage: 'Follow these steps EXACTLY and stop after step 3. STEP 1: Take a screenshot. STEP 2: Scroll down once (scroll action, direction "down"). STEP 3: Respond with a single short sentence naming ONE product or heading visible on the page (for example, "Superinterface" or "Supermachine"). DO NOT take more screenshots after step 2. DO NOT keep scrolling.',
           maxIterations: 5,
-          testLabel: 'Kimi ScrollBottom 720x500',
+          testLabel: `${ollamaModel} ScrollBottom 720x500`,
           customTools: [
             {
               type: 'computer_use_preview',

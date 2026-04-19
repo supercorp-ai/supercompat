@@ -6,7 +6,7 @@ index: 9
 
 # Ollama
 
-Ollama runs open-weight models on your own machine. Supercompat points an `OpenAI` client at the Ollama server's OpenAI-compatible endpoint.
+Ollama runs open-weight models on your own machine. Supercompat points an `OpenAI` client at the Ollama server's OpenAI-compatible endpoint and layers on the tool-calling and computer-use normalization the chat-completions surface needs.
 
 ## Install
 
@@ -14,11 +14,11 @@ Ollama runs open-weight models on your own machine. Supercompat points an `OpenA
 npm install supercompat openai
 ```
 
-Make sure Ollama itself is installed and running:
+Make sure Ollama is installed and running, and that you've pulled the model you want:
 
 ```bash
 ollama serve
-ollama pull llama3.2
+ollama pull gemma4:e4b
 ```
 
 ## Minimal setup
@@ -44,7 +44,7 @@ const client = supercompat({
 })
 
 const response = await client.responses.create({
-  model: 'llama3.2',
+  model: 'gemma4:e4b',
   input: 'Say hello.',
 })
 ```
@@ -60,14 +60,56 @@ const ollama = new OpenAI({
 })
 ```
 
+## Tool calling
+
+Ollama's OpenAI-compatible endpoint supports function-calling on every model that's tool-trained upstream (Llama 3.1+, Qwen 2.5+, Gemma 4, Mistral Nemo, GPT-OSS, and others). Declare tools like you would on OpenAI:
+
+```tsx
+const assistant = await client.beta.assistants.create({
+  model: 'gemma4:e4b',
+  instructions: 'You can only look up information by calling functions.',
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'get_account_balance',
+        description: 'Look up the account balance for a given user ID.',
+        parameters: {
+          type: 'object',
+          properties: { user_id: { type: 'string' } },
+          required: ['user_id'],
+        },
+      },
+    },
+  ],
+})
+```
+
+## Computer use
+
+Supercompat will drive Gemma 4 (and other Ollama vision models) through the same `computer_use_preview` tool shape as every other provider. The adapter:
+
+- Rewrites `computer_use_preview` into a plain `computer_call` function tool the model can actually call.
+- Denormalizes coordinates per-model — Gemma 4 emits 0-1000 normalized coordinates; the adapter rescales to real pixels.
+- Fuzzy-extracts `box_2d` bounding boxes as clicks at the box center, which Gemma 4 occasionally returns instead of a computer_call.
+- Relays screenshots through a synthetic user message, because Ollama silently drops images from `role: "tool"` messages at both the OpenAI-compat and native `/api/chat` layer (see caveat below).
+
+See [Computer use → Ollama](/docs/tools/computer-use#ollama) for the full run-loop example.
+
+## Caveat — images in tool results
+
+Ollama (both `/v1/chat/completions` and native `/api/chat`) **does not pass images on tool-role messages to the model.** If you send a tool result with `image_url` content parts or an `images: [...]` field, the image never reaches the model and you'll get hallucinated responses.
+
+`ollamaClientAdapter` works around this for computer-use screenshots automatically: it relays the tool output's image through a synthetic user message immediately after the tool-result message, preserving the `tool_call_id` pairing. If you're hand-rolling multimodal tool flows outside computer use, you'll need to apply the same pattern yourself.
+
 ## Models
 
 Any model you've pulled with `ollama pull`. Browse the library at [ollama.com/library](https://ollama.com/library).
 
 Some current examples:
 
-- `llama3.2`
+- `gemma4:e4b` / `gemma4:26b` / `gemma4:31b` — multimodal, bounding-box grounded; recommended for computer use. Pick `:e4b` for fast iteration, `:26b`/`:31b` for quality.
 - `llama3.1:70b`
-- `qwen2.5:32b`
+- `qwen2.5vl:32b` — multimodal
 - `mistral-nemo`
 - `gpt-oss:20b`
