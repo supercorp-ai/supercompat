@@ -4,6 +4,7 @@ import { assign } from 'radash'
 import { messagesRegexp } from '@/lib/messages/messagesRegexp'
 import { serializeItemAsMessage } from '@/lib/items/serializeItemAsMessage'
 import { responseId } from '@/lib/items/responseId'
+import { backfillContainerFileAnnotations } from '@/lib/items/backfillContainerFileAnnotations'
 
 type MessageCreateResponse = Response & {
   json: () => Promise<ReturnType<OpenAI.Beta.Threads.Messages['create']>>
@@ -37,6 +38,18 @@ export const get = ({
     limit: parseInt(limit, 10),
     after,
     order: sortOrder,
+  })
+
+  // Resolve `sandbox:/mnt/data/...` URLs the model emitted on follow-up
+  // turns without invoking code_interpreter. OpenAI doesn't auto-annotate
+  // those, but the files still live in the conversation's container; we
+  // look them up and inject the missing `container_file_citation`
+  // annotations on the items in place. No-ops (and no extra API calls) when
+  // every URL is already covered or the conversation never used
+  // code_interpreter.
+  await backfillContainerFileAnnotations({
+    client,
+    items: items.data,
   })
 
   const itemsWithRunIds = mapItemsWithRunIds({ conversation, items: items.data })
