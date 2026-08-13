@@ -3,6 +3,12 @@ import type OpenAI from 'openai'
 
 type ItemType = OpenAI.Conversations.ConversationItem | OpenAI.Responses.ResponseItem | OpenAI.Responses.ResponseInputItem.Message
 
+type ContainerFilePathAnnotation = OpenAI.Beta.Threads.Messages.FilePathAnnotation & {
+  file_path: OpenAI.Beta.Threads.Messages.FilePathAnnotation['file_path'] & {
+    container_id?: string
+  }
+}
+
 const serializeAnnotations = ({
   annotations,
 }: {
@@ -26,6 +32,7 @@ const serializeAnnotations = ({
       }
 
       if (ann.type === 'file_path') {
+        const containerId = ann.file_path?.container_id ?? ann.container_id
         return {
           type: 'file_path' as const,
           text: ann.text ?? '',
@@ -36,12 +43,14 @@ const serializeAnnotations = ({
               ann.file_path?.file_id ??
               ann.file_id ??
               '',
+            ...(containerId ? { container_id: containerId } : {}),
           },
-        }
+        } as ContainerFilePathAnnotation
       }
 
       // Responses API code interpreter annotations
       if (ann.type === 'container_file_citation') {
+        const containerId = ann.container_id
         return {
           type: 'file_path' as const,
           text: ann.text ?? '',
@@ -49,8 +58,9 @@ const serializeAnnotations = ({
           end_index: ann.end_index ?? 0,
           file_path: {
             file_id: ann.file_id ?? '',
+            ...(containerId ? { container_id: containerId } : {}),
           },
-        }
+        } as ContainerFilePathAnnotation
       }
 
       return null
